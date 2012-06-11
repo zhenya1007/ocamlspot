@@ -1,0 +1,5 @@
+TARGETS= \
+dummy.cmi \
+test001.cmo \
+test002.cmo \
+test003_include.cmo \
