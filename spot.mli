@@ -28,28 +28,28 @@ module Abstraction : sig
 
   (* module definition abstraction *)
   type module_expr = (* private *)
-    | Mod_ident      of Path.t (* module M = N *)
-    | Mod_packed     of string (* full path *)
+    | AMod_ident      of Path.t (* module M = N *)
+    | AMod_packed     of string (* full path *)
         (* -pack overrides load paths: ocamlc -pack dir1/dir2/dir3/x.cmo *)
-    | Mod_structure  of structure (* module M = struct ... end *)
-    | Mod_functor    of Ident.t * Types.module_type * module_expr (* module M(I:S) = *)
-    | Mod_apply      of module_expr * module_expr (* module M = N(O) *)
-    | Mod_constraint of module_expr * Types.module_type
-    | Mod_unpack     of module_expr
-    | Mod_abstract (* used for Tmodtype_abstract *)
+    | AMod_structure  of structure (* module M = struct ... end *)
+    | AMod_functor    of Ident.t * Types.module_type * module_expr (* module M(I:S) = *)
+    | AMod_apply      of module_expr * module_expr (* module M = N(O) *)
+    | AMod_constraint of module_expr * Types.module_type
+    | AMod_unpack     of module_expr
+    | AMod_abstract (* used for Tmodtype_abstract *)
 
   (* structure abstraction : name - defloc asoc list *)
   and structure = structure_item list
 
   and structure_item = 
-    | Str_value     of Ident.t
-    | Str_type      of Ident.t
-    | Str_exception of Ident.t
-    | Str_module    of Ident.t * module_expr
-    | Str_modtype   of Ident.t * module_expr
-    | Str_class     of Ident.t
-    | Str_cltype    of Ident.t
-    | Str_include   of module_expr * (Kind.t * Ident.t) list
+    | AStr_value     of Ident.t
+    | AStr_type      of Ident.t
+    | AStr_exception of Ident.t
+    | AStr_module    of Ident.t * module_expr
+    | AStr_modtype   of Ident.t * module_expr
+    | AStr_class     of Ident.t
+    | AStr_cltype    of Ident.t
+    | AStr_include   of module_expr * (Kind.t * Ident.t) list
 
   val ident_of_structure_item : structure_item -> (Kind.t * Ident.t) option
 

@@ -59,15 +59,15 @@ module Abstraction = struct
 
   (* CR jfuruse: types may be incompatible between compiler versions *)
   type module_expr = 
-    | Mod_ident      of Path.t (* module M = N *)
-    | Mod_packed     of string (* full path *)
+    | AMod_ident      of Path.t (* module M = N *)
+    | AMod_packed     of string (* full path *)
         (* -pack overrides load paths: ocamlc -pack dir1/dir2/dir3/x.cmo *)
-    | Mod_structure  of structure (* module M = struct ... end *)
-    | Mod_functor    of Ident.t * Types.module_type * module_expr (* module M(I:S) = *)
-    | Mod_apply      of module_expr * module_expr (* module M = N(O) *)
-    | Mod_constraint of module_expr * Types.module_type
-    | Mod_unpack     of module_expr
-    | Mod_abstract (* used for Tmodtype_abstract *)
+    | AMod_structure  of structure (* module M = struct ... end *)
+    | AMod_functor    of Ident.t * Types.module_type * module_expr (* module M(I:S) = *)
+    | AMod_apply      of module_expr * module_expr (* module M = N(O) *)
+    | AMod_constraint of module_expr * Types.module_type
+    | AMod_unpack     of module_expr
+    | AMod_abstract (* used for Tmodtype_abstract *)
 
   (* structure abstraction : name - defloc asoc list *)
   and structure = structure_item list
@@ -76,34 +76,34 @@ module Abstraction = struct
      same name *) 
 
   and structure_item = 
-    | Str_value     of Ident.t
-    | Str_type      of Ident.t
-    | Str_exception of Ident.t
-    | Str_module    of Ident.t * module_expr
-    | Str_modtype   of Ident.t * module_expr
-    | Str_class     of Ident.t
-    | Str_cltype    of Ident.t
-    | Str_include   of module_expr * (Kind.t * Ident.t) list
+    | AStr_value     of Ident.t
+    | AStr_type      of Ident.t
+    | AStr_exception of Ident.t
+    | AStr_module    of Ident.t * module_expr
+    | AStr_modtype   of Ident.t * module_expr
+    | AStr_class     of Ident.t
+    | AStr_cltype    of Ident.t
+    | AStr_include   of module_expr * (Kind.t * Ident.t) list
 
   let rec format_module_expr ppf = function
-    | Mod_ident p -> fprintf ppf "%s" (Path.name p)
-    | Mod_packed s -> fprintf ppf "packed(%s)" s
-    | Mod_structure str -> format_structure ppf str
-    | Mod_functor (id, mty, mexp) ->
+    | AMod_ident p -> fprintf ppf "%s" (Path.name p)
+    | AMod_packed s -> fprintf ppf "packed(%s)" s
+    | AMod_structure str -> format_structure ppf str
+    | AMod_functor (id, mty, mexp) ->
         fprintf ppf "@[<4>\\(%s : %a) ->@ %a@]" 
 	  (Ident.name id)
           (Printtyp.modtype ~with_pos:true) mty
           format_module_expr mexp
-    | Mod_apply (mexp1, mexp2) ->
+    | AMod_apply (mexp1, mexp2) ->
         fprintf ppf "%a(%a)"
           format_module_expr mexp1
           format_module_expr mexp2 
-    | Mod_constraint (mexp, mty) ->
+    | AMod_constraint (mexp, mty) ->
         fprintf ppf "@[%a@ :@ @[%a@]@]"
           format_module_expr mexp
           (Printtyp.modtype ~with_pos:true) mty
-    | Mod_abstract -> fprintf ppf "<abst>"
-    | Mod_unpack mty -> 
+    | AMod_abstract -> fprintf ppf "<abst>"
+    | AMod_unpack mty -> 
         fprintf ppf "@[unpack@ : @[%a@]@]"
           format_module_expr mty
 
@@ -112,20 +112,20 @@ module Abstraction = struct
       (list ";@," format_structure_item) items
       
   and format_structure_item ppf = function
-    | Str_value id -> fprintf ppf "val %s" (Ident.name id)
-    | Str_type id -> fprintf ppf "type %s" (Ident.name id) (* CR jfuruse: todo *)
-    | Str_exception id -> fprintf ppf "exception %s" (Ident.name id)
-    | Str_module (id, mexp) -> 
+    | AStr_value id -> fprintf ppf "val %s" (Ident.name id)
+    | AStr_type id -> fprintf ppf "type %s" (Ident.name id) (* CR jfuruse: todo *)
+    | AStr_exception id -> fprintf ppf "exception %s" (Ident.name id)
+    | AStr_module (id, mexp) -> 
         fprintf ppf "@[<v4>module %s =@ %a@]" 
           (Ident.name id) 
           format_module_expr mexp
-    | Str_modtype (id, mexp) ->
+    | AStr_modtype (id, mexp) ->
         fprintf ppf "@[<v4>module type %s =@ %a@]" 
           (Ident.name id)
           format_module_expr mexp
-    | Str_class id -> fprintf ppf "class %s" (Ident.name id)
-    | Str_cltype id -> fprintf ppf "class type %s" (Ident.name id)
-    | Str_include (mexp, kidents) ->
+    | AStr_class id -> fprintf ppf "class %s" (Ident.name id)
+    | AStr_cltype id -> fprintf ppf "class type %s" (Ident.name id)
+    | AStr_include (mexp, kidents) ->
         fprintf ppf "@[include %a@ : [ @[%a@] ]@]"
           format_module_expr mexp
           (list "; " (fun ppf (k,id) -> 
@@ -133,14 +133,14 @@ module Abstraction = struct
           kidents
 
   let ident_of_structure_item : structure_item -> (Kind.t * Ident.t) option = function
-    | Str_value id        -> Some (Kind.Value, id)
-    | Str_type id         -> Some (Kind.Type, id)
-    | Str_exception id    -> Some (Kind.Exception, id) 
-    | Str_module (id, _)  -> Some (Kind.Module, id)
-    | Str_modtype (id, _) -> Some (Kind.Module_type, id)
-    | Str_class id        -> Some (Kind.Class, id)
-    | Str_cltype id       -> Some (Kind.Class_type, id)
-    | Str_include _       -> None
+    | AStr_value id        -> Some (Kind.Value, id)
+    | AStr_type id         -> Some (Kind.Type, id)
+    | AStr_exception id    -> Some (Kind.Exception, id) 
+    | AStr_module (id, _)  -> Some (Kind.Module, id)
+    | AStr_modtype (id, _) -> Some (Kind.Module_type, id)
+    | AStr_class id        -> Some (Kind.Class, id)
+    | AStr_cltype id       -> Some (Kind.Class_type, id)
+    | AStr_include _       -> None
 
   module Module_expr = struct
     (* cache key is Typedtree.module_expr *)
@@ -160,21 +160,21 @@ module Abstraction = struct
       type t = structure_item
       let equal s1 s2 =
 	match s1, s2 with
-	| Str_value id1, Str_value id2 
-	| Str_type id1, Str_type id2
-	| Str_exception id1, Str_exception id2
-	| Str_class id1, Str_class id2
-	| Str_cltype id1, Str_cltype id2 -> id1 = id2
-	| Str_module (id1, mexp1) , Str_module (id2, mexp2) ->
+	| AStr_value id1, AStr_value id2 
+	| AStr_type id1, AStr_type id2
+	| AStr_exception id1, AStr_exception id2
+	| AStr_class id1, AStr_class id2
+	| AStr_cltype id1, AStr_cltype id2 -> id1 = id2
+	| AStr_module (id1, mexp1) , AStr_module (id2, mexp2) ->
 	    id1 = id2 && Module_expr.equal mexp1 mexp2
-	| Str_modtype (id1, mty1), Str_modtype (id2, mty2) ->
+	| AStr_modtype (id1, mty1), AStr_modtype (id2, mty2) ->
             id1 = id2 && Module_expr.equal mty1 mty2
-	| Str_include (mexp1, kids1), Str_include (mexp2, kids2) ->
+	| AStr_include (mexp1, kids1), AStr_include (mexp2, kids2) ->
 	    Module_expr.equal mexp1 mexp2 && kids1 = kids2
-	| (Str_value _ | Str_type _ | Str_exception _ | Str_modtype _ 
-	  | Str_class _ | Str_cltype _ | Str_module _ | Str_include _),
-	  (Str_value _ | Str_type _ | Str_exception _ | Str_modtype _ 
-	  | Str_class _ | Str_cltype _ | Str_module _ | Str_include _) -> false
+	| (AStr_value _ | AStr_type _ | AStr_exception _ | AStr_modtype _ 
+	  | AStr_class _ | AStr_cltype _ | AStr_module _ | AStr_include _),
+	  (AStr_value _ | AStr_type _ | AStr_exception _ | AStr_modtype _ 
+	  | AStr_class _ | AStr_cltype _ | AStr_module _ | AStr_include _) -> false
 
       let hash = Hashtbl.hash
     end
@@ -200,24 +200,24 @@ module Abstraction = struct
       | Sig_class (id, _, _) -> [Kind.Class, id]
       | Sig_class_type (id, _, _) -> [Kind.Class_type, id]
 
-    let rec signature sg = Mod_structure (List.map signature_item sg)
+    let rec signature sg = AMod_structure (List.map signature_item sg)
       
     and signature_item = function
-      | Sig_value (id, _) -> Str_value id
-      | Sig_type (id, _, _) -> Str_type id
-      | Sig_exception (id, _) -> Str_exception id
-      | Sig_module (id, mty, _) -> Str_module (id, module_type mty)
-      | Sig_modtype (id, mdtd) -> Str_modtype (id, modtype_declaration mdtd)
-      | Sig_class (id, _, _) -> Str_class id
-      | Sig_class_type (id, _, _) -> Str_cltype id
+      | Sig_value (id, _) -> AStr_value id
+      | Sig_type (id, _, _) -> AStr_type id
+      | Sig_exception (id, _) -> AStr_exception id
+      | Sig_module (id, mty, _) -> AStr_module (id, module_type mty)
+      | Sig_modtype (id, mdtd) -> AStr_modtype (id, modtype_declaration mdtd)
+      | Sig_class (id, _, _) -> AStr_class id
+      | Sig_class_type (id, _, _) -> AStr_cltype id
 
     and module_type = function
-      | Mty_ident p -> Mod_ident p
+      | Mty_ident p -> AMod_ident p
       | Mty_signature sg -> signature sg
-      | Mty_functor (id, mty1, mty2) -> Mod_functor(id, mty1, module_type mty2)
+      | Mty_functor (id, mty1, mty2) -> AMod_functor(id, mty1, module_type mty2)
 
     and modtype_declaration = function
-      | Modtype_abstract -> Mod_structure []
+      | Modtype_abstract -> AMod_structure []
       | Modtype_manifest mty -> module_type mty
   end
 
@@ -256,7 +256,7 @@ module Abstraction = struct
         res
 
   and module_expr_desc = function
-    | Tmod_ident (p, _) -> Mod_ident p
+    | Tmod_ident (p, _) -> AMod_ident p
     | Tmod_structure str ->
 	(* This may recompute abstractions of structure_items.
 	   It sounds inefficient but not so much actually, since
@@ -264,16 +264,16 @@ module Abstraction = struct
 	structure str
     | Tmod_functor (id, _, mty, mexp) ->
         let mty = Mtype.scrape mexp.mod_env mty.mty_type in
-	Mod_functor(id, mty, module_expr mexp)
+	AMod_functor(id, mty, module_expr mexp)
     | Tmod_apply (mexp1, mexp2, _mcoercion) -> (* CR jfuruse ? *)
-	Mod_apply (module_expr mexp1, module_expr mexp2)
+	AMod_apply (module_expr mexp1, module_expr mexp2)
     | Tmod_constraint (mexp, mty_, _constraint, _mcoercion) ->
-	Mod_constraint (module_expr mexp, mty_)
+	AMod_constraint (module_expr mexp, mty_)
     | Tmod_unpack (_expr, mty_) -> 
-        Mod_unpack (T.module_type mty_) (* CR jfuruse: need to unpack, really? *)
+        AMod_unpack (T.module_type mty_) (* CR jfuruse: need to unpack, really? *)
           
   and structure str = 
-    Mod_structure (List.concat_map structure_item str.str_items)
+    AMod_structure (List.concat_map structure_item str.str_items)
 
   and structure_item sitem = 
     (* it may recompute the same thing, but it is cheap *)
@@ -292,46 +292,46 @@ module Abstraction = struct
   and structure_item_desc = function
     | Tstr_eval _ -> []
     | Tstr_value (_, pat_exps) ->
-	List.map (fun id -> Str_value id) (let_bound_idents pat_exps)
+	List.map (fun id -> AStr_value id) (let_bound_idents pat_exps)
     | Tstr_primitive (id, _, _vdesc) -> 
-	[Str_value id]
-    | Tstr_type id_descs -> List.map (fun (id, _, _) -> Str_type id) id_descs
+	[AStr_value id]
+    | Tstr_type id_descs -> List.map (fun (id, _, _) -> AStr_type id) id_descs
     | Tstr_exception (id ,_ , _) ->
-	[Str_exception id]
+	[AStr_exception id]
     | Tstr_exn_rebind (id, _, _path, _) -> (* CR jfuruse: path? *)
-	[Str_exception id]
+	[AStr_exception id]
     | Tstr_module (id, _, mexp) ->
-	[Str_module (id, module_expr mexp)]
+	[AStr_module (id, module_expr mexp)]
     | Tstr_recmodule (idmexps) ->
 	List.map (fun (id, _, _, mexp) ->
-	  Str_module (id, module_expr mexp)) idmexps
-    | Tstr_modtype (id, _, mty) -> [Str_modtype (id, module_type mty)]
+	  AStr_module (id, module_expr mexp)) idmexps
+    | Tstr_modtype (id, _, mty) -> [AStr_modtype (id, module_type mty)]
     | Tstr_open _ -> []
     | Tstr_class classdescs ->
-	List.map (fun (cls, _names, _) -> Str_class cls.ci_id_class) classdescs
+	List.map (fun (cls, _names, _) -> AStr_class cls.ci_id_class) classdescs
     | Tstr_class_type iddecls ->
-	List.map (fun (id, _, _) -> Str_cltype id) iddecls
+	List.map (fun (id, _, _) -> AStr_cltype id) iddecls
     | Tstr_include (mexp, _ids) ->
         let sg = match (mexp.mod_type : Types.module_type) with Mty_signature sg -> sg | _ -> assert false in (* CR jfuruse: I hope so... *)
 	let kids = List.concat_map T.kident_of_sigitem sg in
-        [Str_include (module_expr mexp, kids)]
+        [AStr_include (module_expr mexp, kids)]
 
   (* CR jfuruse: caching like module_expr_sub *)
   and module_type mty = module_type_desc mty.mty_desc
 
   and module_type_desc = function
-    | Tmty_ident (p, _) -> Mod_ident p
+    | Tmty_ident (p, _) -> AMod_ident p
     | Tmty_signature sg -> signature sg
     | Tmty_functor (id, _, mty1, mty2) ->
         (* CR jfuruse: need to scrape ? but how ? *)
-        Mod_functor(id, mty1.mty_type, module_type mty2)
+        AMod_functor(id, mty1.mty_type, module_type mty2)
 (*
     | Tmty_with of module_type * (Path.t * Longident.t loc * with_constraint) list
     | Tmty_typeof of module_expr
 *)
     | _ -> assert false
 
-  and signature sg = Mod_structure (List.concat_map signature_item sg.sig_items)
+  and signature sg = AMod_structure (List.concat_map signature_item sg.sig_items)
 
   and signature_item sitem = 
       let aux id f =
@@ -346,24 +346,24 @@ module Abstraction = struct
           end
       in
       match sitem.sig_desc with
-      | Tsig_value (id, _, _) -> [aux id (fun () -> Str_value id)]
-      | Tsig_exception (id, _, _) -> [aux id (fun () -> Str_exception id)]
+      | Tsig_value (id, _, _) -> [aux id (fun () -> AStr_value id)]
+      | Tsig_exception (id, _, _) -> [aux id (fun () -> AStr_exception id)]
       | Tsig_module (id, _ , mty) ->
-          [aux id (fun () -> Str_module (id, module_type mty))]
+          [aux id (fun () -> AStr_module (id, module_type mty))]
       | Tsig_modtype (id, _, mty_decl) ->
           [aux id (fun () -> 
-            (* todo *) Str_modtype (id, modtype_declaration mty_decl) (* sitem.sig_final_env can be used? *)) ]
+            (* todo *) AStr_modtype (id, modtype_declaration mty_decl) (* sitem.sig_final_env can be used? *)) ]
 
-      | Tsig_type typs -> List.map (fun (id, _, _) -> aux id (fun () -> Str_type id)) typs
-      | Tsig_class clses -> List.map (fun cls -> aux cls.ci_id_class (fun () -> Str_class cls.ci_id_class)) clses
-      | Tsig_class_type clses -> List.map (fun cls -> aux cls.ci_id_class (fun () -> Str_cltype cls.ci_id_class)) clses
+      | Tsig_type typs -> List.map (fun (id, _, _) -> aux id (fun () -> AStr_type id)) typs
+      | Tsig_class clses -> List.map (fun cls -> aux cls.ci_id_class (fun () -> AStr_class cls.ci_id_class)) clses
+      | Tsig_class_type clses -> List.map (fun cls -> aux cls.ci_id_class (fun () -> AStr_cltype cls.ci_id_class)) clses
 
       | Tsig_recmodule _ -> assert false
       | Tsig_open _ -> assert false
       | Tsig_include _ -> assert false
 	
   and modtype_declaration = function
-    | Tmodtype_abstract -> Mod_abstract
+    | Tmodtype_abstract -> AMod_abstract
     | Tmodtype_manifest mty -> module_type mty
 
 end
@@ -458,7 +458,7 @@ module Annot = struct
 
   let record_module_expr_def loc id modl =
     protect "Spot.Annot.record_module_expr_def" (fun () ->
-      record loc (Str (Abstraction.Str_module 
+      record loc (Str (Abstraction.AStr_module 
 	                  (id, 
 	                  (Abstraction.module_expr modl)))))
       ()
@@ -473,7 +473,7 @@ module Annot = struct
     protect "Spot.Annot.record_include" (fun () ->
       let abs = Abstraction.module_expr modl in
       match abs with
-      | Abstraction.Mod_structure str ->
+      | Abstraction.AMod_structure str ->
           List.iter (fun sitem -> record loc (Str sitem)) str
       | _ -> assert false)
       ()
@@ -483,7 +483,7 @@ module Annot = struct
       let kids = (* CR jfuruse: copy of structure_item_sub *) 
 	List.concat_map Abstraction.T.kident_of_sigitem sg
       in
-      let sitem = Abstraction.Str_include (Abstraction.module_type mty, kids)
+      let sitem = Abstraction.AStr_include (Abstraction.module_type mty, kids)
       in 
       (* ocaml signature simply forgets the fact that kids are
 	 included. We memorize them here. *)
@@ -496,7 +496,7 @@ module Annot = struct
 
   let record_module_expr_def loc id modl =
     protect "Spot.Annot.record_module_expr_def" (fun () ->
-      record loc (Str (Abstraction.Str_module 
+      record loc (Str (Abstraction.AStr_module 
 	                  (id, 
 	                  (Abstraction.module_expr modl))));
       record loc (Mod_type modl.Typedtree.mod_type))
@@ -504,7 +504,7 @@ module Annot = struct
     
   let record_module_type_def loc id mty =
     protect "Spot.Annot.record_module_type_def" (fun () ->
-      record loc (Str (Abstraction.Str_modtype
+      record loc (Str (Abstraction.AStr_modtype
                           (id,
                           Abstraction.module_type mty))))
       ()
@@ -588,83 +588,6 @@ module Top = struct
     
   let recorded () = !recorded
 end
-
-(*
-(* Spot file *)
-module File = struct
-  (* not record but list for future exetensibility *)
-  type elem =
-    | Argv of string array
-    | Source_path of string option (* packed module has None *)
-    | Cwd of string
-    | Load_paths of string list
-    | Top of Abstraction.module_expr option
-    | Annots of (Location.t * Annot.t) list
-
-  (* marshalled type *)
-  type t = elem list
-
-  let argv_override = ref None 
-
-  let write_to_oc ~source implementation annots oc =
-    protect "Spot.File.write_to_oc" (fun () ->
-      let source = 
-        match source with
-        | None -> None
-        | Some p -> Some (Filename.concat (Sys.getcwd ()) p)
-      in
-      output_string oc magic_number;
-      output_value oc (ocaml_version, version);
-      Marshal.to_channel oc 
-        [ Argv (match !argv_override with Some argv -> argv | None -> Sys.argv);
-	  Source_path source;
-          Cwd (Sys.getcwd ());
-	  Load_paths !Config.load_path;
-          Top implementation;
-	  Annots annots ]
-        [] (* keep sharing *))
-      ()
-
-  let write ~source implementation annots spot_file =
-    protect "Spot.File.write" (fun () ->
-      let oc = open_out_bin spot_file in
-      write_to_oc ~source implementation annots oc;
-      close_out oc) ()
-
-  (* we must clear all the recorded after any dump of a compilation unit, 
-     since the compiler may handle more than one .ml *)
-  let clear () =
-    Top.clear ();
-    Annot.clear ();
-    Abstraction.Module_expr.Table.clear Abstraction.cache_module_expr;
-    Abstraction.Structure_item.Table.clear Abstraction.cache_structure_item
-      
-  let dump ~source spot_file =
-    if !Clflags.annotations then 
-      write ~source (Top.recorded ()) (Annot.recorded ()) spot_file;
-    clear ()
-  ;;
-
-  (* -pack can pack modules out of include path: 
-     ocamlc -pack -o p.cmo dir/m.cmo
-  *)
-  let dump_package ~prefix ~source files =
-    if !Clflags.annotations then begin
-      write ~source:(Some source)
-        (Some (List.map (fun f -> 
-          let module_name = 
-            String.capitalize (Filename.chop_extension (Filename.basename f))
-          in
-          Abstraction.Str_module (Ident.create module_name, (* CR jfuruse: stamp is bogus *)
-                                 Abstraction.Mod_packed f)) files))
-        [] 
-        (prefix ^ ".spot")
-    end;
-    clear ()
-
-  let set_argv argv = argv_override := Some argv
-end
-*)
 
 module Position = struct
   open Lexing

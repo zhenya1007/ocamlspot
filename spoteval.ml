@@ -336,22 +336,22 @@ module Eval = struct
     end
 
   and module_expr env idopt : module_expr -> Value.z = function
-    | Mod_abstract -> eager (Error (Failure "abstract"))
-    | Mod_ident p -> 
+    | AMod_abstract -> eager (Error (Failure "abstract"))
+    | AMod_ident p -> 
         find_path env (Kind.Module, p)
-    | Mod_packed s -> lazy (!packed env s)
-    | Mod_structure str -> 
+    | AMod_packed s -> lazy (!packed env s)
+    | AMod_structure str -> 
         lazy begin
           let str = structure env str in
           Structure ({ PIdent.path= env.path; ident = idopt }, str, None)
         end
-    | Mod_functor (id, mty, mexp) -> 
+    | AMod_functor (id, mty, mexp) -> 
         Debug.format "evaluating functor (arg %s) under %s@."
           (Ident.name id)
           (String.concat "; " (List.map Ident.name (Env.domain env)));
         eager (Closure ({ PIdent.path = env.path; ident = idopt }, 
                        env, id, mty, mexp))
-    | Mod_constraint (mexp, _mty) -> 
+    | AMod_constraint (mexp, _mty) -> 
         (* [mty] may not be a simple signature but an ident which is
            hard to get its definition at this point. 
            Therefore we do not constrain our result here. 
@@ -370,11 +370,11 @@ module Eval = struct
            end)
         *)
         module_expr env idopt (*?*) mexp
-    | Mod_apply (mexp1, mexp2) ->
+    | AMod_apply (mexp1, mexp2) ->
         let v1 = module_expr env None mexp1 in
         let v2 = module_expr env None mexp2 in
 	apply v1 v2
-    | Mod_unpack mty -> module_expr env None mty
+    | AMod_unpack mty -> module_expr env None mty
 
   (* expand internal Include and get alist by Ident.t *)
   (* the list order is REVERSED and is last-defined-first, 
@@ -383,35 +383,35 @@ module Eval = struct
 
     List.fold_left (fun str sitem ->
       match sitem with
-      | Str_value id 
-      | Str_type id
-      | Str_exception id
-      | Str_class id
-      | Str_cltype id ->
+      | AStr_value id 
+      | AStr_type id
+      | AStr_exception id
+      | AStr_class id
+      | AStr_cltype id ->
           (* CR jfuruse: not sure *)
           let pident = { PIdent.path = env0.Env.path; ident = Some id } in
           let v = Ident pident in
           let kind = 
             match sitem with
-            | Str_value _ -> Kind.Value
-            | Str_type _ -> Kind.Type
-            | Str_exception _ -> Kind.Exception
-            | Str_modtype _ -> Kind.Module_type
-            | Str_class _ -> Kind.Class
-            | Str_cltype _ -> Kind.Class_type
-            | Str_module _ | Str_include _ -> assert false
+            | AStr_value _ -> Kind.Value
+            | AStr_type _ -> Kind.Type
+            | AStr_exception _ -> Kind.Exception
+            | AStr_modtype _ -> Kind.Module_type
+            | AStr_class _ -> Kind.Class
+            | AStr_cltype _ -> Kind.Class_type
+            | AStr_module _ | AStr_include _ -> assert false
           in
           (id, (kind, eager v)) :: str
 
       (* CR: very ad-hoc rule for functor parameter *)      
-      | Str_module (id, Mod_ident (Path.Pdot (Path.Pident _id, 
+      | AStr_module (id, AMod_ident (Path.Pdot (Path.Pident _id, 
                                               "parameter", 
                                               -2))) ->
           (* id = id_ *)
           let pident = { PIdent.path = env0.Env.path; ident = Some id } in
           (id, (Kind.Module, eager (Parameter pident))) :: str
           
-      | Str_module (id, mexp) ->
+      | AStr_module (id, mexp) ->
           let v = lazy begin
             try
               (* create it lazily for recursiveness of flat *)
@@ -423,7 +423,7 @@ module Eval = struct
           in
           (id, (Kind.Module, v)) :: str
 
-      | Str_modtype (id, mexp) ->
+      | AStr_modtype (id, mexp) ->
           (* CR jfuruse: dup code *)
           let v = lazy begin
             try
@@ -436,7 +436,7 @@ module Eval = struct
           in
           (id, (Kind.Module_type, v)) :: str
 
-      | Str_include (mexp, kids) ->
+      | AStr_include (mexp, kids) ->
           (* be careful: everything must be done lazily *)
           let v = lazy begin
             (* createate it lazily for recursiveness of flat *)
