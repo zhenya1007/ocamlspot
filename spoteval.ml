@@ -383,30 +383,30 @@ module Eval = struct
 
     List.fold_left (fun str sitem ->
       match sitem with
-      | AStr_value id 
-      | AStr_type id
+      | AStr_value     id 
+      | AStr_type      id
       | AStr_exception id
-      | AStr_class id
-      | AStr_cltype id ->
+      | AStr_class     id
+      | AStr_cltype    id ->
           (* CR jfuruse: not sure *)
           let pident = { PIdent.path = env0.Env.path; ident = Some id } in
           let v = Ident pident in
-          let kind = 
-            match sitem with
-            | AStr_value _ -> Kind.Value
-            | AStr_type _ -> Kind.Type
+          (* CR jfuruse: use ident_of_structure_item *)
+          let kind = match sitem with
+            | AStr_value     _ -> Kind.Value
+            | AStr_type      _ -> Kind.Type
             | AStr_exception _ -> Kind.Exception
-            | AStr_modtype _ -> Kind.Module_type
-            | AStr_class _ -> Kind.Class
-            | AStr_cltype _ -> Kind.Class_type
+            | AStr_modtype   _ -> Kind.Module_type
+            | AStr_class     _ -> Kind.Class
+            | AStr_cltype    _ -> Kind.Class_type
             | AStr_module _ | AStr_include _ -> assert false
           in
           (id, (kind, eager v)) :: str
 
       (* CR: very ad-hoc rule for functor parameter *)      
       | AStr_module (id, AMod_ident (Path.Pdot (Path.Pident _id, 
-                                              "parameter", 
-                                              -2))) ->
+                                                "parameter", 
+                                                -2))) ->
           (* id = id_ *)
           let pident = { PIdent.path = env0.Env.path; ident = Some id } in
           (id, (Kind.Module, eager (Parameter pident))) :: str
@@ -436,7 +436,40 @@ module Eval = struct
           in
           (id, (Kind.Module_type, v)) :: str
 
-      | AStr_include (mexp, kids) ->
+      | AStr_include (mexp, aliases) ->
+          (* be careful: everything must be done lazily *)
+          let v = lazy begin
+            (* createate it lazily for recursiveness of flat *)
+            let env = Env.overrides env0 str in
+            !!(module_expr env None(*?*) mexp)
+          end in
+          let kid_ztbl = 
+            lazy begin match !!v with
+            | Structure (_, str, _ (* CR jfuruse *) ) -> 
+                List.map (fun (id, (k, v)) -> (k, id), v) str
+            | Parameter pid -> 
+                List.map (fun (_, (k,id)) -> 
+                  (k, id), eager (Parameter pid)) aliases
+            | Ident _ -> assert false
+            | Closure _ -> assert false
+            | Error _ -> [] (* error *)
+            end
+          in
+          let str' =
+            List.map (fun (id', (k, id)) ->
+              let v = 
+                lazy begin
+                  try
+                    !!(List.assoc (k, id) !!kid_ztbl)
+                  with
+                  | Not_found -> Error Not_found
+                end
+              in
+              id', (k, v)) aliases
+          in
+          str' @ str
+(*
+      | AStr_include (_ids (* CR jfuruse: todo *), mexp, kids) ->
           (* be careful: everything must be done lazily *)
           let v = lazy begin
             (* createate it lazily for recursiveness of flat *)
@@ -467,7 +500,9 @@ module Eval = struct
               in
               id, (k, v)) kids
           in
-          str' @ str) [] sitems
+          str' @ str
+*)
+          ) [] sitems
 
   and apply v1 v2 =
     lazy begin match !!v1 with

@@ -49,7 +49,7 @@ module Abstraction : sig
     | AStr_modtype   of Ident.t * module_expr
     | AStr_class     of Ident.t
     | AStr_cltype    of Ident.t
-    | AStr_include   of module_expr * (Kind.t * Ident.t) list
+    | AStr_include   of module_expr * (Ident.t * (Kind.t * Ident.t)) list
 
   val ident_of_structure_item : structure_item -> (Kind.t * Ident.t) option
 
@@ -83,8 +83,10 @@ module Annot : sig
   val record_module_expr_use : Location.t -> Typedtree.module_expr -> unit
   val record_include :
     Location.t -> Typedtree.module_expr -> (* Types.signature -> *) unit
+(*
   val record_include_sig :
     Location.t -> Typedtree.module_type -> Types.signature -> unit
+*)
   val record_module_type_def : Location.t -> Ident.t -> Typedtree.module_type -> unit
   val recorded : unit -> (Location.t * t) list
 

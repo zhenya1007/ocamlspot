@@ -83,7 +83,7 @@ module Abstraction = struct
     | AStr_modtype   of Ident.t * module_expr
     | AStr_class     of Ident.t
     | AStr_cltype    of Ident.t
-    | AStr_include   of module_expr * (Kind.t * Ident.t) list
+    | AStr_include   of module_expr * (Ident.t * (Kind.t * Ident.t)) list
 
   let rec format_module_expr ppf = function
     | AMod_ident p -> fprintf ppf "%s" (Path.name p)
@@ -125,12 +125,15 @@ module Abstraction = struct
           format_module_expr mexp
     | AStr_class id -> fprintf ppf "class %s" (Ident.name id)
     | AStr_cltype id -> fprintf ppf "class type %s" (Ident.name id)
-    | AStr_include (mexp, kidents) ->
-        fprintf ppf "@[include %a@ : [ @[%a@] ]@]"
+    | AStr_include (mexp, aliases) ->
+        fprintf ppf "@[<v4>include %a@ { @[<v>%a@] }@]"
           format_module_expr mexp
-          (list "; " (fun ppf (k,id) -> 
-            fprintf ppf "%s %s" (String.capitalize (Kind.name k)) (Ident.name id))) 
-          kidents
+          (list ";@ " (fun ppf (id', (k,id)) -> 
+            fprintf ppf "%s %a = %a" 
+              (Kind.name k)
+              Ident.format id' 
+              Ident.format id))
+          aliases
 
   let ident_of_structure_item : structure_item -> (Kind.t * Ident.t) option = function
     | AStr_value id        -> Some (Kind.Value, id)
@@ -169,8 +172,9 @@ module Abstraction = struct
 	    id1 = id2 && Module_expr.equal mexp1 mexp2
 	| AStr_modtype (id1, mty1), AStr_modtype (id2, mty2) ->
             id1 = id2 && Module_expr.equal mty1 mty2
-	| AStr_include (mexp1, kids1), AStr_include (mexp2, kids2) ->
-	    Module_expr.equal mexp1 mexp2 && kids1 = kids2
+	| AStr_include (mexp1, aliases1), AStr_include (mexp2, aliases2) ->
+            aliases1 = aliases2
+            && Module_expr.equal mexp1 mexp2
 	| (AStr_value _ | AStr_type _ | AStr_exception _ | AStr_modtype _ 
 	  | AStr_class _ | AStr_cltype _ | AStr_module _ | AStr_include _),
 	  (AStr_value _ | AStr_type _ | AStr_exception _ | AStr_modtype _ 
@@ -239,6 +243,18 @@ module Abstraction = struct
       | Tsig_open _ -> assert false
       | Tsig_include _ -> assert false
   end
+
+  let aliases_of_include mexp ids =
+    let sg = match (mexp.mod_type : Types.module_type) with Mty_signature sg -> sg | _ -> assert false in (* CR jfuruse: I hope so... *)
+    let kids = List.concat_map T.kident_of_sigitem sg in
+    (* [ids] only contain things with values, i.e. values, modules and classes *)
+    List.map (fun (k,id) -> match k with
+    | Kind.Value | Kind.Module | Kind.Class -> 
+        begin match List.find_all (fun id' -> Ident0.name id' = Ident0.name id) ids with
+        | [id'] -> id', (k, id)
+        | _ -> assert false
+        end
+    | _ -> Ident.unsafe_create_with_stamp (Ident0.name id) (-1), (k, id)) kids
 
   let rec module_expr mexp =
     try
@@ -311,10 +327,9 @@ module Abstraction = struct
 	List.map (fun (cls, _names, _) -> AStr_class cls.ci_id_class) classdescs
     | Tstr_class_type iddecls ->
 	List.map (fun (id, _, _) -> AStr_cltype id) iddecls
-    | Tstr_include (mexp, _ids) ->
-        let sg = match (mexp.mod_type : Types.module_type) with Mty_signature sg -> sg | _ -> assert false in (* CR jfuruse: I hope so... *)
-	let kids = List.concat_map T.kident_of_sigitem sg in
-        [AStr_include (module_expr mexp, kids)]
+    | Tstr_include (mexp, ids) ->
+        let aliases = aliases_of_include mexp ids in
+        [AStr_include (module_expr mexp, aliases)]
 
   (* CR jfuruse: caching like module_expr_sub *)
   and module_type mty = module_type_desc mty.mty_desc
@@ -478,6 +493,7 @@ module Annot = struct
       | _ -> assert false)
       ()
 
+(*
   let record_include_sig loc mty sg =
     protect "Spot.Annot.record_include_sig" (fun () ->
       let kids = (* CR jfuruse: copy of structure_item_sub *) 
@@ -493,6 +509,7 @@ module Annot = struct
 	  id (sitem, ref false (* never recorded in the parent sig yet *))) kids;
       record loc (Str sitem))
       ()
+*)
 
   let record_module_expr_def loc id modl =
     protect "Spot.Annot.record_module_expr_def" (fun () ->

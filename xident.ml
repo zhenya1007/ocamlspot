@@ -22,6 +22,8 @@ end
     
 let unsafe_create_with_stamp = Ident_internal.unsafe_create_with_stamp
 
+let format ppf id = Format.pp_print_string ppf (name id)
+
 let parse s =
   let s, pos = Name.parse s in
   let id = unsafe_create_with_stamp s pos in
