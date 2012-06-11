@@ -109,14 +109,14 @@ module Abstraction = struct
 
   and format_structure ppf items = 
     fprintf ppf "{ @[<v>%a@] }"
-      (list "; " format_structure_item) items
+      (list ";@," format_structure_item) items
       
   and format_structure_item ppf = function
     | Str_value id -> fprintf ppf "val %s" (Ident.name id)
     | Str_type id -> fprintf ppf "type %s" (Ident.name id) (* CR jfuruse: todo *)
     | Str_exception id -> fprintf ppf "exception %s" (Ident.name id)
     | Str_module (id, mexp) -> 
-        fprintf ppf "@[<v4>module %s = %a@]" 
+        fprintf ppf "@[<v4>module %s =@ %a@]" 
           (Ident.name id) 
           format_module_expr mexp
     | Str_modtype (id, mexp) ->
