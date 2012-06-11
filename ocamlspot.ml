@@ -27,22 +27,24 @@ module C = Spotconfig
 
 open Cmt_format
 
+module SAbs = Spot.Abstraction
+
 let _ =
   match C.mode with
   | `Dump p ->
       begin match Cmt_format.read p with
-    | _, None -> Format.eprintf "%s : oops@." p
-    | _, Some cmti ->
-        let v = 
-          match cmti.cmt_annots with
-          | Implementation str -> 
-              Spot.Abstraction.structure str
-          | Interface sg ->
-              Spot.Abstraction.signature sg
-          | _ -> assert false
-        in
-        Format.eprintf "%a@."
-          Spot.Abstraction.format_module_expr v
+      | _, None -> Format.eprintf "%s : oops@." p
+      | _, Some cmti ->
+          let v = 
+            match cmti.cmt_annots with
+            | Implementation str -> SAbs.structure str
+            | Interface sg -> SAbs.signature sg
+            | Partial_implementation _parts | Partial_interface _parts ->
+                assert false
+            | _ -> assert false
+          in
+          Format.eprintf "%a@."
+            SAbs.format_module_expr v
       end
   | _ -> assert false
     

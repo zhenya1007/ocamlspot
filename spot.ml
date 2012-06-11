@@ -8,8 +8,8 @@ open Ext
 open Format
 
 let magic_number = "OCamlSpot"
-let ocaml_version = "3.12.1"
-let version = "1.4.0"
+let ocaml_version = "4.00.0"
+let version = "2.0.0"
 
 module Location_bound = struct
   open Location
@@ -389,13 +389,13 @@ let protect name f v =
     
 module Annot = struct
   type t =
-    | Type of Types.type_expr * Env.t * [`Expr | `Pattern | `Val]
-    | Str of Abstraction.structure_item 
-    | Use of Kind.t * Path.t
-    | Module of Abstraction.module_expr
+    | Use               of Kind.t * Path.t
+    | Type              of Types.type_expr * Env.t * [`Expr | `Pattern | `Val]
+    | Mod_type          of Types.module_type
+    | Str               of Abstraction.structure_item  (* CRjfuruse: Should be Sitem *)
+    | Module            of Abstraction.module_expr
     | Functor_parameter of Ident.t
-    | Non_expansive of bool
-    | Mod_type of Types.module_type
+    | Non_expansive     of bool
 
   let equal t1 t2 = match t1, t2 with
     | Type (t1, _, _), Type (t2, _, _) -> t1 == t2
@@ -432,31 +432,29 @@ module Annot = struct
         | _ -> Flipped
 
   let record loc t = 
-    if !Clflags.annotations then begin
-      let really_record () = 
-        let num_records, records = 
-          try Hashtbl.find recorded loc with Not_found -> 0, []
-        in
-        (* CR jfuruse: I am not really sure the below is correct now, 
-           but I remember the huge compilation slow down... *)
-        (* This caching works horribly when too many things are defined 
-           at the same location. For example, a type definition of more than 
-           3000 variants, with sexp camlp4 extension, the compile time explodes
-           from 10secs to 4mins! Therefore this works 
-           only if [num_records <= 10] 
-        *)
-        if num_records <= 10 && List.exists (equal t) records then ()
-        else Hashtbl.replace recorded loc (num_records + 1, t :: records)
+    let really_record () = 
+      let num_records, records = 
+        try Hashtbl.find recorded loc with Not_found -> 0, []
       in
-      match check_location loc with
-      | Wellformed -> really_record ()
-      | Flipped -> 
-          if not loc.Location.loc_ghost then Format.eprintf "%aWarning: Flipped location.@." Location.print loc; 
-          really_record ()
-      | Illformed -> 
-          if not loc.Location.loc_ghost then Format.eprintf "%aWarning: Ill-formed location.@." Location.print loc
-      | Over_files -> ()
-    end
+      (* CR jfuruse: I am not really sure the below is correct now, 
+         but I remember the huge compilation slow down... *)
+      (* This caching works horribly when too many things are defined 
+         at the same location. For example, a type definition of more than 
+         3000 variants, with sexp camlp4 extension, the compile time explodes
+         from 10secs to 4mins! Therefore this works 
+         only if [num_records <= 10] 
+      *)
+      if num_records <= 10 && List.exists (equal t) records then ()
+      else Hashtbl.replace recorded loc (num_records + 1, t :: records)
+    in
+    match check_location loc with
+    | Wellformed -> really_record ()
+    | Flipped -> 
+        if not loc.Location.loc_ghost then Format.eprintf "%aWarning: Flipped location.@." Location.print loc; 
+        really_record ()
+    | Illformed -> 
+        if not loc.Location.loc_ghost then Format.eprintf "%aWarning: Ill-formed location.@." Location.print loc
+    | Over_files -> ()
 
   let record_constr_type_use loc ty =
     let path_of_constr_type t =
@@ -484,15 +482,6 @@ module Annot = struct
       record loc (Mod_type modl.Typedtree.mod_type))
       ()
 
-  let record_include loc modl (* _sg *) =
-    protect "Spot.Annot.record_include" (fun () ->
-      let abs = Abstraction.module_expr modl in
-      match abs with
-      | Abstraction.AMod_structure str ->
-          List.iter (fun sitem -> record loc (Str sitem)) str
-      | _ -> assert false)
-      ()
-
 (*
   let record_include_sig loc mty sg =
     protect "Spot.Annot.record_include_sig" (fun () ->
@@ -511,21 +500,211 @@ module Annot = struct
       ()
 *)
 
-  let record_module_expr_def loc id modl =
-    protect "Spot.Annot.record_module_expr_def" (fun () ->
-      record loc (Str (Abstraction.AStr_module 
-	                  (id, 
-	                  (Abstraction.module_expr modl))));
-      record loc (Mod_type modl.Typedtree.mod_type))
-      ()
-    
-  let record_module_type_def loc id mty =
-    protect "Spot.Annot.record_module_type_def" (fun () ->
-      record loc (Str (Abstraction.AStr_modtype
-                          (id,
-                          Abstraction.module_type mty))))
-      ()
       
+
+  module Record = struct
+    open Asttypes
+    open Typedtree
+    module A = Abstraction
+
+    let rec structure str = List.iter structure_item str
+      
+    and structure_item sitem = 
+      let loc = sitem.str_loc in
+      List.iter (fun sitem -> record loc (Str sitem)) (A.structure_item sitem);
+      structure_item_desc sitem.str_desc
+
+    and structure_item_desc = function
+      | Tstr_eval e -> expression e
+      | Tstr_value (_, pe_list) -> 
+          List.iter (fun (p, e) -> 
+            pattern p;
+            expression e
+          ) pe_list
+      | Tstr_primitive (_id, _, _vdesc) -> ()
+      | Tstr_type id_loc_tdecl_list ->
+          List.iter (fun (id, {loc}, tdecl) -> 
+            record loc (Str (A.AStr_type id));
+            type_declaration tdecl) id_loc_tdecl_list
+      | Tstr_exception (_, _, ed) ->
+          exception_declaration ed
+      | Tstr_exn_rebind (_id, _loc, path, {loc}) -> 
+          record loc (Use (Kind.Exception, path))
+      | Tstr_module (id, {loc}, mexp) -> 
+          record loc (Str (A.AStr_module 
+	                  (id, 
+	                  (A.module_expr mexp))));
+          module_expr mexp (* should do           record loc (Mod_type modl.Typedtree.mod_type)) *)
+      | Tstr_recmodule id_loc_mtype_mexp_list ->
+          List.iter (fun (id,{loc},mtype,mexp) ->
+            record loc (Str (A.AStr_module 
+	                       (id, 
+	                        (A.module_expr mexp))));
+            module_type mtype;
+            module_expr mexp) id_loc_mtyp_mexp_list
+      | Tstr_modtype (id, {loc}, mty) -> 
+          record loc (Str (A.AStr_modtype
+                             (id,
+                              A.module_type mty)));
+          module_type mty
+      | Tstr_open (path, {loc}) -> 
+          record loc (Use (Kind.Module, path)) 
+      
+      | Tstr_class cdecl_names_vf_list -> 
+          List.iter (fun (cdecl, _names, _vf) ->
+            class_declaration cdecl) cdecl_names_vf_list
+      | Tstr_class_type id_loc_cltyped_list ->
+          List.iter (fun (_id, (* {loc} *) _, cltyd) ->
+            (* CR jfuruse: class type declaration record *)
+            class_type_declaration cltyd) id_loc_cltyped_list
+      | Tstr_include (mexp, _ids) -> 
+          module_expr mexp
+(* already done in the parent?!
+          let abs = Abstraction.module_expr modl in
+          match abs with
+          | A.AMod_structure str ->
+              List.iter (fun sitem -> record loc (Str sitem)) str
+          | _ -> assert false)
+*)
+
+    and expression e = 
+      record e.exp_loc (Type (e.exp_type, exp.exp_env, `Expr));
+      (* CR jfuruse: todo: exp_extra *)
+(*
+and exp_extra =
+  | Texp_constraint of core_type option * core_type option
+  | Texp_open of Path.t * Longident.t loc * Env.t
+*)
+      let p_e_list = List.iter (fun (p,e) -> pattern p; expression e) in
+
+      match e.exp_desc with
+      | Texp_ident (path, {loc}, _) -> record loc (Use (Kind.Value, path))
+      | Texp_constant _ -> ()
+      | Texp_function (_, pel, _) -> p_e_list pel
+      | Texp_apply (e, l_eopt_opt_list) -> 
+          expression e; 
+          List.iter (fun (_, eopt, _, _) -> Option.iter ~f:expression eopt) l_eopt_opt_list
+      | Texp_let (_, pel, e) -> p_e_list pel, expression e
+      | Texp_match (e, pel, _) 
+      | Texp_try (e, pel) -> 
+          expression e; p_e_list pel
+      | Texp_tuple el
+      | Texp_array el -> List.iter expression el
+      | Texp_construct (p, {loc}, _, el, _) -> 
+          record loc (Use (Kind.Type, p));
+          List.iter expression el
+      | Texp_variant (_, Some e) -> expression e 
+      | Texp_variant (_, None) -> ()
+      | Texp_record fields -> 
+          List.iter (fun (path, {loc}, _, e) ->
+            record loc (Use (Kind.Type, path));
+            expression e) fields
+      | Texp_field (e, p, {loc}, _) ->
+          expression e; 
+          record loc (Use (Kind.Type, p))
+      | Texp_setfield (e, p, {loc}, _, e') ->
+          expression e;
+          record loc (Use (Kind.Type p));
+          expression e'
+      | Texp_ifthenelse (e, e', eopt) -> 
+          expression e; expression e'; Option.iter ~f:expression eopt
+      | Texp_sequence (e, e') 
+      | Texp_while (e, e') 
+      | Texp_when (e, e') -> 
+          expression e; expression e'
+      | Texp_for (id, {loc}, e, e', _, e'') -> 
+          record loc (Str (AStr_value id));
+          expression e;
+          expression e';
+          expression e''
+      | Texp_send (e, _, eopt) -> 
+          expression e;
+          Option.iter ~f:expression eopt
+      | Texp_new (p, {loc}, clsdcl) -> 
+          record loc (Use (Kind.Class p));
+          class_declaration clsdcl
+      | Texp_instvar (p, p', {loc}) -> 
+          (* CR jfuruse: p and p' share the same position?!?! *)
+          record loc (Use (Kind.Class p));
+          record loc (Use (Kind.Value p'))
+      | Texp_setinstvar (p, p', {loc}, e) -> 
+          (* CR jfuruse: p and p' share the same position?!?! *)
+          record loc (Use (Kind.Class p));
+          record loc (Use (Kind.Value p'));
+          expression e
+      | Texp_override (p, p_loc_e_list) -> 
+          record loc (Use (Kind.Value p));
+          List.iter (fun (p, {loc}, e) ->
+            record loc (Use (Kind.Type p));
+            expression e) p_loc_e_list
+      | Texp_letmodule (id, {loc}, mexp, e) ->
+          record loc (Str (A.AStr_module (id, A.module_expr mexp)));
+          module_expr mexp;
+          expression e
+      | Texp_assertfalse -> ()
+      | Texp_assert e 
+      | Texp_lazy e
+        -> expression e
+      | Texp_poly (e, core_ty) ->  expression e; core_type core_ty
+      | Texp_object (clstr, _names) -> class_structure clstr
+      | Texp_newtype (_name (* CR jfuruse: todo *), e) -> expression e
+      | Texp_pack mexp -> module_expr mexp
+
+    and pattern p =
+      record p.pat_loc 
+      record p.pat_loc (Type (p.pat_type, p.pat_env, `Pattern));
+      (* CR jfuruse: pat_extra *)
+(*
+and pat_extra =
+  | Tpat_constraint of core_type
+  | Tpat_type of Path.t * Longident.t loc
+  | Tpat_unpack
+*)
+      match p.pat_desc with 
+      | Tpat_any -> ()
+      | Tpat_var (id, {loc}) -> 
+          record loc (Str (A.AStr_value id))
+      | Tpat_alias (p, id, {loc}) -> 
+          pattern p;
+          record loc (Str (A.AStr_value id))
+      | Tpat_constant _ -> ()
+      | Tpat_tuple ps -> List.iter pattern ps
+      | Tpat_construct (p, {loc}, _, ps, _) -> 
+          record loc (Use (Kind.Type, p));
+          List.iter pattern ps
+      | Tpat_variant (_, popt, _) -> 
+          Option.iter ~f:pattern popt
+      | Tpat_record (p_loc_ldesc_p_list, _) -> 
+          List.iter (fun (path, {loc}, _, p) ->
+            record loc (Use (Kind.Type, path));
+            pattern p) p_loc_ldesc_p_list
+      | Tpat_array ps -> List.iter pattern ps
+      | Tpat_or (p1, p2, _) -> 
+          pattern p1; pattern p2
+      | Tpat_lazy p -> pattern p
+
+    and type_declaration td = 
+      
+(*
+and type_declaration =
+  { typ_params: string loc option list;
+    typ_type : Types.type_declaration;
+    typ_cstrs: (core_type * core_type * Location.t) list;
+    typ_kind: type_kind;
+    typ_private: private_flag;
+    typ_manifest: core_type option;
+    typ_variance: (bool * bool) list;
+    typ_loc: Location.t }
+
+and type_kind =
+    Ttype_abstract
+  | Ttype_variant of (Ident.t * string loc * core_type list * Location.t) list
+  | Ttype_record of
+      (Ident.t * string loc * mutable_flag * core_type * Location.t) list
+*)
+
+  end
+
   let recorded () = Hashtbl.fold (fun k (_,vs) st -> 
     List.map (fun v -> k,v) vs @ st) recorded []
 
