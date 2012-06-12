@@ -521,12 +521,14 @@ module Annot = struct
             pattern p;
             expression e
           ) pe_list
-      | Tstr_primitive (_id, _, _vdesc) -> ()
+      | Tstr_primitive (id, {loc}, _vdesc) -> 
+          record loc (Str (A.AStr_value id))
       | Tstr_type id_loc_tdecl_list ->
           List.iter (fun (id, {loc}, tdecl) -> 
             record loc (Str (A.AStr_type id));
             type_declaration tdecl) id_loc_tdecl_list
-      | Tstr_exception (_, _, ed) ->
+      | Tstr_exception (id, {loc}, ed) ->
+          record loc (Str (A.AStr_exception id));
           exception_declaration ed
       | Tstr_exn_rebind (_id, _loc, path, {loc}) -> 
           record loc (Use (Kind.Exception, path))
@@ -541,7 +543,7 @@ module Annot = struct
 	                       (id, 
 	                        (A.module_expr mexp))));
             module_type mtype;
-            module_expr mexp) id_loc_mtyp_mexp_list
+            module_expr mexp) id_loc_mtype_mexp_list
       | Tstr_modtype (id, {loc}, mty) -> 
           record loc (Str (A.AStr_modtype
                              (id,
@@ -684,7 +686,18 @@ and pat_extra =
       | Tpat_lazy p -> pattern p
 
     and type_declaration td = 
-      
+      (* CR jfuruse: parameters now have positions! *)
+      match td.typ_kind with
+      | Ttype_abstract -> ()
+      | Ttype_variant defs ->
+          List.iter (fun (id, {loc}, core_types, _loc') ->
+            record loc (A.AStr_type id);
+            List.iter core_type core_types) defs
+      | Ttype_record defs ->
+          List.iter (fun (id, {loc}, _, coty, _loc') -> 
+            record loc (A.AStr_type id);
+            core_type coty) defs
+
 (*
 and type_declaration =
   { typ_params: string loc option list;
@@ -702,7 +715,52 @@ and type_kind =
   | Ttype_record of
       (Ident.t * string loc * mutable_flag * core_type * Location.t) list
 *)
+    and exception_declaration ed = 
+      List.iter core_type ed.exn_params
 
+    and module_expr mexp = 
+      record mexp.mod_loc (Mod_type mexp.mod_type);
+      module_expr_desc mexp.mod_desc
+
+    and module_expr_desc = function
+      | Tmod_ident (path, {loc}) ->
+          record loc (Use (Kind.Module path))
+      | Tmod_structure str -> structure str
+      | Tmod_functor (id, {loc}, _mty, mexp) -> (* CR jfuruse: _mty *)
+          record loc (Functor_parameter id);
+          module_expr mexp
+      | Tmod_apply (m1, m2, _mcoercion) -> (* CR jfuruse: _mcoercion *)
+          module_expr m1;
+          module_expr m2
+      | Tmod_constraint (m, mty, _mty_c, _m_c) -> (* CR jfuruse: coercions *)
+          module_expr m; module_type mty
+      | Tmod_unpack (e, mty) ->
+          expresion e; module_type mty
+
+    and module_type mty = 
+      record loc (Mod_type mty);
+      match mty.mty_desc with
+      | Tmty_ident (path, {loc}) -> 
+          record loc (Use (Kind.Module_type, path))
+      | Tmty_signature sg -> signature sg
+      | Tmty_functor (id, {loc}, mty, mty') -> 
+          record loc (Functor_parameter id);
+          module_type mty;
+          module_type mty'
+      | Tmty_with (mty, withs) ->
+          module_type mty;
+          List.iter (fun (path, {loc}, with_constraint) ->
+            match with_constraint with
+            | Twith_type td 
+            | Twith_typesubst td -> 
+                record loc (Use (Kind.Type, path));
+                type_declaration td
+            | Twith_module (path', {loc=loc'}) 
+            | Twith_modsubst (path', {loc=loc'}) ->
+                record loc (Use (Kind.Module, path));
+                record loc' (Use (Kind.Module, path'))) withs
+      | Tmty_typeof mexp -> 
+          module_expr mexp
   end
 
   let recorded () = Hashtbl.fold (fun k (_,vs) st -> 
