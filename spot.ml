@@ -381,6 +381,32 @@ module Abstraction = struct
     | Tmodtype_abstract -> AMod_abstract
     | Tmodtype_manifest mty -> module_type mty
 
+  let rec flatten str = List.concat_map flatten_item str
+
+  and flatten_item item = match item with
+    | AStr_value     _
+    | AStr_type      _
+    | AStr_exception _
+    | AStr_class     _
+    | AStr_cltype    _ -> [item]
+    | AStr_module  (_, mexp)
+    | AStr_modtype (_, mexp) -> item :: flatten_module_expr mexp
+    | AStr_include (mexp, aliases) ->
+        let flats = flatten_module_expr mexp in
+        List.map (fun (id, kid) ->
+          List.find (fun sitem -> ident_of_structure_item sitem = Some kid) flats)
+          aliases
+        @ flats
+
+  and flatten_module_expr = function
+    | AMod_ident _ -> []
+    | AMod_packed _ -> []
+    | AMod_structure str -> flatten str
+    | AMod_functor _ -> []
+    | AMod_apply (_, m) -> flatten_module_expr m
+    | AMod_constraint (m, _) -> flatten_module_expr m
+    | AMod_unpack m -> flatten_module_expr m
+    | AMod_abstract -> []
 end
 
 let protect name f v =
@@ -500,370 +526,34 @@ module Annot = struct
       ()
 *)
 
-      
-
   module Record = struct
     open Asttypes
     open Typedtree
     module A = Abstraction
 
-    let rec structure str = List.iter structure_item str
-      
-    and structure_item sitem = 
-      let loc = sitem.str_loc in
-      List.iter (fun sitem -> record loc (Str sitem)) (A.structure_item sitem);
-      structure_item_desc sitem.str_desc
+    class fold = object (self)
+      inherit Ttfold.fold as super
 
-    and structure_item_desc = function
-      | Tstr_eval e -> expression e
-      | Tstr_value (_, pe_list) -> 
-          List.iter (fun (p, e) -> 
-            pattern p;
-            expression e
-          ) pe_list
-      | Tstr_primitive (id, {loc}, _vdesc) -> 
-          record loc (Str (A.AStr_value id))
-      | Tstr_type id_loc_tdecl_list ->
-          List.iter (fun (id, {loc}, tdecl) -> 
-            record loc (Str (A.AStr_type id));
-            type_declaration tdecl) id_loc_tdecl_list
-      | Tstr_exception (id, {loc}, ed) ->
-          record loc (Str (A.AStr_exception id));
-          exception_declaration ed
-      | Tstr_exn_rebind (_id, _loc, path, {loc}) -> 
-          record loc (Use (Kind.Exception, path))
-      | Tstr_module (id, {loc}, mexp) -> 
-          record loc (Str (A.AStr_module 
-	                  (id, 
-	                  (A.module_expr mexp))));
-          module_expr mexp (* should do           record loc (Mod_type modl.Typedtree.mod_type)) *)
-      | Tstr_recmodule id_loc_mtype_mexp_list ->
-          List.iter (fun (id,{loc},mtype,mexp) ->
-            record loc (Str (A.AStr_module 
-	                       (id, 
-	                        (A.module_expr mexp))));
-            module_type mtype;
-            module_expr mexp) id_loc_mtype_mexp_list
-      | Tstr_modtype (id, {loc}, mty) -> 
-          record loc (Str (A.AStr_modtype
-                             (id,
-                              A.module_type mty)));
-          module_type mty
-      | Tstr_open (path, {loc}) -> 
-          record loc (Use (Kind.Module, path)) 
-      
-      | Tstr_class cdecl_names_vf_list -> 
-          List.iter (fun (cdecl, _names, _vf) ->
-            class_declaration cdecl) cdecl_names_vf_list
-      | Tstr_class_type id_loc_cltyped_list ->
-          List.iter (fun (_id, (* {loc} *) _, cltyd) ->
-            (* CR jfuruse: class type declaration record *)
-            class_type_declaration cltyd) id_loc_cltyped_list
-      | Tstr_include (mexp, _ids) -> 
-          module_expr mexp
-(* already done in the parent?!
-          let abs = Abstraction.module_expr modl in
-          match abs with
-          | A.AMod_structure str ->
-              List.iter (fun sitem -> record loc (Str sitem)) str
-          | _ -> assert false)
-*)
-
-    and expression e = 
-      record e.exp_loc (Type (e.exp_type, e.exp_env, `Expr));
-      (* CR jfuruse: todo: exp_extra *)
-(*
-and exp_extra =
-  | Texp_constraint of core_type option * core_type option
-  | Texp_open of Path.t * Longident.t loc * Env.t
-*)
-      let p_e_list = List.iter (fun (p,e) -> pattern p; expression e) in
-
-      match e.exp_desc with
-      | Texp_ident (path, {loc}, _) -> record loc (Use (Kind.Value, path))
-      | Texp_constant _ -> ()
-      | Texp_function (_, pel, _) -> p_e_list pel
-      | Texp_apply (e, l_eopt_opt_list) -> 
-          expression e; 
-          List.iter (fun (_, eopt, _) -> Option.iter ~f:expression eopt) l_eopt_opt_list
-      | Texp_let (_, pel, e) -> p_e_list pel; expression e
-      | Texp_match (e, pel, _) 
-      | Texp_try (e, pel) -> 
-          expression e; p_e_list pel
-      | Texp_tuple el
-      | Texp_array el -> List.iter expression el
-      | Texp_construct (p, {loc}, _, el, _) -> 
-          record loc (Use (Kind.Type, p));
-          List.iter expression el
-      | Texp_variant (_, Some e) -> expression e 
-      | Texp_variant (_, None) -> ()
-      | Texp_record (fields, expopt) -> 
-          List.iter (fun (path, {loc}, _, e) ->
-            record loc (Use (Kind.Type, path));
-            expression e) fields;
-          Option.iter ~f:expression expopt
-      | Texp_field (e, p, {loc}, _) ->
-          expression e; 
-          record loc (Use (Kind.Type, p))
-      | Texp_setfield (e, p, {loc}, _, e') ->
-          expression e;
-          record loc (Use (Kind.Type, p));
-          expression e'
-      | Texp_ifthenelse (e, e', eopt) -> 
-          expression e; expression e'; Option.iter ~f:expression eopt
-      | Texp_sequence (e, e') 
-      | Texp_while (e, e') 
-      | Texp_when (e, e') -> 
-          expression e; expression e'
-      | Texp_for (id, {loc}, e, e', _, e'') -> 
-          record loc (Str (A.AStr_value id));
-          expression e;
-          expression e';
-          expression e''
-      | Texp_send (e, _, eopt) -> 
-          expression e;
-          Option.iter ~f:expression eopt
-      | Texp_new (p, {loc}, clsdcl) -> 
-          record loc (Use (Kind.Class, p));
-          (* class_declaration_ clsdcl *) (* CR jfuruse: it is not typedtree, so not sourcee related? *)
-      | Texp_instvar (p, p', {loc}) -> 
-          (* CR jfuruse: p and p' share the same position?!?! *)
-          record loc (Use (Kind.Class, p));
-          record loc (Use (Kind.Value, p'))
-      | Texp_setinstvar (p, p', {loc}, e) -> 
-          (* CR jfuruse: p and p' share the same position?!?! *)
-          record loc (Use (Kind.Class, p));
-          record loc (Use (Kind.Value, p'));
-          expression e
-      | Texp_override (p, p_loc_e_list) -> 
-          (* CR jfuruse: no loc *)
-          let loc = e.exp_loc in
-          record loc (Use (Kind.Value, p));
-          List.iter (fun (p, {loc}, e) ->
-            record loc (Use (Kind.Type, p));
-            expression e) p_loc_e_list
-      | Texp_letmodule (id, {loc}, mexp, e) ->
-          record loc (Str (A.AStr_module (id, A.module_expr mexp)));
-          module_expr mexp;
-          expression e
-      | Texp_assertfalse -> ()
-      | Texp_assert e 
-      | Texp_lazy e
-        -> expression e
-      | Texp_poly (e, core_ty) ->  expression e; core_type core_ty
-      | Texp_object (clstr, _names) -> class_structure clstr
-      | Texp_newtype (_name (* CR jfuruse: todo *), e) -> expression e
-      | Texp_pack mexp -> module_expr mexp
-
-    and pattern p =
-      record p.pat_loc (Type (p.pat_type, p.pat_env, `Pattern));
-      (* CR jfuruse: pat_extra *)
-(*
-and pat_extra =
-  | Tpat_constraint of core_type
-  | Tpat_type of Path.t * Longident.t loc
-  | Tpat_unpack
-*)
-      match p.pat_desc with 
-      | Tpat_any -> ()
-      | Tpat_var (id, {loc}) -> 
-          record loc (Str (A.AStr_value id))
-      | Tpat_alias (p, id, {loc}) -> 
-          pattern p;
-          record loc (Str (A.AStr_value id))
-      | Tpat_constant _ -> ()
-      | Tpat_tuple ps -> List.iter pattern ps
-      | Tpat_construct (p, {loc}, _, ps, _) -> 
-          record loc (Use (Kind.Type, p));
-          List.iter pattern ps
-      | Tpat_variant (_, popt, _) -> 
-          Option.iter ~f:pattern popt
-      | Tpat_record (p_loc_ldesc_p_list, _) -> 
-          List.iter (fun (path, {loc}, _, p) ->
-            record loc (Use (Kind.Type, path));
-            pattern p) p_loc_ldesc_p_list
-      | Tpat_array ps -> List.iter pattern ps
-      | Tpat_or (p1, p2, _) -> 
-          pattern p1; pattern p2
-      | Tpat_lazy p -> pattern p
-
-    and type_declaration td = 
-      (* CR jfuruse: parameters now have positions! *)
-      match td.typ_kind with
-      | Ttype_abstract -> ()
-      | Ttype_variant defs ->
-          List.iter (fun (id, {loc}, core_types, _loc') ->
-            record loc (Str (A.AStr_type id));
-            List.iter core_type core_types) defs
-      | Ttype_record defs ->
-          List.iter (fun (id, {loc}, _, coty, _loc') -> 
-            record loc (Str (A.AStr_type id));
-            core_type coty) defs
-
-(*
-and type_declaration =
-  { typ_params: string loc option list;
-    typ_type : Types.type_declaration;
-    typ_cstrs: (core_type * core_type * Location.t) list;
-    typ_kind: type_kind;
-    typ_private: private_flag;
-    typ_manifest: core_type option;
-    typ_variance: (bool * bool) list;
-    typ_loc: Location.t }
-
-and type_kind =
-    Ttype_abstract
-  | Ttype_variant of (Ident.t * string loc * core_type list * Location.t) list
-  | Ttype_record of
-      (Ident.t * string loc * mutable_flag * core_type * Location.t) list
-*)
-    and exception_declaration ed = 
-      List.iter core_type ed.exn_params
-
-    and module_expr mexp = 
-      record mexp.mod_loc (Mod_type mexp.mod_type);
-      module_expr_desc mexp.mod_desc
-
-    and module_expr_desc = function
-      | Tmod_ident (path, {loc}) ->
-          record loc (Use (Kind.Module path))
-      | Tmod_structure str -> structure str
-      | Tmod_functor (id, {loc}, _mty, mexp) -> (* CR jfuruse: _mty *)
-          record loc (Functor_parameter id);
-          module_expr mexp
-      | Tmod_apply (m1, m2, _mcoercion) -> (* CR jfuruse: _mcoercion *)
-          module_expr m1;
-          module_expr m2
-      | Tmod_constraint (m, mty, _mty_c, _m_c) -> (* CR jfuruse: coercions *)
-          module_expr m; module_type mty
-      | Tmod_unpack (e, mty) ->
-          expresion e; module_type mty
-
-    and module_type mty = 
-      record loc (Mod_type mty);
-      match mty.mty_desc with
-      | Tmty_ident (path, {loc}) -> 
-          record loc (Use (Kind.Module_type, path))
-      | Tmty_signature sg -> signature sg
-      | Tmty_functor (id, {loc}, mty, mty') -> 
-          record loc (Functor_parameter id);
-          module_type mty;
-          module_type mty'
-      | Tmty_with (mty, withs) ->
-          module_type mty;
-          List.iter (fun (path, {loc}, with_constraint) ->
-            match with_constraint with
-            | Twith_type td 
-            | Twith_typesubst td -> 
-                record loc (Use (Kind.Type, path));
-                type_declaration td
-            | Twith_module (path', {loc=loc'}) 
-            | Twith_modsubst (path', {loc=loc'}) ->
-                record loc (Use (Kind.Module, path));
-                record loc' (Use (Kind.Module, path'))) withs
-      | Tmty_typeof mexp -> 
-          module_expr mexp
-
-    and class_declaration = class_infos class_expr
-    and class_type_declaration = class_infos class_type 
-
-    and class_infos f ci =
-(*      
-  { ci_virt: virtual_flag;
-    ci_params: string loc list * Location.t;
-    ci_id_name : string loc;
-    ci_id_class: Ident.t;
-    ci_id_class_type : Ident.t;
-    ci_id_object : Ident.t;
-    ci_id_typesharp : Ident.t;
-    ci_expr: 'a;
-    ci_decl: Types.class_declaration;
-    ci_type_decl : Types.class_type_declaration;
-    ci_variance: (bool * bool) list;
-    ci_loc: Location.t }
-*)
-      f ci.ci_expr
-
-    and class_expr ce =  
-      (* CR jfuruse: record ce.cl_loc (Class_type ce.cl_type) *)
-      class_type ce.cl_type;
-      match ce.class_expr_desc with
-      | Tcl_ident (path, {loc}, cotypes) ->
-          record loc (Use (Kind.Class, path));
-          List.iter core_type cotypes
-      | Tcl_structure cstr -> class_structure cstr
-      | Tcl_fun (_, pat, _args, cexp, _) -> 
-          pattern pat; 
-          (* CR jfuruse: args are in pat? *)
-          class_expr cexp
-      | Tcl_apply (cexp, args) -> 
-          class_expr cexp;
-          List.iter (fun (_, eopt, _) -> Option.iter ~f:expression eopt) args
-      | Tcl_let (_, pes, _args, cexp) -> 
-          (* CR jfuruse: args are in pes? *)
-          List.iter (fun (pat, exp) -> pattern pat; expression exp) pes;
-          class_expr cexp
-      | Tcl_constraint (cexp, ctyopt, _ (* string list *), _ (* string list *), _) ->
-          class_expr cexp;
-          Option.iter ~f:class_type ctyopt
-
-    and class_type cty =
-      (* CR jfuruse: record cty.cltyp_loc (Class_type cty.cltyp_type); *)
-      match cty.cltyp_desc with
-      | Tcty_constr (path, {loc}, cotys) -> 
-          record loc (Use (Kind.Class, path));
-          List.iter core_type cotys
-      | Tcty_signature csi -> class_signature csi
-      | Tcty_fun (_, coty, clty) -> core_type coty; class_type clty
-
-    and class_signature csg = 
-(*       CR jfuruse: todo
-      {
-    csig_self : core_type;
-    csig_fields : class_type_field list;
-    csig_type : Types.class_signature;
-    csig_loc : Location.t;
-  }
-*)
-      () 
-
-(*
-and class_type_field = {
-    ctf_desc : class_type_field_desc;
-    ctf_loc : Location.t;
-  }
-
-and class_type_field_desc =
-    Tctf_inher of class_type
-  | Tctf_val of (string * mutable_flag * virtual_flag * core_type)
-  | Tctf_virt  of (string * private_flag * core_type)
-  | Tctf_meth  of (string * private_flag * core_type)
-  | Tctf_cstr  of (core_type * core_type)
-*)
-
-    and core_type coty = match coty.ctyp_desc with
-      | Ttyp_any -> ()
-      | Ttyp_var _var -> () (* CR jfuruse: todo *)
-      | Ttyp_arrow (_, coty1, coty2) -> core_type coty1; core_type coty2
-      | Ttyp_tuple cotys -> List.iter core_type cotys
-      | Ttyp_constr (path, {loc}, cotys) -> 
-          record loc (Use (Kind.Type, path));
-          List.iter core_type cotys
-(*
-      | Ttyp_object of core_field_type list
-      | Ttyp_class of Path.t * Longident.t loc * core_type list * label list
-      | Ttyp_alias of core_type * string
-      | Ttyp_variant of row_field list * bool * label list option
-      | Ttyp_poly of string list * core_type
-      | Ttyp_package of package_type
-*)
-      | _ -> prerr_endline "TODO"; () (* CR jfuruse: todo *)
-
-    and class_structure _cstr = () (* CR jfuruse: todo *)
+      method! pattern p = 
+        record p.pat_loc (Type (p.pat_type, p.pat_env, `Pattern));
+        super#pattern p
+    end
   end
 
-  let recorded () = Hashtbl.fold (fun k (_,vs) st -> 
+  let get_recorded () = Hashtbl.fold (fun k (_,vs) st -> 
     List.map (fun v -> k,v) vs @ st) recorded []
+
+  let record_structure str = 
+    Hashtbl.clear recorded;
+    let o = new Record.fold in
+    ignore (o#structure str);
+    get_recorded ()
+
+  let record_signature sg = 
+    Hashtbl.clear recorded;
+    let o = new Record.fold in
+    ignore (o#signature sg);
+    get_recorded ()
 
   let string_of_at = function
     | `Expr -> "Expr"

@@ -17,8 +17,8 @@ include $(OCAMLDIR)/Makefile.config
 # Various commands and dir
 ##########################
 CAMLRUN= ocamlrun
-OCAMLC   = ocamlc -annot -bin-annot -w Ae-9 -warn-error Ae-9
-OCAMLOPT = ocamlopt -annot -bin-annot -w Ae-9 -warn-error Ae-9
+OCAMLC   = ocamlc -annot -bin-annot -w Ae-9 -warn-error Ae-9-32-33-34-27
+OCAMLOPT = ocamlopt -annot -bin-annot -w Ae-9 -warn-error Ae-9-32-33-34-27
 OCAMLDEP = ocamldep
 OCAMLLEX = ocamllex
 OCAMLYACC= ocamlyacc
@@ -31,10 +31,10 @@ OCAMLSRCDIR=..
 INCLUDES_DEP=-I $(OCAMLDIR)/compiler-libs
 
 # Requires unix!
-COMPFLAGS= $(INCLUDES_DEP) -I $(OTHERS)/unix
+COMPFLAGS= $(INCLUDES_DEP) -I +unix
 
 MODULES= utils dotfile xset treeset command typeexpand \
-	xlongident name xident xpath locident typeFix xprinttyp ext spot spoteval spotconfig_intf spotconfig pathreparse ocamlspot
+	xlongident name xident xpath locident typeFix xprinttyp ext ttfold spot spoteval spotconfig_intf spotconfig spotfile pathreparse ocamlspot
 
 OBJS=		$(addsuffix .cmo, $(MODULES))
 
@@ -80,6 +80,9 @@ clean:
 
 typedtreefold.cmo: typedtreefold.ml
 	$(OCAMLC) -I +compiler-libs -pp 'camlp4o Camlp4FoldGenerator.cmo' typedtreefold.ml
+
+ttfold.out.ml: typedtreefold.ml
+	camlp4o -printer Camlp4OCamlPrinter Camlp4FoldGenerator.cmo typedtreefold.ml > $@
 
 .ml.cmo:
 	$(OCAMLC) $(OCAMLPP) $(COMPFLAGS) -c $<

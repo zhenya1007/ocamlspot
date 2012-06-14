@@ -233,3 +233,12 @@ module Unix = struct
       else find_non_dir path) fnames
   ;;
 end
+
+module Hashtbl = struct
+  include Hashtbl
+  let of_list size kvs =
+    let tbl = Hashtbl.create size in
+    List.iter (fun (k,v) ->
+      Hashtbl.replace tbl k v) kvs;
+    tbl
+end

@@ -13,7 +13,6 @@
 
 (* module names may corride in different source/spot files *)
 
-(*
 open Format
 open Utils
 
@@ -22,32 +21,13 @@ open Ext
 open Spot
 open Spoteval
 
-*)
 module C = Spotconfig
+
+module File = Spotfile.Make(C)
 
 open Cmt_format
 
 module SAbs = Spot.Abstraction
-
-let _ =
-  match C.mode with
-  | `Dump p ->
-      begin match Cmt_format.read p with
-      | _, None -> Format.eprintf "%s : oops@." p
-      | _, Some cmti ->
-          let v = 
-            match cmti.cmt_annots with
-            | Implementation str -> SAbs.structure str
-            | Interface sg -> SAbs.signature sg
-            | Partial_implementation _parts | Partial_interface _parts ->
-                assert false
-            | _ -> assert false
-          in
-          Format.eprintf "%a@."
-            SAbs.format_module_expr v
-      end
-  | _ -> assert false
-    
 
 (*
 type binary_annots =
@@ -68,8 +48,16 @@ and binary_part =
   | Partial_module_type of module_type
 *)
 
-(* module File = Spotfile.Make(C) *)
-    
+let _ =
+  match C.mode with
+  | `Dump p ->
+      begin match File.load ~load_paths:["."] p with
+      | f ->
+          Spotfile.dump_file f;
+      end
+  | _ -> assert false
+
+
 (*
 module Dump = struct
   (* mainly debugging purpose *)

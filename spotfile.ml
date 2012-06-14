@@ -21,82 +21,95 @@ module Ident0 = Ident
 
 open Spot
 open Spoteval
-    
+open Cmt_format
+
+type file = {
+  cmt            : Cmt_format.cmt_infos;
+  path           : string;
+  flat           : Abstraction.structure;
+  top            : Abstraction.structure;
+  id_def_regions : (Ident.t, Region.t) Hashtbl.t;
+}
+
+let source_path_of_cmt file = match file.cmt_sourcefile with 
+  | Some f -> Filename.concat file.cmt_builddir f
+  | None -> assert false
+
+let dump_file file =
+  eprintf "@[<v2>{ module= %S;@ path= %S;@ source= %S;@ builddir= %S;@ loadpath= [ @[%a@] ];@ argv= [| @[%a@] |];@ ... }@]@."
+    file.cmt.cmt_modname
+    file.path
+    (match file.cmt.cmt_sourcefile with Some s -> s | None -> "???")
+    file.cmt.cmt_builddir
+    (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) file.cmt.cmt_loadpath
+    (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) (Array.to_list file.cmt.cmt_args)
+
+(* xxx.{ml,cmo,cmx,spot} => xxx.spot 
+   xxx.{mli,cmi,spit} => xxx.spit *)
+let cmt_of_file file =
+  let dirname, filename =
+    try
+      let slash = String.rindex file '/' in
+      Some (String.sub file 0 slash),
+      String.sub file (slash + 1) (String.length file - slash - 1)
+    with
+    | Not_found -> None, file
+  in
+  let filename =
+    match Filename.split_extension filename with
+    | body, (".cmi" | ".mli" | ".cmti") -> body ^ ".cmti"
+    | body, _ -> body ^ ".cmt"
+  in
+  match dirname with
+  | None -> filename
+  | Some d -> Filename.concat d filename
+
+let abstraction_of_cmt cmt = match cmt.cmt_annots with
+  | Implementation str -> 
+      let loc_annots = Spot.Annot.record_structure str in
+      begin match Abstraction.structure str with
+      | Abstraction.AMod_structure str -> str, loc_annots
+      | _ -> assert false
+      end
+  | Interface sg -> 
+      let loc_annots = Spot.Annot.record_signature sg in
+      begin match Abstraction.signature sg with
+      | Abstraction.AMod_structure str -> str, loc_annots
+      | _ -> assert false
+      end
+  | Partial_implementation _parts | Partial_interface _parts ->
+      assert false
+  | _ -> assert false
+
 module Make(Spotconfig : Spotconfig_intf.S) = struct
-  include Spot.File
-
-  type file = {
-    path : string; (* "" means no source *)
-    cwd : string;
-    load_paths : string list;
-    version : string * string;
-    argv : string array;
-    top : Abstraction.structure;
-    flat : Abstraction.structure;
-    rannots : Annot.t Regioned.t list;
-    tree : Tree.t lazy_t;
-    id_def_regions : (Ident.t, Region.t) Hashtbl.t;
-  }
-
-  let dump_file file =
-    eprintf "@[<2>{ path= %S;@ cwd= %S;@ load_paths= [ @[%a@] ];@ version= %S,%S;@ argv= [| @[%a@] |]; ... }@]@."
-      (match file.path with 
-      | "" -> "NONE"
-      | s -> s)
-      file.cwd
-      (Format.list "; " (fun ppf s -> fprintf ppf "%S" s)) file.load_paths
-      (fst file.version) (snd file.version)
-      (Format.list "; " (fun ppf s -> fprintf ppf "%S" s)) (Array.to_list file.argv)
-
-  (* xxx.{ml,cmo,cmx,spot} => xxx.spot 
-     xxx.{mli,cmi,spit} => xxx.spit
-   *)        
-  let spot_of_file file =
-    let dirname, filename =
-      try
-        let slash = String.rindex file '/' in
-        Some (String.sub file 0 slash),
-        String.sub file (slash + 1) (String.length file - slash - 1)
-      with
-      | Not_found -> None, file
-    in
-    let filename =
-      match Filename.split_extension filename with
-      | body, (".cmi" | ".mli" | ".spit") -> body ^ ".spit"
-      | body, _ -> body ^ ".spot"
-    in
-    match dirname with
-    | None -> filename
-    | Some d -> Filename.concat d filename
-
   open Abstraction
 
   module Load : sig
-    exception Old_spot of string (* spot *) * string (* source *)
+  exception Old_cmt of string (* cmt *) * string (* source *)
     val load : load_paths:string list -> string -> file
     val load_module : ?spit:bool -> load_paths:string list -> string -> file
   end = struct
 
-    let check_time_stamp ~spot source =
-      let stat_spot = Unix.stat spot in
+    let check_time_stamp ~cmt source =
+      let stat_cmt = Unix.stat cmt in
       let stat_source = Unix.stat source in
-        (* Needs = : for packed modules, .spot and the source .cmo are written 
+        (* Needs = : for packed modules, .cmt and the source .cmo are written 
            almost at the same moment. *)
-      stat_spot.Unix.st_mtime >= stat_source.Unix.st_mtime
+      stat_cmt.Unix.st_mtime >= stat_source.Unix.st_mtime
 
-    let find_alternative_source ~spot source =
+    let find_alternative_source ~cmt source =
         (* if [source] is not found, we try finding files with the same basename
            in
-           - the directory of [spot]
-           - the directory of [spot] points to (if [spot] is symlink)
+           - the directory of [cmt]
+           - the directory of [cmt] points to (if [cmt] is symlink)
          *)
-        let source_base = Filename.basename source in
+      let source_base = Filename.basename source in
       let source_dirs =
-          Filename.dirname spot ::
+          Filename.dirname cmt ::
           begin 
-            let stat_spot = Unix.lstat spot in
-            if stat_spot.Unix.st_kind = Unix.S_LNK then
-              [ Filename.dirname (Unix.readlink spot) ]
+            let stat_cmt = Unix.lstat cmt in
+            if stat_cmt.Unix.st_kind = Unix.S_LNK then
+              [ Filename.dirname (Unix.readlink cmt) ]
             else []
           end
         in
@@ -104,145 +117,32 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
           (List.map (fun d -> 
             Filename.concat d source_base) source_dirs)
 
-    let load_spot_file file =
-      let ic = open_in_bin file in
-      let magic_number_in_file = 
-        let length = String.length magic_number in
-        let buffer = String.create length in
-        really_input ic buffer 0 length;
-        buffer
-      in
-      if magic_number_in_file <> magic_number then 
-        failwith (Printf.sprintf "Not a spot file: %s" file);
-      let file_version : string * string = input_value ic in
-      if (Spot.ocaml_version, Spot.version) <> file_version then begin
-        failwith 
-	  (Printf.sprintf "Incompatible spot file version %s for ocaml %s (must be %s for ocaml %s)" 
-              (fst file_version) (snd file_version)
-	      Spot.version Spot.ocaml_version);
-      end;
-      let v : t = input_value ic in
-      close_in ic;
-      file_version, v
-    ;;
+    let load_cmt_file file = snd (Cmt_format.read file)
 
     let load_directly path : file =
-      Debug.format "spot loading from %s@." path;
-      let version, file = load_spot_file path in
-      let rannots = 
-        match 
-          List.find_map_opt 
-            (function Annots v -> Some v | _ -> None) file 
-        with 
-        | Some annots -> annots
-        | None -> failwith "no annotations found"
-      in
-      let rannots = 
-        List.map (fun (r, annot) ->
-          { Regioned.region = Region.of_parsing r;
-            value = annot }) rannots
-      in
-      let source_path =
-        match 
-          List.find_map_opt 
-            (function Source_path v -> Some v | _ -> None) 
-            file 
-        with
-        | Some source_path -> source_path
-        | None -> failwith "no source path found"
-      in
+      Debug.format "cmt loading from %s@." path;
+      match load_cmt_file path with
+      | Some cmt -> 
+          let str, loc_annots = abstraction_of_cmt cmt in
+          let path = source_path_of_cmt cmt in
+          { cmt; path;
+            top = str;
+            flat = Spot.Abstraction.flatten str;
+            id_def_regions = 
+              Hashtbl.of_list 1023 begin
+                List.filter_map (fun (loc, annot) -> match annot with
+                | Annot.Str sitem ->
+                    begin match Abstraction.ident_of_structure_item sitem with
+                    | None -> None
+                    | Some (_kind, id) -> 
+                        Some (id, Region.of_parsing loc)
+                    end
+                | _ -> None) loc_annots
+              end
+          }
+      | None -> failwith (sprintf "load_directly failed: %s" path)
 
-      (* fix source_path *)
-      let source_path =
-        match source_path with
-        | None -> ""
-        | Some source_path ->
-            if Sys.file_exists source_path then source_path
-            else
-              try 
-                let path = find_alternative_source ~spot:path source_path in
-                Debug.format "Found an alternative source: %s@." path;
-                path
-              with
-              | Not_found -> source_path
-      in
-
-      let cwd = 
-        match List.find_map_opt (function Cwd v -> Some v | _ -> None) file with
-        | Some cwd -> cwd
-        | None -> failwith "no cwd found"
-      in
-      let load_paths =
-        match List.find_map_opt (function Load_paths v -> Some v | _ -> None) file with
-        | Some load_paths -> load_paths
-        | None -> failwith "no load paths found"
-      in
-      let top = 
-        match List.find_map_opt (function Top v -> Some v | _ -> None) file with
-        | Some (Some top) -> top
-        | Some None -> [] (* Error before writing any top element *)
-        | None -> failwith "no top structure found"
-      in
-      let argv =
-        match List.find_map_opt (function Argv v -> Some v | _ -> None) file with
-        | Some argv -> argv
-        | None -> failwith "no argv found"
-      in
-      let tree =
-        lazy begin
-          List.fold_left Tree.add Tree.empty rannots
-        end
-      in
-      let id_def_regions = 
-        let tbl = Hashtbl.create 107 in
-        List.iter (fun { Regioned.region = loc; value = annot } ->
-          match annot with
-          | Annot.Str ( Abstraction.Str_value id
-                      | Abstraction.Str_type id
-                      | Abstraction.Str_exception id
-                      | Abstraction.Str_modtype (id, _)
-                      | Abstraction.Str_class id
-                      | Abstraction.Str_cltype id   
-                      | Abstraction.Str_module (id, _) )  ->
-              Hashtbl.add tbl id loc
-          | Annot.Str ( Abstraction.Str_include _ ) -> ()
-          | Annot.Functor_parameter id ->
-              Hashtbl.add tbl id loc
-          | Annot.Type _ | Annot.Use _ | Annot.Module _ 
-          | Annot.Non_expansive _ | Annot.Mod_type _ -> ()) rannots;
-        tbl
-      in
-      let flat = 
-        (* flat is created NOT from top but from rannots, since top
-           may not exist when the compilation fails *)
-        List.fold_left (fun st { Regioned.value = annot; _ } -> 
-          match annot with
-          | Annot.Str sitem -> sitem :: st
-          | Annot.Functor_parameter id ->
-              (* CR: fake a sitem. quite ad-hoc *)
-              Str_module (id, Mod_ident (Path.Pdot (Path.Pident id, 
-                                                    "parameter", 
-                                                    -2))) 
-              :: st
-          | Annot.Type _ 
-          | Annot.Use _
-          | Annot.Module _ 
-          | Annot.Non_expansive _ 
-          | Annot.Mod_type _ -> st ) [] rannots
-      in
-      { version = version;
-        path = source_path;
-        cwd = cwd;
-        load_paths = List.map (fun load_path -> cwd ^/ load_path) load_paths;
-        argv = argv;
-        top = top;
-        flat = flat;
-        rannots = rannots;
-        tree = tree;
-        id_def_regions = id_def_regions;
-      }
-
-    exception Old_spot of string (* spot *) * string (* source *)
+    exception Old_cmt of string (* cmt *) * string (* source *)
 
     (* CR jfuruse: exception *)
     (* CRv2 jfuruse: add and check cache time stamp *)
@@ -258,17 +158,17 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
                 begin match file.path with 
                 | "" -> ()
                 | source -> 
-                    if not (check_time_stamp ~spot:path source) then 
+                    if not (check_time_stamp ~cmt:path source) then 
                       if Spotconfig.strict_time_stamp then 
-                        raise (Old_spot (path, source))
+                        raise (Old_cmt (path, source))
                       else
-                        eprintf "Warning: source %s is newer than the spot@." source
+                        eprintf "Warning: source %s is newer than the cmt@." source
                 end;
                 Hashtbl.replace cache path file;
                 file
               with
               | Not_found ->
-                  failwith (Printf.sprintf "failed to find spot file %s" path)
+                  failwith (Printf.sprintf "failed to find cmt file %s" path)
 
     let find_in_path load_paths body ext =
         let body_ext = body ^ ext in
@@ -278,8 +178,8 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
       in
       try find_in_path load_paths body_ext with Not_found ->
       (* We do not give up yet.
-         .spot file is not found, 
-         but we still find a .cmi which is sym-linked to the original directory with .spot
+         .cmt file is not found, 
+         but we still find a .cmi which is sym-linked to the original directory with .cmt
       *)
       let cminame = body ^ ".cmi" in
         try
@@ -287,41 +187,41 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
         let stat = Unix.lstat cmipath in
         if stat.Unix.st_kind = Unix.S_LNK then begin
           let cmipath = Filename.dirname cmipath ^/ Unix.readlink cmipath in
-          let spotpath = Filename.chop_extension cmipath ^ ext in
-          if Sys.file_exists spotpath then begin
-            Debug.format "Found an alternative %s: %s@." ext spotpath;
-              spotpath 
-            end else failwith (Printf.sprintf "spot file not found: %s, neither in %s" body_ext spotpath)
+          let cmtpath = Filename.chop_extension cmipath ^ ext in
+          if Sys.file_exists cmtpath then begin
+            Debug.format "Found an alternative %s: %s@." ext cmtpath;
+              cmtpath 
+            end else failwith (Printf.sprintf "cmt file not found: %s, neither in %s" body_ext cmtpath)
           end else raise Not_found
         with
         | (Failure _ as e) -> raise e
-        | _ -> failwith (Printf.sprintf "spot file not found: %s" body_ext)
+        | _ -> failwith (Printf.sprintf "cmt file not found: %s" body_ext)
       
 
-    let load ~load_paths spotname : file =
-      Debug.format "@[<2>spot searching %s in@ paths [@[%a@]]@]@." 
-          spotname
+    let load ~load_paths cmtname : file =
+      Debug.format "@[<2>cmt searching %s in@ paths [@[%a@]]@]@." 
+          cmtname
           (Format.list "; " (fun ppf x -> fprintf ppf "%S" x)) 
           load_paths;
-        let body, ext = Filename.split_extension spotname in
+        let body, ext = Filename.split_extension cmtname in
       let path = find_in_path load_paths body ext in
       load_directly_with_cache path
 
-    let load ~load_paths spotname : file =
-      let alternate_spotname = 
-        if Filename.is_relative spotname then None
+    let load ~load_paths cmtname : file =
+      let alternate_cmtname = 
+        if Filename.is_relative cmtname then None
         else
-          Option.bind (Dotfile.find_and_load (Filename.dirname spotname)) 
+          Option.bind (Dotfile.find_and_load (Filename.dirname cmtname)) 
             (fun (found_dir, dotfile) ->
               Option.map dotfile.Dotfile.build_dir ~f:(fun build_dir ->
                 let length_found_dir = String.length found_dir in
                 let found_dir' = 
-                  String.sub spotname 0 length_found_dir
+                  String.sub cmtname 0 length_found_dir
                 in
-                let rel_spotname =
-                  String.sub spotname 
+                let rel_cmtname =
+                  String.sub cmtname 
                     (length_found_dir + 1)
-                    (String.length spotname - length_found_dir - 1)
+                    (String.length cmtname - length_found_dir - 1)
                 in
                 assert (found_dir = found_dir');
                 let dir = 
@@ -329,24 +229,24 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
                     Filename.concat found_dir build_dir
                   else build_dir
                 in
-                Filename.concat dir rel_spotname))
+                Filename.concat dir rel_cmtname))
       in
-      try load ~load_paths spotname with
+      try load ~load_paths cmtname with
       | e -> 
-          match alternate_spotname with
-          | Some spotname -> load ~load_paths spotname
+          match alternate_cmtname with
+          | Some cmtname -> load ~load_paths cmtname
           | None -> raise e
 
     (* CR jfuruse: searching algorithm must be reconsidered *)        
     let load_module ?(spit=false) ~load_paths name =
-      let spotname = name ^ if spit then ".spit" else ".spot" in
+      let cmtname = name ^ if spit then ".spit" else ".cmt" in
       try
-        load ~load_paths spotname
+        load ~load_paths cmtname
       with
       | Failure s ->
-          let spitname = name ^ if spit then ".spot" else ".spit" in
+          let spitname = name ^ if spit then ".cmt" else ".spit" in
           Format.printf "%s load failed. Try to load %s@."
-            spotname spitname;
+            cmtname spitname;
           try
             load ~load_paths spitname
           with
@@ -359,14 +259,14 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
 
   let empty_env file =
     { Env.path = file.path;
-      cwd = file.cwd;
-      load_paths = file.load_paths;
+      cwd = file.cmt.cmt_builddir;
+      load_paths = file.cmt.cmt_loadpath;
       binding = Binding.empty }
 
   let invalid_env file =
     { Env.path = file.path;
-      cwd = file.cwd;
-      load_paths = file.load_paths;
+      cwd = file.cmt.cmt_builddir;
+      load_paths = file.cmt.cmt_loadpath;
       binding = Binding.invalid }
       
   type result =
@@ -388,7 +288,7 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
           (* CR jfuruse: loading twice... *)
           Debug.format "Finding %a@." PIdent.format pid;
           let file = 
-            Load.load ~load_paths:[] (spot_of_file pid.PIdent.path) 
+            Load.load ~load_paths:[] (cmt_of_file pid.PIdent.path) 
           in
           match pid.PIdent.ident with
           | None -> File_itself (* the whole file *)
@@ -413,7 +313,7 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
       | Value.Structure (id, _, _)  -> id, find_loc id
       | Value.Closure (id, _, _, _, _) -> id, find_loc id
       | Value.Error (Failure _ as e) -> raise e
-      | Value.Error (Load.Old_spot _ as exn) -> raise exn
+      | Value.Error (Load.Old_cmt _ as exn) -> raise exn
       | Value.Error exn -> raise exn
     in
     eval_and_find path
@@ -427,13 +327,14 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
   let _ = Eval.str_of_global_ident := str_of_global_ident
 
   let eval_packed env file =
-    let f = Load.load ~load_paths:[""] (spot_of_file (env.Env.cwd ^/ file)) in
+    let f = Load.load ~load_paths:[""] (cmt_of_file (env.Env.cwd ^/ file)) in
     Value.Structure ({ PIdent.path = f.path; ident = None },
                     Eval.structure (empty_env f) f.top,
                     None (* packed has no .mli *))
 
   let _ = Eval.packed := eval_packed
 
+(*
   let dump_elem = function
     | Source_path (Some s) -> eprintf "Source_path: %s@." s
     | Source_path None -> eprintf "Source_path: None@." 
@@ -452,4 +353,5 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
     | Annots _ -> eprintf "Annots [...]@."
 
   let dump_elems elems = List.iter dump_elem elems
+*)
 end

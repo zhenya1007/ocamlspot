@@ -69,3 +69,7 @@ module Unix : sig
   val find : f:(path -> unit) -> string list -> unit
 end
 
+module Hashtbl : sig
+  include module type of Hashtbl with type ('a,'b) t = ('a, 'b) Hashtbl.t
+  val of_list : int -> ('a * 'b) list -> ('a, 'b) Hashtbl.t
+end

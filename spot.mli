@@ -56,6 +56,8 @@ module Abstraction : sig
   val structure : Typedtree.structure -> module_expr
   val signature : Typedtree.signature -> module_expr
 
+  val flatten : structure -> structure
+
   open Format
   val format_module_expr : formatter -> module_expr -> unit
   val format_structure : formatter -> structure -> unit
@@ -64,13 +66,13 @@ end
 
 module Annot : sig
   type t =
-    | Type of Types.type_expr * Env.t * [`Expr | `Pattern | `Val]
-    | Str of Abstraction.structure_item 
     | Use of Kind.t * Path.t
+    | Type of Types.type_expr * Env.t * [`Expr | `Pattern | `Val]
+    | Mod_type of Types.module_type
+    | Str of Abstraction.structure_item 
     | Module of Abstraction.module_expr
     | Functor_parameter of Ident.t
     | Non_expansive of bool
-    | Mod_type of Types.module_type
 
   val record : Location.t -> t -> unit
     
@@ -78,17 +80,21 @@ module Annot : sig
      at the location [loc]. [ty] must be a constructor type, otherwise,
      an error message is printed out. 
   *)
+(*
   val record_constr_type_use : Location.t -> Types.type_expr -> unit
   val record_module_expr_def : Location.t -> Ident.t -> Typedtree.module_expr -> unit
   val record_module_expr_use : Location.t -> Typedtree.module_expr -> unit
+*)
+(*
   val record_include :
     Location.t -> Typedtree.module_expr -> (* Types.signature -> *) unit
-(*
   val record_include_sig :
     Location.t -> Typedtree.module_type -> Types.signature -> unit
-*)
   val record_module_type_def : Location.t -> Ident.t -> Typedtree.module_type -> unit
-  val recorded : unit -> (Location.t * t) list
+*)
+
+  val record_structure : Typedtree.structure -> (Location.t * t) list
+  val record_signature : Typedtree.signature -> (Location.t * t) list
 
   val format : Format.formatter -> t -> unit
   val summary : Format.formatter -> t -> unit
