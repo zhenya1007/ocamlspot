@@ -245,7 +245,7 @@ module Abstraction = struct
   end
 
   let aliases_of_include mexp ids =
-    let sg = match (mexp.mod_type : Types.module_type) with Mty_signature sg -> sg | _ -> assert false in (* CR jfuruse: I hope so... *)
+    let sg = match mexp.mod_type with Mty_signature sg -> sg | _ -> assert false in
     let kids = List.concat_map T.kident_of_sigitem sg in
     (* [ids] only contain things with values, i.e. values, modules and classes *)
     List.map (fun (k,id) -> match k with
@@ -415,7 +415,7 @@ module Abstraction = struct
     | AMod_ident _ -> []
     | AMod_packed _ -> []
     | AMod_structure str -> flatten str
-    | AMod_functor _ -> []
+    | AMod_functor (_, _, mexp) -> flatten_module_expr mexp
     | AMod_apply (_, m) -> flatten_module_expr m
     | AMod_constraint (m, _) -> flatten_module_expr m
     | AMod_unpack m -> flatten_module_expr m
@@ -606,41 +606,27 @@ and exp_extra =
         | Texp_letmodule (id, {loc}, mexp, _) -> 
             record loc (Str (AStr_module (id, module_expr mexp)))
         | Texp_newtype (_string, _expr) (* CR jfuruse: ? *) -> ()
-        | Texp_constant _
-        | Texp_let _
-        | Texp_function _
-        | Texp_apply _
-        | Texp_match _
-        | Texp_try _
-        | Texp_tuple _
-        | Texp_variant _
-        | Texp_array _
-        | Texp_ifthenelse _
-        | Texp_sequence _
-        | Texp_while _
-        | Texp_when _
-        | Texp_send _
-        | Texp_assert _
-        | Texp_assertfalse
-        | Texp_lazy _
-        | Texp_poly _
-        | Texp_object _
-        | Texp_pack _ -> ()
+        | Texp_constant _ | Texp_let _ | Texp_function _
+        | Texp_apply _ | Texp_match _ | Texp_try _
+        | Texp_tuple _ | Texp_variant _ | Texp_array _
+        | Texp_ifthenelse _ | Texp_sequence _ | Texp_while _
+        | Texp_when _ | Texp_send _ | Texp_assert _ | Texp_assertfalse
+        | Texp_lazy _ | Texp_poly _ | Texp_object _ | Texp_pack _ -> ()
         end;
         super#expression_desc ed
 (*          
 and meth =
     Tmeth_name of string
   | Tmeth_val of Ident.t
+*)
 
-(* Value expressions for the class language *)
+(* CR jfuruse: Class_type
+      method! class_expr ce =
+        record ce.cl_loc (Class_type (ce.cl_type, ce.cl_env));
+        super#class_expr ce
+*)
 
-and class_expr =
-  { cl_desc: class_expr_desc;
-    cl_loc: Location.t;
-    cl_type: Types.class_type;
-    cl_env: Env.t }
-
+(*
 and class_expr_desc =
     Tcl_ident of Path.t * Longident.t loc * core_type list (* Pcl_constr *)
   | Tcl_structure of class_structure
@@ -685,125 +671,185 @@ and class_field_desc =
   | Tcf_init of expression
 
 (* Value expressions for the module language *)
+*)
+      method! module_expr me = (* CR jfuruse: me.mod_env *)
+        record me.mod_loc (Mod_type me.mod_type);
+        super#module_expr me
 
-and module_expr =
-  { mod_desc: module_expr_desc;
-    mod_loc: Location.t;
-    mod_type: Types.module_type;
-    mod_env: Env.t }
-
+(*
 and module_type_constraint =
   Tmodtype_implicit
 | Tmodtype_explicit of module_type
+*)
 
-and module_expr_desc =
-    Tmod_ident of Path.t * Longident.t loc
-  | Tmod_structure of structure
-  | Tmod_functor of Ident.t * string loc * module_type * module_expr
-  | Tmod_apply of module_expr * module_expr * module_coercion
-  | Tmod_constraint of
-      module_expr * Types.module_type * module_type_constraint * module_coercion
-  | Tmod_unpack of expression * Types.module_type
+      method! module_expr_desc med = 
+        begin match med with
+        | Tmod_ident (path, {loc}) -> 
+            record loc (Use (Kind.Module, path))
+        | Tmod_functor (id, {loc}, _, _) ->
+            (* CR jfuruse: must rethink *)
+            (* record loc (Str (AStr_module (id, ???))) *)
+            record loc (Functor_parameter id);
+        | Tmod_structure _
+        | Tmod_apply _
+        | Tmod_constraint _
+        | Tmod_unpack _ -> ()
+        end;
+        super#module_expr_desc med
 
+(* CR jfuruse: I want to put the sig
 and structure = {
   str_items : structure_item list;
   str_type : Types.signature;
   str_final_env : Env.t;
 }
+*)
 
+(* add env 
 and structure_item =
   { str_desc : structure_item_desc;
     str_loc : Location.t;
     str_env : Env.t
   }
+*)
+      method! structure_item_desc sid =
+        begin match sid with
+        | Tstr_primitive (id, {loc}, _) -> 
+            record loc (Str (AStr_value id))
+        | Tstr_type lst ->
+            List.iter (fun (id, {loc}, _) ->
+              record loc (Str (AStr_type id))) lst
+        | Tstr_exception (id, {loc}, _) -> 
+            record loc (Str (AStr_exception id))
+        | Tstr_exn_rebind (id, {loc}, path, {loc=loc'}) ->
+            record loc (Str (AStr_exception id));
+            record loc (Use (Kind.Exception, path))
+        | Tstr_module (id, {loc}, mexp) -> 
+            record loc (Str (AStr_module (id, module_expr mexp)))
+        | Tstr_recmodule lst ->
+            List.iter (fun (id, {loc}, _mty, mexp) ->
+              record loc (Str (AStr_module (id, module_expr mexp)))) lst
+        | Tstr_modtype (id, {loc}, mty) -> 
+            record loc (Str (AStr_modtype (id, module_type mty)))
+        | Tstr_open (path, {loc}) -> 
+            record loc (Use (Kind.Module, path))
+        | Tstr_class_type lst ->
+            List.iter (fun (id, {loc}, _) -> 
+              record loc (Str (AStr_cltype id))) lst
+        | Tstr_include (_mexp, _idents) -> () (* CR jfuruse: TODO *)
+        | Tstr_eval _ 
+        | Tstr_value _ 
+        | Tstr_class _  
+          -> ()
+        end;
+        super#structure_item_desc sid
 
-and structure_item_desc =
-    Tstr_eval of expression
-  | Tstr_value of rec_flag * (pattern * expression) list
-  | Tstr_primitive of Ident.t * string loc * value_description
-  | Tstr_type of (Ident.t * string loc * type_declaration) list
-  | Tstr_exception of Ident.t * string loc * exception_declaration
-  | Tstr_exn_rebind of Ident.t * string loc * Path.t * Longident.t loc
-  | Tstr_module of Ident.t * string loc * module_expr
-  | Tstr_recmodule of (Ident.t * string loc * module_type * module_expr) list
-  | Tstr_modtype of Ident.t * string loc * module_type
-  | Tstr_open of Path.t * Longident.t loc
-  | Tstr_class of (class_declaration * string list * virtual_flag) list
-  | Tstr_class_type of (Ident.t * string loc * class_type_declaration) list
-  | Tstr_include of module_expr * Ident.t list
-
+(*
 and module_coercion =
     Tcoerce_none
   | Tcoerce_structure of (int * module_coercion) list
   | Tcoerce_functor of module_coercion * module_coercion
   | Tcoerce_primitive of Primitive.description
+*)
 
+(* add env?
 and module_type =
   { mty_desc: module_type_desc;
     mty_type : Types.module_type;
     mty_env : Env.t; (* BINANNOT ADDED *)
     mty_loc: Location.t }
+*)
 
-and module_type_desc =
-    Tmty_ident of Path.t * Longident.t loc
-  | Tmty_signature of signature
-  | Tmty_functor of Ident.t * string loc * module_type * module_type
-  | Tmty_with of module_type * (Path.t * Longident.t loc * with_constraint) list
-  | Tmty_typeof of module_expr
+      method! module_type_desc mtd =
+        begin match mtd with
+        | Tmty_ident (path, {loc}) -> 
+            record loc (Use (Kind.Module_type, path))
+        | Tmty_functor (id, {loc}, mty, _mty) -> 
+            record loc (Str (AStr_module (id, module_type mty)))
+        | Tmty_with (_mty, lst) -> 
+            List.iter (fun (path, {loc}, with_constraint) -> 
+              record loc (Use ( (match with_constraint with
+                                 | Twith_type _ -> Kind.Type
+                                 | Twith_module _ -> Kind.Module
+                                 | Twith_typesubst _ -> Kind.Type
+                                 | Twith_modsubst _ -> Kind.Module),
+                                path ))) lst
+        | Tmty_typeof _
+        | Tmty_signature _ -> ()
+        end;
+        super#module_type_desc mtd
 
+(* add env
 and signature = {
   sig_items : signature_item list;
   sig_type : Types.signature;
   sig_final_env : Env.t;
 }
 
+add env
 and signature_item =
   { sig_desc: signature_item_desc;
     sig_env : Env.t; (* BINANNOT ADDED *)
     sig_loc: Location.t }
+*)
 
-and signature_item_desc =
-    Tsig_value of Ident.t * string loc * value_description
-  | Tsig_type of (Ident.t * string loc * type_declaration) list
-  | Tsig_exception of Ident.t * string loc * exception_declaration
-  | Tsig_module of Ident.t * string loc * module_type
-  | Tsig_recmodule of (Ident.t * string loc * module_type) list
-  | Tsig_modtype of Ident.t * string loc * modtype_declaration
-  | Tsig_open of Path.t * Longident.t loc
-  | Tsig_include of module_type * Types.signature
-  | Tsig_class of class_description list
-  | Tsig_class_type of class_type_declaration list
+      method! signature_item_desc sid =
+        begin match sid with
+        | Tsig_value (id, {loc}, _) -> record loc (Str (AStr_value id))
+        | Tsig_type lst -> 
+            List.iter (fun (id, {loc}, _) -> 
+              record loc (Str (AStr_type id))) lst
+        | Tsig_exception (id, {loc}, _) -> record loc (Str (AStr_exception id))
+        | Tsig_module (id, {loc}, mty) -> record loc (Str (AStr_module (id, module_type mty)))
+        | Tsig_recmodule lst -> 
+            List.iter (fun (id, {loc}, mty) -> 
+              record loc (Str (AStr_module (id, module_type mty)))) lst
+        | Tsig_modtype (id, {loc}, mtd) -> 
+            record loc (Str (AStr_modtype (id, modtype_declaration mtd)))
+        | Tsig_open (path, {loc}) -> record loc (Use (Kind.Module, path))
+        | Tsig_include _ -> ()
+        | Tsig_class _ -> ()
+        | Tsig_class_type _ -> ()
+        end;
+        super#signature_item_desc sid
+        
 
-and modtype_declaration =
-    Tmodtype_abstract
-  | Tmodtype_manifest of module_type
-
+(*
 and with_constraint =
     Twith_type of type_declaration
   | Twith_module of Path.t * Longident.t loc
   | Twith_typesubst of type_declaration
   | Twith_modsubst of Path.t * Longident.t loc
+*)
 
+(* add env?
 and core_type =
 (* mutable because of [Typeclass.declare_method] *)
   { mutable ctyp_desc : core_type_desc;
     mutable ctyp_type : type_expr;
     ctyp_env : Env.t; (* BINANNOT ADDED *)
     ctyp_loc : Location.t }
+*)
 
-and core_type_desc =
-    Ttyp_any
-  | Ttyp_var of string
-  | Ttyp_arrow of label * core_type * core_type
-  | Ttyp_tuple of core_type list
-  | Ttyp_constr of Path.t * Longident.t loc * core_type list
-  | Ttyp_object of core_field_type list
-  | Ttyp_class of Path.t * Longident.t loc * core_type list * label list
-  | Ttyp_alias of core_type * string
-  | Ttyp_variant of row_field list * bool * label list option
-  | Ttyp_poly of string list * core_type
-  | Ttyp_package of package_type
+      method! core_type_desc ctd =
+        begin match ctd with
+        | Ttyp_var _var -> () (* CR jfuruse: todo *)
+        | Ttyp_constr (path, {loc}, _) -> record loc (Use (Kind.Type, path))
+        | Ttyp_class (path, {loc}, _, _) -> record loc (Use (Kind.Class, path))
+            (* CR jfuruse: or class type? *)
+        | Ttyp_alias (_core_type, _var) -> () (* CR jfuruse: todo *)
+        | Ttyp_poly (_vars, _core_type) -> () (* CR jfuruse; todo *)
+        | Ttyp_any 
+        | Ttyp_arrow _
+        | Ttyp_tuple _
+        | Ttyp_object _
+        | Ttyp_variant _
+        | Ttyp_package _
+            -> ()
+        end;
+        super#core_type_desc ctd
 
+(*
 and package_type = {
   pack_name : Path.t;
   pack_fields : (Longident.t loc * core_type) list;

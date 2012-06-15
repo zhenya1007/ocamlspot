@@ -4,24 +4,20 @@ let _ = foo (* ? foo *)
 
 (* from internal module *)
 
-(* M => *)
-module M = struct
+module (* M => *) M (* <= M *) = struct
   let (* M.bar => *) bar (* <= M.bar *) = foo
 end
-(* <= M *)
 
 (* to internal module *)
 let _ = M.bar (* ? M.bar *)
 
-(* F => *)
-module F (S : sig val bar : int end) = struct
+module (* F => *) F (* <= F *) (S : sig val bar : int end) = struct
   include S
   let (* F.bar2 => *) bar2 (* <= F.bar2 *) = 
     S.bar (* CR jfuruse: functor abstracted module? *)
   let _ = bar2 (* ? F.bar2 *)
   let _ = bar (* CR jfuruse: functor abstracted module? *)
 end
-(* <= F *)
 
 module N = F (* ? F *)(M (* ? M *))
 
@@ -53,9 +49,7 @@ let tt = 1
 let ttt = 1
 class type ttt = object val x : float end
 
-(* ext => *)
-external ext : int -> int = "hoge"
-(* <= ext *)
+external (* ext => *)ext(* <= ext *) : int -> int = "hoge"
 let _ = ext (* ? ext *)
  
 module KM : sig

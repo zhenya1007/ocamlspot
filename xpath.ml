@@ -1,5 +1,9 @@
 (* extend the original module *)
 open Path
+module Ident = struct
+  include Ident
+  include Xident
+end
 
 let rec name = function
   | Pident id -> Ident.name id

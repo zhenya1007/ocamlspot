@@ -13,6 +13,9 @@ external_include.cmo \
 fstclassmodule.cmo \
 fstclassmodule2.cmo \
 functor.cmo \
+functor_app.cmo \
+functor_call.cmo \
+functor_expansion.cmo \
 functor_parameter.cmo \
 immediate_include.cmo \
 include.cmo \

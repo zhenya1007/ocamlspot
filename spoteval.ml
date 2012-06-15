@@ -13,14 +13,12 @@
 
 open Format
 open Utils
+open Ext
 
 (* To avoid name collisions *)
 module OCaml = struct
   module Format = Format
 end
-
-(* Keep the original modules *)
-module Ident0 = Ident
 
 open Spot
 
@@ -70,7 +68,7 @@ module Value : sig
   module Binding : sig
     type t = binding
     val domain : t -> Ident.t list
-    val find : t -> Ident.t -> Kind.t * z
+    val find : t -> Ident.t -> (Kind.t * z) option
     val override : t -> structure_item -> t
     val overrides : t -> structure -> t
     val set : t -> structure -> unit
@@ -101,11 +99,11 @@ module Value : sig
 end = struct
 
   type t = 
-    | Ident of PIdent.t
+    | Ident     of PIdent.t
     | Structure of PIdent.t * structure * structure option (* sig part *)
-    | Closure of PIdent.t * env * Ident.t * Types.module_type * Abstraction.module_expr
+    | Closure   of PIdent.t * env * Ident.t * Types.module_type * Abstraction.module_expr
     | Parameter of PIdent.t
-    | Error of exn 
+    | Error     of exn 
 
   and structure = structure_item list
 
@@ -131,7 +129,7 @@ end = struct
       | None -> error ()
       | Some str -> f str
     let domain = with_check (List.map fst) 
-    let find t id = with_check (List.assoc id) t
+    let find t id = try Some (with_check (List.assoc id) t) with Not_found -> None
     let override t v = ref (Some (with_check (fun t -> v :: t) t))
     let overrides t vs = ref (Some (with_check (fun t -> vs @ t) t))
     let invalid = ref None 
@@ -149,8 +147,7 @@ end = struct
         (fun id _ _ -> add_predefined Kind.Type id)
         (fun id _ _ -> add_predefined Kind.Exception id) 
         ();
-      List.iter (fun (_, id) -> add_predefined Kind.Value id) 
-        Predef.builtin_values;
+      List.iter (fun (_, id) -> add_predefined Kind.Value id) Predef.builtin_values;
       ref (Some !items)
     let set b str = b := Some str
   end
@@ -261,49 +258,52 @@ module Eval = struct
   let rec find_path env (kind, p) : Value.z = 
     match p with
     | Path.Papply (p1, p2) -> 
-	let v1 = find_path env (kind, p1) in
+	let v1 = find_path env (kind, p1) in (* CR jfuruse: Kind.Module ? *)
 	let v2 = find_path env (kind, p2) in
 	apply v1 v2
     | Path.Pident id -> 
         (* predef check first (testing) *)
-        begin try snd (Env.find Env.predef id) with Not_found ->
-        
-        if Ident.global id then
-          lazy begin try
-            let path, str = 
-              !str_of_global_ident ~load_paths:env.load_paths id
-            in
-            let str = Structure ( { PIdent.path = path; ident = None }, 
-                                  str,
-                                  None (* CR jfuruse: todo (read .mli *))
-            in
-            Debug.format "@[<2>LOAD SUCCESS %s =@ %a@]@."
-              (Ident.name id)
-              Value.Format.t str;
-            str
-          with
-          | e -> 
-              eprintf "LOAD FAILIURE %s: %s@." (Ident.name id) (Printexc.to_string e);
-              Error e
-          end
-        else begin 
-          lazy begin
-            Debug.format "find_path %s in { %s }@." 
-              (Path.name p)
-              (String.concat "; " 
-                (List.map Ident.name (Env.domain env)));
-            try !!(snd (Env.find env id)) with Not_found -> 
-(*
-              (* it may be a predefed thing *)
-              try !!(snd (Env.find Env.predef id)) with Not_found ->
-*)
-              Error (Failure (Printf.sprintf "%s not found in { %s }" 
-                                (Ident.name id)
-                                (String.concat "; " 
-                                   (List.map Ident.name (Env.domain env)))))
-          end
-        end
-        end
+        begin match Env.find Env.predef id with
+        | Some (_, v) -> v
+        | None -> 
+            if Ident.global id then
+              lazy begin try
+                let path, str = 
+                  !str_of_global_ident ~load_paths:env.load_paths id
+                in
+                let str = Structure ( { PIdent.path = path; ident = None }, 
+                                      str,
+                                      None (* CR jfuruse: todo (read .mli *))
+                in
+                Debug.format "@[<2>LOAD SUCCESS %s =@ %a@]@."
+                  (Ident.name id)
+                  Value.Format.t str;
+                str
+              with
+              | e -> 
+                  eprintf "LOAD FAILIURE %s: %s@." (Ident.name id) (Printexc.to_string e);
+                  Error e
+              end
+            else begin 
+              lazy begin
+                Debug.format "find_path %s in { %s }@." 
+                  (Path.name p)
+                  (String.concat "; " 
+                    (List.map Ident.name (Env.domain env)));
+                match Env.find env id with
+                | Some (_, lazy v) -> v
+                | None -> 
+    (*
+                  (* it may be a predefed thing *)
+                  try !!(snd (Env.find Env.predef id)) with Not_found ->
+    *)
+                  Error (Failure (Printf.sprintf "%s not found in { %s }" 
+                                    (Ident.name id)
+                                    (String.concat "; " 
+                                       (List.map Ident.name (Env.domain env)))))
+              end
+            end
+            end
     | Path.Pdot (p, name, pos) ->
         lazy begin
           match !!(find_path env (Kind.Module, p)) with
@@ -320,7 +320,13 @@ module Eval = struct
         end
 
   and find_ident (str : Value.structure) (kind, name, pos) : Value.z =
-    let name_filter = fun (id, (k,_)) -> k = kind && Ident0.name id = name in
+    let name_filter = fun (id, (k,_)) -> 
+      Format.eprintf "DEBUG: %s %s ? %s %s@."
+        (Kind.to_string kind)
+        name 
+        (Kind.to_string k)
+        (Ident0.name id);
+      k = kind && Ident0.name id = name in
     (* CR jfuruse: double check by pos! *)
     lazy begin
       try
@@ -328,7 +334,7 @@ module Eval = struct
           (* pos_filter id_value && *) name_filter id_value) str)))
       with
       | Not_found ->
-          Debug.format "Error: Not found %s(%s) @[%a@]@."
+          Debug.format "Error: Not found %s %s in { @[%a@] }@."
             (String.capitalize (Kind.to_string kind))
             name
             Value.Format.structure str;
@@ -337,8 +343,7 @@ module Eval = struct
 
   and module_expr env idopt : module_expr -> Value.z = function
     | AMod_abstract -> eager (Error (Failure "abstract"))
-    | AMod_ident p -> 
-        find_path env (Kind.Module, p)
+    | AMod_ident p -> find_path env (Kind.Module, p)
     | AMod_packed s -> lazy (!packed env s)
     | AMod_structure str -> 
         lazy begin
@@ -346,11 +351,11 @@ module Eval = struct
           Structure ({ PIdent.path= env.path; ident = idopt }, str, None)
         end
     | AMod_functor (id, mty, mexp) -> 
-        Debug.format "evaluating functor (arg %s) under %s@."
+        Debug.format "creating a closure of a functor (fun %s -> ...) under %s@."
           (Ident.name id)
           (String.concat "; " (List.map Ident.name (Env.domain env)));
         eager (Closure ({ PIdent.path = env.path; ident = idopt }, 
-                       env, id, mty, mexp))
+                        env, id, mty, mexp))
     | AMod_constraint (mexp, _mty) -> 
         (* [mty] may not be a simple signature but an ident which is
            hard to get its definition at this point. 
@@ -448,24 +453,31 @@ module Eval = struct
             | Structure (_, str, _ (* CR jfuruse *) ) -> 
                 List.map (fun (id, (k, v)) -> (k, id), v) str
             | Parameter pid -> 
-                List.map (fun (_, (k,id)) -> 
-                  (k, id), eager (Parameter pid)) aliases
+                List.map (fun (_, (k,id)) -> (k, id), eager (Parameter pid)) aliases
             | Ident _ -> assert false
             | Closure _ -> assert false
             | Error _ -> [] (* error *)
             end
           in
-          let str' =
-            List.map (fun (id', (k, id)) ->
-              let v = 
-                lazy begin
-                  try
-                    !!(List.assoc (k, id) !!kid_ztbl)
-                  with
-                  | Not_found -> Error Not_found
-                end
-              in
-              id', (k, v)) aliases
+          let str' = List.map (fun (id', (k, id)) ->
+            let v = lazy begin
+              let kid_tbl = !!kid_ztbl in
+              (* include does not preserve id stamp, so we must ignore them *)
+              match 
+                List.find_map_opt (fun ((k', id'), v) -> 
+                  if k = k' && Ident0.name id = Ident0.name id' then Some v else None) kid_tbl
+              with
+              | Some vz -> !!vz
+              | None -> 
+                Format.eprintf "INCLUDE ERROR: %s %a in @[%a@]@."
+                  (Kind.name k)
+                  Ident.format id
+                  (Format.list ";@ " (fun ppf ((k,id), _) -> 
+                    Format.fprintf ppf "%s %a" (Kind.name k) Ident.format id))
+                  kid_tbl;
+                Error (Failure "not found in include")
+            end in
+            id', (k, v)) aliases
           in
           str' @ str
 (*
@@ -507,11 +519,15 @@ module Eval = struct
   and apply v1 v2 =
     lazy begin match !!v1 with
     | Ident _ -> assert false
-    | Parameter pid -> Parameter pid
+    | Parameter pid -> Parameter pid (* CR jfuruse: ??? *)
     | Structure _ -> assert false
     | Error exn -> Error exn
     | Closure (_, env, id, _mty, mexp) -> 
-        !!(module_expr (Env.override env (id, (Kind.Module, v2)))
-          None(*?*) mexp)
+        let v = 
+          !!(module_expr (Env.override env (id, (Kind.Module, v2)))
+               None(*?*) mexp)
+        in
+        Format.eprintf "closure app: %a@." Value.Format.t v;
+        v
     end
 end
