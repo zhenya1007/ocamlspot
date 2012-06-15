@@ -1,5 +1,5 @@
-(* F => *) module F (A : sig end) = struct end (* <= F *) 
+module (* F => *) F (* <= F *) (A : sig end) = struct end 
 
-(* N => *) module N = struct end (* <= N *)
+module (* N => *) N (* <= N *) = struct end 
 
 module M = F (* ? F *) (N (* ? N *))

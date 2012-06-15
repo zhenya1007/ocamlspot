@@ -321,7 +321,7 @@ module Eval = struct
 
   and find_ident (str : Value.structure) (kind, name, pos) : Value.z =
     let name_filter = fun (id, (k,_)) -> 
-      Format.eprintf "DEBUG: %s %s ? %s %s@."
+      Debug.format "DEBUG: %s %s ? %s %s@."
         (Kind.to_string kind)
         name 
         (Kind.to_string k)
@@ -527,7 +527,7 @@ module Eval = struct
           !!(module_expr (Env.override env (id, (Kind.Module, v2)))
                None(*?*) mexp)
         in
-        Format.eprintf "closure app: %a@." Value.Format.t v;
+        Debug.format "closure app: %a@." Value.Format.t v;
         v
     end
 end

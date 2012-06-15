@@ -1,8 +1,7 @@
-(* F => *)
-module F(A : sig end) = struct
+module (* F => *)F(* <= F *)(A : sig end) = struct
   let (* x => *) x (* <= x *) = 1
 end
-(* <= F *)
+
 
 module M = struct
   include F (* ? F *) (struct end)

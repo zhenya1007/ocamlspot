@@ -1,4 +1,4 @@
-type (* t => *) t = Foo (* <= t *)
+type (* t => *) t (* <= t *) = Foo 
 
 type r = {
   foo : t (* ? t *)

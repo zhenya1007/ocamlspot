@@ -2,11 +2,11 @@ type (* constr E => *) t = E (* <= constr E *)
 
 module E = struct let (* module E => *) x (* <= module E *) = 1 end
 
-(* modtype E => *) module type E = sig val x : int end (* <= modtype E *) 
+module type (* modtype E => *) E (* <= modtype E *) = sig val x : int end 
 
 let _ = E (* ? constr E *)
 
-(* exception E => *) exception E (* <= exception E *)
+exception (* exception E => *) E (* <= exception E *)
 
 let _ = raise E (* ? exception E *)
 

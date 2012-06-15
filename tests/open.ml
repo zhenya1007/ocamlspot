@@ -1,6 +1,6 @@
-(* M => *) module M = struct
+module (* M => *) M (* <= M *) = struct
   let (* x => *) x (* <= x *) = 1
-end (* <= M *)
+end 
 
 open M (* ? M *)
 open Target (* ? Target *)

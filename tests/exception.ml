@@ -1,4 +1,4 @@
-(* E => *) exception E (* <= E *)
+exception (* E => *) E (* <= E *)
 let _ = raise E (* ? E *)
 
 let _ = try raise E (* ? E *) with
@@ -8,7 +8,7 @@ let _ = try raise E (* ? E *) with
 exception X = E (* ? E *) (* bug 090818 *)
 
 module M = struct
-  (* EE => *) exception EE (* <= EE *)
+  exception (* EE => *) EE (* <= EE *)
 end
 
 let _ = raise M.EE (* ? EE *)

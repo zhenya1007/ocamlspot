@@ -1,5 +1,5 @@
 module type T = sig
-  module M : sig type (* M.t => *) t = int (* <= M.t *) end
+  module M : sig type (* M.t => *) t (* <= M.t *) = int end
   val f : M.t (* ? M.t *)
 end
 

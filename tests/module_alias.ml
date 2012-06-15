@@ -1,7 +1,6 @@
-(* M0 => *)
-module M0 = struct
+module (* M0 => *) M0 (* <= M0 *) = struct
 end
-(* <= M0 *)
+
 
 module M1 = M0 (* ? M0 *) 
 

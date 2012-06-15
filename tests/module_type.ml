@@ -1,8 +1,6 @@
-(* SX => *)
-module type SX = sig
-  type (* SX.t => *) t = int (* <= SX.t *)
+module type (* SX => *) SX (* <= SX *) = sig
+  type (* SX.t => *) t (* <= SX.t *) = int 
 end
-(* <= SX *)
 
 module type S = sig
   module X : SX (* ? SX *)

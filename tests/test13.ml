@@ -1,15 +1,15 @@
-type (* type t => *) t = Foo | Bar of int (* <= type t *)
+type (* type t => *) t (* <= type t *) = Foo | Bar of int 
 
 let _ = Foo (* ? type t *)
 let _ = Bar (* ? type t *) 1
 
 type u = A of v (* ? type v *)
-and (* type v => *) v = B of u | C (* <= type v *)
+and (* type v => *) v (* <= type v *) = B of u | C 
 
 let _ = A C (* ? type v *)
 let _ = B (* ? type v *) (A C)
 
-type (* type x => *) x = { y : int } (* <= type x *)
+type (* type x => *) x (* <= type x *) = { y : int } 
 
 let (* x => *) x (* <= x *) = { y = 1 } (* ? type x *)
 
@@ -29,10 +29,10 @@ type (* type tt => *) 'a tt = Null | Cons of 'a * 'a (* ? type tt *) tt
 (* <= type tt *)
 
 type 'a uu = Foo of 'a vv (* ? type vv *)
-and (* type vv => *) 'a vv = Bar of 'a uu (* <= type vv *)
+and 'a (* type vv => *) vv (* <= type vv *) = Bar of 'a uu 
 
 module M = struct
-  type (* type typ => *) typ = F (* <= type typ *)
+  type (* type typ => *) typ (* <= type typ *) = F 
   let (* value typ => *) typ (* <= value typ *) = 1
 end
 

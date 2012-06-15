@@ -1,10 +1,9 @@
 module M(A : sig type t end) = struct
   let _ = prerr_endline "M(A)"
-  (* M(A).S => *)
-  module type S = sig
+  module type (* M(A).S => *) S   (* <= M(A).S *) = sig
     type t = A.t list
   end
-  (* <= M(A).S *)
+
 end
 
 module A = struct type t = int end
