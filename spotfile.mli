@@ -22,6 +22,8 @@ type file = {
   flat           : Abstraction.structure;
   top            : Abstraction.structure;
   id_def_regions : (Ident.t, Region.t) Utils.Hashtbl.t;
+  rannots        : Annot.t Regioned.t list;
+  tree           : Tree.t lazy_t
 }
 
 val source_path_of_cmt : cmt_infos -> string

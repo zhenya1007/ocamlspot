@@ -5,7 +5,7 @@ pathreparse.cmi : spot.cmi
 spot.cmi :
 spotconfig.cmi : spotconfig_intf.cmo
 spoteval.cmi : utils.cmi spot.cmi
-spotfile.cmi : spoteval.cmi spot.cmi
+spotfile.cmi : utils.cmi spoteval.cmi spotconfig_intf.cmo spot.cmi
 treeset.cmi : xset.cmi
 ttfold.cmi :
 typeFix.cmi :
@@ -27,10 +27,10 @@ locident.cmo : locident.cmi
 locident.cmx : locident.cmi
 name.cmo : name.cmi
 name.cmx : name.cmi
-ocamlspot.cmo : utils.cmi spotfile.cmi spoteval.cmi spotconfig.cmi spot.cmi \
-    ext.cmo
-ocamlspot.cmx : utils.cmx spotfile.cmx spoteval.cmx spotconfig.cmx spot.cmx \
-    ext.cmx
+ocamlspot.cmo : utils.cmi typeexpand.cmi spotfile.cmi spoteval.cmi \
+    spotconfig.cmi spot.cmi pathreparse.cmi ext.cmo command.cmi
+ocamlspot.cmx : utils.cmx typeexpand.cmx spotfile.cmx spoteval.cmx \
+    spotconfig.cmx spot.cmx pathreparse.cmx ext.cmx command.cmx
 pathreparse.cmo : utils.cmi spot.cmi locident.cmi ext.cmo pathreparse.cmi
 pathreparse.cmx : utils.cmx spot.cmx locident.cmx ext.cmx pathreparse.cmi
 spot.cmo : utils.cmi ttfold.cmi treeset.cmi ext.cmo spot.cmi
@@ -53,8 +53,6 @@ ttfold.out.cmo :
 ttfold.out.cmx :
 typeFix.cmo : utils.cmi name.cmi typeFix.cmi
 typeFix.cmx : utils.cmx name.cmx typeFix.cmi
-typedeclfold.cmo :
-typedeclfold.cmx :
 typedtreefold.cmo :
 typedtreefold.cmx :
 typeexpand.cmo : utils.cmi typeexpand.cmi

@@ -1,8 +1,28 @@
-OCAMLC   = ocamlc -bin-annot -annot
-OCAMLOPT = ocamlopt -bin-annot -annot
+# include ../../config/Makefile
+
+# Various commands and dir
+##########################
+OCAMLC   = ocamlc -annot -bin-annot
+OCAMLOPT = ocamlopt -annot -bin-annot
 OCAMLDEP = ocamldep
 OCAMLLEX = ocamllex
 OCAMLYACC= ocamlyacc
+OCAMLLIB = $(LIBDIR)
+OCAMLBIN = $(BINDIR)
+
+# Compilation
+#############
+OCAMLSRCDIR=..
+INCLUDES_DEP=-I $(OCAMLSRCDIR)/parsing \
+	-I $(OCAMLSRCDIR)/utils \
+	-I $(OCAMLSRCDIR)/typing \
+	-I $(OCAMLSRCDIR)/driver \
+	-I $(OCAMLSRCDIR)/bytecomp \
+	-I $(OCAMLSRCDIR)/tools \
+	-I $(OCAMLSRCDIR)/toplevel/ \
+	-I dir1 -I dir2
+
+OTHERS=../../otherlibs
 
 # Requires unix!
 COMPFLAGS= $(INCLUDES_DEP) -I $(OTHERS)/unix
@@ -57,9 +77,7 @@ clean:
 beforedepend::
 
 depend: beforedepend
-	$(OCAMLDEP) $(INCLUDES) -I dir *.mli *.ml */*.mli */*.ml > .depend
-
-#	$(OCAMLDEP) $(INCLUDES) -I dir1 -I dir2 *.mli *.ml */*.mli */*.ml > .depend
+	$(CAMLRUN) ../../tools/ocamldep $(INCLUDES) -I dir1 -I dir2 *.mli *.ml */*.mli */*.ml > .depend
 
 Makefile.targets: *.ml *.mli */*.ml
 	echo TARGETS= \\ > $@

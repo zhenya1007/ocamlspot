@@ -29,6 +29,8 @@ type file = {
   flat           : Abstraction.structure;
   top            : Abstraction.structure;
   id_def_regions : (Ident.t, Region.t) Hashtbl.t;
+  rannots        : Annot.t Regioned.t list;
+  tree           : Tree.t lazy_t
 }
 
 let source_path_of_cmt file = match file.cmt_sourcefile with 
@@ -77,9 +79,13 @@ let abstraction_of_cmt cmt = match cmt.cmt_annots with
       | Abstraction.AMod_structure str -> str, loc_annots
       | _ -> assert false
       end
-  | Partial_implementation _parts | Partial_interface _parts ->
-      assert false
+  | Partial_implementation _parts | Partial_interface _parts -> assert false
   | _ -> assert false
+
+let abstraction_of_cmt cmt = 
+  try abstraction_of_cmt cmt with e -> 
+    Format.eprintf "AXXX %s@." (Printexc.to_string e);
+    raise e
 
 module Make(Spotconfig : Spotconfig_intf.S) = struct
   open Abstraction
@@ -123,22 +129,39 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
       Debug.format "cmt loading from %s@." path;
       match load_cmt_file path with
       | Some cmt -> 
+          Debug.format "cmt loaded from %s@." path;
+          Debug.format "cmt loaded now extracting things from %s ...@." path;
           let str, loc_annots = abstraction_of_cmt cmt in
+          Debug.format "cmt loaded: abstraction extracted from %s@." path;
           let path = source_path_of_cmt cmt in
+          let rannots = List.map (fun (loc, annot) -> 
+            { Regioned.region = Region.of_parsing loc;  value = annot }) loc_annots
+          in
+          Debug.format "cmt loaded: rannots created from %s@." path;
+          let id_def_regions_list = 
+              List.filter_map (fun (loc, annot) -> match annot with
+              | Annot.Str sitem ->
+                  begin match Abstraction.ident_of_structure_item sitem with
+                  | None -> None
+                  | Some (_kind, id) -> 
+                      Some (id, Region.of_parsing loc)
+                  end
+              | _ -> None) loc_annots
+          in
+          let id_def_regions = Hashtbl.of_list 1023 id_def_regions_list in
+          Debug.format "cmt loaded: id_def_regions created from %s@." path;
+          let tree = lazy begin
+            List.fold_left Tree.add Tree.empty rannots
+          end in
+          let flat = Spot.Abstraction.flatten str in
+          Debug.format "cmt loaded: flat created from %s@." path;
+          Debug.format "cmt analysis done from %s@." path;
           { cmt; path;
             top = str;
-            flat = Spot.Abstraction.flatten str;
-            id_def_regions = 
-              Hashtbl.of_list 1023 begin
-                List.filter_map (fun (loc, annot) -> match annot with
-                | Annot.Str sitem ->
-                    begin match Abstraction.ident_of_structure_item sitem with
-                    | None -> None
-                    | Some (_kind, id) -> 
-                        Some (id, Region.of_parsing loc)
-                    end
-                | _ -> None) loc_annots
-              end
+            flat;
+            id_def_regions;
+            rannots;
+            tree;
           }
       | None -> failwith (sprintf "load_directly failed: %s" path)
 

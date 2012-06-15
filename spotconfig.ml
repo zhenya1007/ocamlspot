@@ -45,9 +45,6 @@ let _ =
     [ "--version", 
       Arg.Unit print_version, " : print version information";
 
-      "-version", 
-      Arg.Unit print_version, " : (deprecated)";
-
       "-n", 
       Arg.Set no_definition_analysis, " : no definition analysis";
 
@@ -65,9 +62,6 @@ let _ =
 
       "--debug", 
       Arg.Set Debug.on, " : print debug information";
-
-      "-debug", 
-      Arg.Set Debug.on, " : (deprecated)";
 
       "--dump-file", 
       Arg.Set dump_file, " : dump spot file"; 
