@@ -84,6 +84,7 @@ module Abstraction = struct
     | AStr_class     of Ident.t
     | AStr_cltype    of Ident.t
     | AStr_include   of module_expr * (Ident.t * (Kind.t * Ident.t)) list
+    | AStr_included  of Ident.t * module_expr * Kind.t * Ident.t
 
   let rec format_module_expr ppf = function
     | AMod_ident p -> fprintf ppf "%s" (Path.name p)
@@ -134,6 +135,12 @@ module Abstraction = struct
               Ident.format id' 
               Ident.format id))
           aliases
+    | AStr_included (id, mexp, kind, id') ->
+        fprintf ppf "@[<v4>included %s %a = %a@ { @[<v>%a@] }@]"
+          (Kind.name kind)
+          Ident.format id
+          Ident.format id'
+          format_module_expr mexp
 
   let ident_of_structure_item : structure_item -> (Kind.t * Ident.t) option = function
     | AStr_value id        -> Some (Kind.Value, id)
@@ -144,6 +151,7 @@ module Abstraction = struct
     | AStr_class id        -> Some (Kind.Class, id)
     | AStr_cltype id       -> Some (Kind.Class_type, id)
     | AStr_include _       -> None
+    | AStr_included (id, _, kind, _) -> Some (kind, id)
 
   module Module_expr = struct
     (* cache key is Typedtree.module_expr *)
@@ -175,10 +183,13 @@ module Abstraction = struct
 	| AStr_include (mexp1, aliases1), AStr_include (mexp2, aliases2) ->
             aliases1 = aliases2
             && Module_expr.equal mexp1 mexp2
+	| AStr_included (id1, mexp1, kind1, id1'), AStr_included (id2, mexp2, kind2, id2') ->
+            id1 = id2 && kind1 = kind2 && id1' = id2'
+            && Module_expr.equal mexp1 mexp2
 	| (AStr_value _ | AStr_type _ | AStr_exception _ | AStr_modtype _ 
-	  | AStr_class _ | AStr_cltype _ | AStr_module _ | AStr_include _),
+	  | AStr_class _ | AStr_cltype _ | AStr_module _ | AStr_include _ | AStr_included _),
 	  (AStr_value _ | AStr_type _ | AStr_exception _ | AStr_modtype _ 
-	  | AStr_class _ | AStr_cltype _ | AStr_module _ | AStr_include _) -> false
+	  | AStr_class _ | AStr_cltype _ | AStr_module _ | AStr_include _ | AStr_included _) -> false
 
       let hash = Hashtbl.hash
     end
@@ -384,6 +395,10 @@ module Abstraction = struct
     | Tmodtype_abstract -> AMod_abstract
     | Tmodtype_manifest mty -> module_type mty
 
+(* This is wrong. This only flatten module related things and 
+   non modules like patterns are never flattened. 
+
+
   let rec flatten str = List.concat_map flatten_item str
 
   and flatten_item item = match item with
@@ -420,6 +435,7 @@ module Abstraction = struct
     | AMod_constraint (m, _) -> flatten_module_expr m
     | AMod_unpack m -> flatten_module_expr m
     | AMod_abstract -> []
+*)
 end
 
 let protect name f v = try f v with e ->
@@ -705,13 +721,18 @@ and structure = {
 }
 *)
 
-(* add env 
-and structure_item =
-  { str_desc : structure_item_desc;
-    str_loc : Location.t;
-    str_env : Env.t
-  }
-*)
+      method! structure_item sitem = 
+        begin match sitem.str_desc with (* CR jfuruse; todo add env *)
+        | Tstr_include (mexp, idents) ->
+            let loc = sitem.str_loc in
+            let id_kid_list = aliases_of_include mexp idents in
+            let m = module_expr mexp in
+            List.iter (fun (id, (k, id')) -> 
+              record loc (Str (AStr_included (id, m, k, id')))) id_kid_list
+        | _ -> ()
+        end;
+        super#structure_item sitem
+
       method! structure_item_desc sid =
         begin match sid with
         | Tstr_primitive (id, {loc}, _) -> 
@@ -736,7 +757,7 @@ and structure_item =
         | Tstr_class_type lst ->
             List.iter (fun (id, {loc}, _) -> 
               record loc (Str (AStr_cltype id))) lst
-        | Tstr_include (_mexp, _idents) -> () (* CR jfuruse: TODO *)
+        | Tstr_include (_mexp, _idents) -> () (* done in #structure_item *)
         | Tstr_eval _ 
         | Tstr_value _ 
         | Tstr_class _  

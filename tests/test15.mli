@@ -1,4 +1,4 @@
-type (* type t => *) t = Bar (* <= type t *)
+type (* type t => *) t (* <= type t *) = Bar 
 
 type u = t (* ? type t *)
 

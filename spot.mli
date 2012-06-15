@@ -50,13 +50,12 @@ module Abstraction : sig
     | AStr_class     of Ident.t
     | AStr_cltype    of Ident.t
     | AStr_include   of module_expr * (Ident.t * (Kind.t * Ident.t)) list
+    | AStr_included  of Ident.t * module_expr * Kind.t * Ident.t
 
   val ident_of_structure_item : structure_item -> (Kind.t * Ident.t) option
 
   val structure : Typedtree.structure -> module_expr
   val signature : Typedtree.signature -> module_expr
-
-  val flatten : structure -> structure
 
   open Format
   val format_module_expr : formatter -> module_expr -> unit

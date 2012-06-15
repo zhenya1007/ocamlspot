@@ -153,7 +153,11 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
           let tree = lazy begin
             List.fold_left Tree.add Tree.empty rannots
           end in
-          let flat = Spot.Abstraction.flatten str in
+          (* CR jfuruse: it is almost the same as id_def_regions_list *)
+          let flat = List.filter_map (fun (loc, annot) -> match annot with
+              | Annot.Str sitem -> Some sitem
+              | _ -> None) loc_annots
+          in
           Debug.format "cmt loaded: flat created from %s@." path;
           Debug.format "cmt analysis done from %s@." path;
           { cmt; path;

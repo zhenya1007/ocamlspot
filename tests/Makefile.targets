@@ -12,6 +12,7 @@ external.cmo \
 external_include.cmo \
 fstclassmodule.cmo \
 fstclassmodule2.cmo \
+function_arg.cmo \
 functor.cmo \
 functor_app.cmo \
 functor_call.cmo \
@@ -22,6 +23,7 @@ include.cmo \
 include_functor_app.cmo \
 include_override.cmo \
 included_and_flat.cmo \
+included_value.cmo \
 inherit.cmo \
 inherit2.cmo \
 interface.cmo \

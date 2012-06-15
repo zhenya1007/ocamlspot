@@ -404,6 +404,7 @@ module Eval = struct
             | AStr_modtype   _ -> Kind.Module_type
             | AStr_class     _ -> Kind.Class
             | AStr_cltype    _ -> Kind.Class_type
+            | AStr_included (_, _, kind, _) -> kind
             | AStr_module _ | AStr_include _ -> assert false
           in
           (id, (kind, eager v)) :: str
@@ -440,6 +441,43 @@ module Eval = struct
           end
           in
           (id, (Kind.Module_type, v)) :: str
+
+      | AStr_included (id', mexp, k, id) ->
+          (* shared include should share the result of mexp *)
+          (* be careful: everything must be done lazily *)
+          let v = lazy begin
+            (* createate it lazily for recursiveness of flat *)
+            let env = Env.overrides env0 str in
+            !!(module_expr env None(*?*) mexp)
+          end in
+          let kid_ztbl = 
+            lazy begin match !!v with
+            | Structure (_, str, _ (* CR jfuruse *) ) -> 
+                List.map (fun (id, (k, v)) -> (k, id), v) str
+            | Parameter pid -> [ (k, id), eager (Parameter pid) ]
+            | Ident _ -> assert false
+            | Closure _ -> assert false
+            | Error _ -> [] (* error *)
+            end
+          in
+          let v = lazy begin
+            let kid_tbl = !!kid_ztbl in
+              (* include does not preserve id stamp, so we must ignore them *)
+            match 
+              List.find_map_opt (fun ((k', id'), v) -> 
+                if k = k' && Ident0.name id = Ident0.name id' then Some v else None) kid_tbl
+            with
+            | Some vz -> !!vz
+            | None -> 
+                Format.eprintf "INCLUDE ERROR: %s %a in @[%a@]@."
+                  (Kind.name k)
+                  Ident.format id
+                  (Format.list ";@ " (fun ppf ((k,id), _) -> 
+                    Format.fprintf ppf "%s %a" (Kind.name k) Ident.format id))
+                  kid_tbl;
+                Error (Failure "not found in include")
+          end in
+          (id', (k, v)) :: str
 
       | AStr_include (mexp, aliases) ->
           (* be careful: everything must be done lazily *)
