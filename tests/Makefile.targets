@@ -82,6 +82,7 @@ types_in_type_def.cmo \
 use_record.cmo \
 utf8.cmo \
 variant.cmo \
+variant_constructor.cmo \
 variant_external.cmo \
 with_type.cmo \
 with_type2.cmo \

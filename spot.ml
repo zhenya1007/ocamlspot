@@ -906,12 +906,21 @@ and type_declaration =
     typ_manifest: core_type option;
     typ_variance: (bool * bool) list;
     typ_loc: Location.t }
+*)
 
-and type_kind =
-    Ttype_abstract
-  | Ttype_variant of (Ident.t * string loc * core_type list * Location.t) list
-  | Ttype_record of
-      (Ident.t * string loc * mutable_flag * core_type * Location.t) list
+      method! type_kind tk = 
+        begin match tk with 
+        | Ttype_abstract -> ()
+        | Ttype_variant lst -> 
+            List.iter (fun (id, {loc}, _, _loc(*?*)) ->
+              record loc (Str (AStr_type id))) lst
+        | Ttype_record lst ->
+            List.iter (fun (id, {loc}, _, _, _loc(*?*)) ->
+              record loc (Str (AStr_type id))) lst
+        end;
+        super#type_kind tk
+
+(*
 
 and exception_declaration =
   { exn_params : core_type list;

@@ -9,10 +9,9 @@ end
 *)
 
 let _ = 
-  let module G = 
-    (* module G => *)
+  let module (* module G => *) G (* <= module G *) = 
     struct let (* G.x => *) x (* <= G.x *) = 1 end 
-    (* <= module G *)  
+
   in
   let module H = G (* ? module G *) in
   G.x (* ? G.x *) + H.x (* ? G.x *)
