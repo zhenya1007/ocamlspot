@@ -199,6 +199,7 @@ module Abstraction = struct
 
   open Types
   open Typedtree
+  open Asttypes
 
   let cache_module_expr = Module_expr.Table.create 31
   let cache_structure_item = Structure_item.Table.create 31
@@ -323,7 +324,7 @@ module Abstraction = struct
 	List.map (fun id -> AStr_value id) (let_bound_idents pat_exps)
     | Tstr_primitive (id, _, _vdesc) -> 
 	[AStr_value id]
-    | Tstr_type id_descs -> List.map (fun (id, _, _) -> AStr_type id) id_descs
+    | Tstr_type id_descs -> List.concat_map (fun (id, _, td) -> AStr_type id :: type_declaration td) id_descs
     | Tstr_exception (id ,_ , _) ->
 	[AStr_exception id]
     | Tstr_exn_rebind (id, _, _path, _) -> (* CR jfuruse: path? *)
@@ -383,7 +384,7 @@ module Abstraction = struct
         [aux id (fun () -> 
           (* todo *) AStr_modtype (id, modtype_declaration mty_decl) (* sitem.sig_final_env can be used? *)) ]
 
-    | Tsig_type typs -> List.map (fun (id, _, _) -> aux id (fun () -> AStr_type id)) typs
+    | Tsig_type typs -> List.concat_map (fun (id, _, td) -> aux id (fun () -> AStr_type id :: type_declaration td)) typs
     | Tsig_class clses -> List.map (fun cls -> aux cls.ci_id_class (fun () -> AStr_class cls.ci_id_class)) clses
     | Tsig_class_type clses -> List.map (fun cls -> aux cls.ci_id_class (fun () -> AStr_cltype cls.ci_id_class)) clses
 
@@ -436,6 +437,12 @@ module Abstraction = struct
     | AMod_unpack m -> flatten_module_expr m
     | AMod_abstract -> []
 *)
+
+
+  and type_declaration td = match td.typ_kind with
+    | Ttype_abstract -> []
+    | Ttype_variant lst -> List.map (fun (id, {loc=_loc}, _, _) -> AStr_type id) lst
+    | Ttype_record lst -> List.map (fun (id, {loc=_loc}, _, _, _) -> AStr_type id) lst
 end
 
 let protect name f v = try f v with e ->
@@ -600,8 +607,12 @@ and exp_extra =
         begin match ed with
         | Texp_ident (path, {loc}, _) -> 
             record loc (Use (Kind.Value, path))
-        | Texp_construct (path, {loc}, _, _, _) -> 
-            record loc (Use (Kind.Type, path))
+        | Texp_construct (path, {loc}, cdesc, _, _) ->
+            let kind = match cdesc.Types.cstr_tag with
+              | Types.Cstr_exception _ -> Kind.Exception            
+              | _ -> Kind.Type
+            in
+            record loc (Use (kind, path))
         | Texp_record (lst, _) ->
             List.iter (fun (path, {loc}, _, _) ->
               record loc (Use (Kind.Type, path))) lst
@@ -642,19 +653,17 @@ and meth =
         super#class_expr ce
 *)
 
+      method! class_expr_desc ced =
+        begin match ced with
+        | Tcl_ident (path, {loc}, _) -> record loc (Use (Kind.Value, path)) 
+        | Tcl_structure _ -> ()
+        | Tcl_fun (_, _, _lst (* CR jfuruse: ? *), _, _) -> ()
+        | Tcl_apply _ -> ()
+        | Tcl_let (_, _, _lst (* CR jfuruse: ? *), _) -> ()
+        | Tcl_constraint _ -> ()
+        end;
+        super#class_expr_desc ced
 (*
-and class_expr_desc =
-    Tcl_ident of Path.t * Longident.t loc * core_type list (* Pcl_constr *)
-  | Tcl_structure of class_structure
-  | Tcl_fun of
-      label * pattern * (Ident.t * string loc * expression) list * class_expr *
-        partial
-  | Tcl_apply of class_expr * (label * expression option * optional) list
-  | Tcl_let of rec_flag *  (pattern * expression) list *
-                  (Ident.t * string loc * expression) list * class_expr
-  | Tcl_constraint of
-      class_expr * class_type option * string list * string list * Concr.t
-    (* Visible instance variables, methods and concretes methods *)
 
 and class_structure =
   { cstr_pat : pattern;
@@ -671,23 +680,18 @@ and class_field =
 and class_field_kind =
   Tcfk_virtual of core_type
 | Tcfk_concrete of expression
-
-and class_field_desc =
-    Tcf_inher of
-      override_flag * class_expr * string option * (string * Ident.t) list *
-        (string * Ident.t) list
-    (* Inherited instance variables and concrete methods *)
-  | Tcf_val of
-      string * string loc * mutable_flag * Ident.t * class_field_kind * bool
-        (* None = virtual, true = override *)
-  | Tcf_meth of string * string loc * private_flag * class_field_kind * bool
-  | Tcf_constr of core_type * core_type
-(*  | Tcf_let of rec_flag * (pattern * expression) list *
-              (Ident.t * string loc * expression) list *)
-  | Tcf_init of expression
-
-(* Value expressions for the module language *)
 *)
+
+      method! class_field_desc cfd = 
+        begin match cfd with
+        | Tcf_inher (_, _, _, _, _) -> ()
+        | Tcf_val (_name, {loc}, _, id, _, _) -> record loc (Str (AStr_value id))
+        | Tcf_meth (_name, {loc=_loc}, _, _, _) -> ()
+        | Tcf_constr _ -> ()
+        | Tcf_init _ -> ()
+        end;
+        super#class_field_desc cfd
+
       method! module_expr me = (* CR jfuruse: me.mod_env *)
         record me.mod_loc (Mod_type me.mod_type);
         super#module_expr me
@@ -744,7 +748,7 @@ and structure = {
             record loc (Str (AStr_exception id))
         | Tstr_exn_rebind (id, {loc}, path, {loc=loc'}) ->
             record loc (Str (AStr_exception id));
-            record loc (Use (Kind.Exception, path))
+            record loc' (Use (Kind.Exception, path))
         | Tstr_module (id, {loc}, mexp) -> 
             record loc (Str (AStr_module (id, module_expr mexp)))
         | Tstr_recmodule lst ->
@@ -835,13 +839,14 @@ and signature_item =
         super#signature_item_desc sid
         
 
-(*
-and with_constraint =
-    Twith_type of type_declaration
-  | Twith_module of Path.t * Longident.t loc
-  | Twith_typesubst of type_declaration
-  | Twith_modsubst of Path.t * Longident.t loc
-*)
+      method! with_constraint wc = 
+        begin match wc with 
+        | Twith_module (path, {loc}) -> record loc (Use (Kind.Module, path)) 
+        | Twith_modsubst (path, {loc}) -> record loc (Use (Kind.Module, path))  (*?*)
+        | Twith_type _ -> ()
+        | Twith_typesubst _ -> ()
+        end;
+        super#with_constraint wc
 
 (* add env?
 and core_type =
@@ -932,11 +937,17 @@ and class_type =
     cltyp_type : Types.class_type;
     cltyp_env : Env.t; (* BINANNOT ADDED *)
     cltyp_loc: Location.t }
+*)
 
-and class_type_desc =
-    Tcty_constr of Path.t * Longident.t loc * core_type list
-  | Tcty_signature of class_signature
-  | Tcty_fun of label * core_type * class_type
+      method! class_type_desc ctd = 
+        begin match ctd with
+        | Tcty_constr (path, {loc}, _) -> record loc (Use (Kind.Class_type, path))
+        | Tcty_signature _
+        | Tcty_fun _ -> ()
+        end;
+        super#class_type_desc ctd
+
+(*
 
 and class_signature = {
     csig_self : core_type;
@@ -965,22 +976,16 @@ and class_description =
 
 and class_type_declaration =
   class_type class_infos
-
-and 'a class_infos =
-  { ci_virt: virtual_flag;
-    ci_params: string loc list * Location.t;
-    ci_id_name : string loc;
-    ci_id_class: Ident.t;
-    ci_id_class_type : Ident.t;
-    ci_id_object : Ident.t;
-    ci_id_typesharp : Ident.t;
-    ci_expr: 'a;
-    ci_decl: Types.class_declaration;
-    ci_type_decl : Types.class_type_declaration;
-    ci_variance: (bool * bool) list;
-    ci_loc: Location.t }
-
 *)
+
+      method! class_infos f ci =
+        let loc = ci.ci_id_name.loc in
+        (* CR jfuruse: are they correct? *)
+        record loc (Str (AStr_class ci.ci_id_class));
+        record loc (Str (AStr_cltype ci.ci_id_class_type));
+        record loc (Str (AStr_type ci.ci_id_object));
+        record loc (Str (AStr_type ci.ci_id_typesharp));
+        super#class_infos f ci
 
     end
   end

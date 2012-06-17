@@ -266,12 +266,12 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
 
     (* CR jfuruse: searching algorithm must be reconsidered *)        
     let load_module ?(spit=false) ~load_paths name =
-      let cmtname = name ^ if spit then ".spit" else ".cmt" in
+      let cmtname = name ^ if spit then ".cmti" else ".cmt" in
       try
         load ~load_paths cmtname
       with
       | Failure s ->
-          let spitname = name ^ if spit then ".cmt" else ".spit" in
+          let spitname = name ^ if spit then ".cmt" else ".cmti" in
           Format.printf "%s load failed. Try to load %s@."
             cmtname spitname;
           try
