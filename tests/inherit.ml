@@ -1,6 +1,6 @@
-class (* c => *) c = object
-  val (* x => *) x = 1 (* <= x *)
-end (* <= c *)
+class (* c => *) c (* <= c *) = object
+  val (* x => *) x (* <= x *) = 1 
+end 
 
 class nc = object
   inherit let _x = 1 in c (* ? c *)
@@ -9,6 +9,6 @@ class nc = object
 end
 
 class nnc = object
-  inherit (* nc => *) let _y = 1 in nc (* <= nc *) (* limitation *)
+  inherit let _y = 1 in (* nc => *) nc (* <= nc *) (* limitation *)
   method n = y (* ? nc *)
 end

@@ -8,6 +8,8 @@ class.cmo \
 class.cmi \
 class2.cmi \
 exception.cmo \
+exception_alias.cmo \
+exception_module.cmo \
 external.cmo \
 external_include.cmo \
 fstclassmodule.cmo \

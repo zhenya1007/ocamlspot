@@ -1,16 +1,16 @@
-class (* c0 => *) c0 = object
+class (* c0 => *) c0 (* <= c0 *) = object
   val a = 1
   method m = a
 end 
-(* <= c0 *)
 
-class (* c => *) c ((* p => *) p (* <= p *) : int) = 
+
+class (* c => *) c (* <= c *) ((* p => *) p (* <= p *) : int) = 
   let (* x => *) x (* <= x *) = 1 in
   let p' = p (* ? p *) in
-  object (* self => *)(self)(* <= self *)
+  object ((* self => *)self(* <= self *))
     inherit (* a => *) c0 (* <= a *)
 
-    val (* y => *) mutable y = x (* <= y *)
+    val mutable (* y => *) y (* <= y *) = x
     val z = x (* ? x *)
     val p'' = p (* ? p *)
     method f () = x (* ? x *)
@@ -22,7 +22,7 @@ class (* c => *) c ((* p => *) p (* <= p *) : int) =
     initializer
       y <- 42
   end
-(* <= c *)
+
 
 let _ = 
   let (* o => *) o (* <= o *) : c (* ? c *) = new c (* ? c *) 42 in
@@ -31,7 +31,7 @@ let _ =
 let o = 
   let (* yy => *) yy (* <= yy *) = 2 in
 object 
-  val (* xx => *) xx = 1 (* <= xx *) 
+  val (* xx => *) xx (* <= xx *) = 1 
   method get_xx = xx (* ? xx *) 
   method get_yy = yy (* ? yy *)
 end
