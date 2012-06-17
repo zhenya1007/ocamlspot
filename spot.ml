@@ -583,8 +583,12 @@ module Annot = struct
         | Tpat_var (id, {loc})
         | Tpat_alias (_, id, {loc}) 
           -> record loc (Str (AStr_value id))
-        | Tpat_construct (path, {loc}, _, _, _) -> 
-            record loc (Use (Kind.Type, path))
+        | Tpat_construct (path, {loc}, cdesc, _, _) -> 
+            let kind = match cdesc.Types.cstr_tag with
+              | Types.Cstr_exception _ -> Kind.Exception            
+              | _ -> Kind.Type
+            in
+            record loc (Use (kind, path))
         | Tpat_record (lst , _) ->
             List.iter (fun (path, {loc}, _, _) -> 
               record loc (Use (Kind.Type, path))) lst

@@ -60,6 +60,7 @@ signature.cmo \
 signature2.cmi \
 subpath.cmo \
 target.cmo \
+target_e.cmo \
 test.cmo \
 test1.cmo \
 test10.cmo \
