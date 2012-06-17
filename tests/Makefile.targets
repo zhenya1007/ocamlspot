@@ -7,6 +7,7 @@ capital_idents_include.cmo \
 class.cmo \
 class.cmi \
 class2.cmi \
+class_tmp_let.cmo \
 exception.cmo \
 exception_alias.cmo \
 exception_module.cmo \
@@ -30,6 +31,7 @@ inherit.cmo \
 inherit2.cmo \
 interface.cmo \
 intermodule.cmo \
+let_open.cmo \
 localvar.cmo \
 module.cmo \
 module_alias.cmo \

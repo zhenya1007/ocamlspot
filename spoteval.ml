@@ -214,7 +214,7 @@ end = struct
 
     and structure ppf =
       fprintf ppf "{ @[<v>%a@] }"
-        (Format.list "; " (fun ppf (id, (kind, t)) ->
+        (Format.list ";@ " (fun ppf (id, (kind, t)) ->
             fprintf ppf "@[<2>%s %s =@ %a@]" 
               (String.capitalize (Kind.to_string kind))
             (Ident.name id) z t))

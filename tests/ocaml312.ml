@@ -1,11 +1,9 @@
-(* M => *)
-module M = struct
-  type (* M.t => *) t = { foo : int } (* <= M.t *)
+module (* M => *) M (* <= M *) = struct
+  type (* M.t => *) t (* <= M.t *) = { (* t.foo => *) foo (* <= t.foo *) : int } 
   let _ = fun (* foo1 => *) foo (* <= foo1 *) -> { foo (* ? foo1 *) (* ? M.t *) }
   let _ = fun { (* foo2 => *) foo (* <= foo2 *) (* ? M.t *) } -> foo (* ? foo2 *)
   let (* x => *) x (* <= x *) = 1
 end
-(* <= M *)
 
 let _ = fun (* foo3 => *) foo (* <= foo3 *) -> { M.foo (* ? foo3 *) (* ? M.t *) }
 let _ = fun { (* M.foo => *) M.foo (* <= M.foo *) (* ? M.t *) } -> foo (* ? M.foo *)
@@ -27,7 +25,7 @@ let _ =
 ;;
 
 let _ = 
-  M. (* ? M *) (* damn, no position for M *) (x (* ? x *))
+  M(* ? M *) . (* damn, no position for M *) (x (* ? x *))
 ;;
 
 (* untested 

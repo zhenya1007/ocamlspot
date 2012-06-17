@@ -616,11 +616,12 @@ module Annot = struct
         end;
         super#expression e
 
-(*
-and exp_extra =
-  | Texp_constraint of core_type option * core_type option
-  | Texp_open of Path.t * Longident.t loc * Env.t
-*)
+      method! exp_extra ee =
+        begin match ee with 
+        | Texp_constraint _ -> ()
+        | Texp_open (path, {loc}, _) -> record loc (Use (Kind.Module, path))
+        end;
+        super#exp_extra ee
 
       method !expression_desc ed =
         begin match ed with
@@ -676,26 +677,31 @@ and meth =
         begin match ced with
         | Tcl_ident (path, {loc}, _) -> record loc (Use (Kind.Value, path)) 
         | Tcl_structure _ -> ()
-        | Tcl_fun (_, _, _lst (* CR jfuruse: ? *), _, _) -> ()
+        | Tcl_fun (_, _, lst , _, _) 
+        | Tcl_let (_, _, lst, _) -> 
+            List.iter (fun (id, {loc}, _) -> record loc (Str (AStr_value id))) lst
         | Tcl_apply _ -> ()
-        | Tcl_let (_, _, _lst (* CR jfuruse: ? *), _) -> ()
         | Tcl_constraint _ -> ()
         end;
         super#class_expr_desc ced
 (*
 
 and class_structure =
-  { cstr_pat : pattern;
+  { cstr_pat : pattern; (* this is self *)
     cstr_fields: class_field list;
     cstr_type : Types.class_signature;
-    cstr_meths: Ident.t Meths.t }
+    cstr_meths: Ident.t Meths.t (* CR jfuruse: to be done? *) }
+*)
 
+(*
 and class_field =
    {
     cf_desc : class_field_desc;
     cf_loc : Location.t;
   }
+*)
 
+(*
 and class_field_kind =
   Tcfk_virtual of core_type
 | Tcfk_concrete of expression
@@ -703,7 +709,10 @@ and class_field_kind =
 
       method! class_field_desc cfd = 
         begin match cfd with
-        | Tcf_inher (_, _, _, _, _) -> ()
+        | Tcf_inher (_, ce, _, ivars, cmethods) -> 
+          let loc = ce.cl_loc in
+            List.iter (fun (_, id) -> record loc (Str (AStr_value id))) ivars;
+            List.iter (fun (_, id) -> record loc (Str (AStr_value id))) cmethods
         | Tcf_val (_name, {loc}, _, id, _, _) -> record loc (Str (AStr_value id))
         | Tcf_meth (_name, {loc=_loc}, _, _, _) -> ()
         | Tcf_constr _ -> ()
