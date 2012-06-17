@@ -17,7 +17,7 @@ let _ = function Foo (* ? Foo *) -> 1 | Bar (* ? Bar *) n -> n
 
 let _ = 
   match { y = 1 } (* ? type x *) with
-  | { y = (* n => *) n (* <= n *) } (* ? type x *) -> n (* ? n *)
+  | { y (* ? x.y *) = (* n => *) n (* <= n *) } (* ? type x *) -> n (* ? n *)
 
 let _ = x(* ? x *).y (* ? x.y *) 
 
@@ -25,8 +25,8 @@ let _ = fun ((* fun x => *) x (* <= fun x *) : t (* ? type t *)) -> x (* ? fun x
 
 let _ = (1 : int)
 
-type (* type tt => *) 'a tt = Null | Cons of 'a * 'a (* ? type tt *) tt 
-(* <= type tt *)
+type 'a (* type tt => *) tt (* <= type tt *) = Null | Cons of 'a * 'a tt (* ? type tt *) 
+
 
 type 'a uu = Foo of 'a vv (* ? type vv *)
 and 'a (* type vv => *) vv (* <= type vv *) = Bar of 'a uu 

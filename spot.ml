@@ -569,11 +569,22 @@ module Annot = struct
     open Typedtree
     open Abstraction
 
+    let record_record loc typ = 
+      let open Types in
+      let open Ctype in
+      match (repr typ).desc with
+      | Tconstr (path, _, _) -> record loc (Use (Kind.Type, path)) 
+      | _ -> (* strange.. *) ()
+
     class fold = object (self)
       inherit Ttfold.fold as super
 
       method! pattern p = 
         record p.pat_loc (Type (p.pat_type, p.pat_env, `Pattern));
+        begin match p.pat_desc with
+        | Tpat_record _ -> record_record p.pat_loc p.pat_type
+        | _ -> ()
+        end;
         super#pattern p
 
     (* CR jfuruse: pat_extra *)
@@ -599,6 +610,10 @@ module Annot = struct
       
       method! expression e = 
         record e.exp_loc (Type (e.exp_type, e.exp_env, `Expr));
+        begin match e.exp_desc with
+        | Texp_record _ -> record_record e.exp_loc e.exp_type
+        | _ -> ()
+        end;
         super#expression e
 
 (*
