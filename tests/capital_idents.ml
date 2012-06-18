@@ -1,6 +1,6 @@
 let z = 1
 
-type t = (* constr E => *) E (* <= constr E *)
+type (* type t => *) t (* <= type t *) = (* constr E => *) E (* <= constr E *)
 
 module (* module E => *) E (* <= module E *) = struct let (* E.x => *) x (* <= E.x *) = 1 end 
 

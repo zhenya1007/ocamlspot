@@ -23,10 +23,14 @@ functor_expansion.cmo \
 functor_parameter.cmo \
 immediate_include.cmo \
 include.cmo \
+include_exception.cmo \
 include_functor_app.cmo \
+include_modtype.cmo \
 include_override.cmo \
+included.cmo \
 included_and_flat.cmo \
 included_value.cmo \
+including.cmo \
 inherit.cmo \
 inherit2.cmo \
 interface.cmo \

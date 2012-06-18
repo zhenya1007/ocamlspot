@@ -1,3 +1,6 @@
-include List
-let _ = length
+module L = struct
+  let (* length => *) length (* <= length *) = List.length
+end
+include L
+let _ = length (* ? length *)
 

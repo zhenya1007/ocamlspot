@@ -286,7 +286,8 @@ module Eval = struct
               end
             else begin 
               lazy begin
-                Debug.format "find_path %s in { %s }@." 
+                Debug.format "find_path %s:%s in { %s }@." 
+                  (Kind.name kind)
                   (Path.name p)
                   (String.concat "; " 
                     (List.map Ident.name (Env.domain env)));
@@ -297,10 +298,21 @@ module Eval = struct
                   (* it may be a predefed thing *)
                   try !!(snd (Env.find Env.predef id)) with Not_found ->
     *)
-                  Error (Failure (Printf.sprintf "%s not found in { %s }" 
-                                    (Ident.name id)
-                                    (String.concat "; " 
-                                       (List.map Ident.name (Env.domain env)))))
+                    (* If it is a non-value object, it might be included with stamp = -1 *)
+                    let error id = 
+                      Error (Failure (Printf.sprintf "%s:%s not found in { %s }" 
+                                        (Kind.name kind)
+                                        (Ident.name id)
+                                        (String.concat "; " 
+                                           (List.map Ident.name (Env.domain env)))))
+                    in
+                    match kind with
+                    | Kind.Value | Kind.Module | Kind.Class | Kind.Exception -> error id
+                    | _ ->
+                        let gid = Ident.unsafe_create_with_stamp (Ident0.name id) (-1) in
+                        match Env.find env gid with
+                        | Some (_, lazy v) -> v
+                        | None -> error id
               end
             end
             end

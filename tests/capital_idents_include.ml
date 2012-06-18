@@ -6,4 +6,4 @@ module E2 = E (* ? module E *)
 
 module N : E (* ? modtype E *) = M (* ? module M *)
 
-type u = t (* ? constr E *)
+type u = t (* ? type t *)

@@ -210,12 +210,12 @@ module Abstraction = struct
 
   module T = struct
     let kident_of_sigitem = function
-      | Sig_value (id, _)     -> [Kind.Value, id]
-      | Sig_exception (id, _) -> [Kind.Exception, id]
-      | Sig_module (id, _, _) -> [Kind.Module, id]
-      | Sig_type (id, _, _) -> [Kind.Type, id]
-      | Sig_modtype (id, _)   -> [Kind.Module_type, id]
-      | Sig_class (id, _, _) -> [Kind.Class, id]
+      | Sig_value (id, _)         -> [Kind.Value, id]
+      | Sig_exception (id, _)     -> [Kind.Exception, id]
+      | Sig_module (id, _, _)     -> [Kind.Module, id]
+      | Sig_type (id, _, _)       -> [Kind.Type, id]
+      | Sig_modtype (id, _)       -> [Kind.Module_type, id]
+      | Sig_class (id, _, _)      -> [Kind.Class, id]
       | Sig_class_type (id, _, _) -> [Kind.Class_type, id]
 
     let rec signature sg = AMod_structure (List.map signature_item sg)
@@ -266,13 +266,25 @@ module Abstraction = struct
     let sg = match mexp.mod_type with Mty_signature sg -> sg | _ -> assert false in
     let kids = List.concat_map T.kident_of_sigitem sg in
     (* [ids] only contain things with values, i.e. values, modules and classes *)
-    List.map (fun (k,id) -> match k with
-    | Kind.Value | Kind.Module | Kind.Class -> 
-        begin match List.find_all (fun id' -> Ident0.name id' = Ident0.name id) ids with
-        | [id'] -> id', (k, id)
-        | _ -> assert false
-        end
-    | _ -> Ident.unsafe_create_with_stamp (Ident0.name id) (-1), (k, id)) kids
+(*
+    Format.eprintf "@[<2>DEBUG alias: [ @[%a@] ]@ + [ @[%a@] ]@]@."
+      (Format.list ";@ " Ident.format) ids
+      (Format.list ";@ " (fun ppf (k, id) -> Format.fprintf ppf "%s:%a" (Kind.name k) Ident.format id)) kids;
+*)
+    let must_be_empty, res = List.fold_left (fun (ids, res) (k, id) ->
+      match k with
+      | Kind.Value | Kind.Module | Kind.Class | Kind.Exception -> (* has value. id must be in ids *)
+          begin match ids with
+          | [] -> assert false
+          | id'::ids ->
+              assert (Ident0.name id = Ident0.name id');
+              (ids, (id', (k,id)) :: res)
+          end
+      | _ (* has no value *) -> 
+          (ids, (Ident.unsafe_create_with_stamp (Ident0.name id) (-1), (k, id)) :: res)) (ids, []) kids
+    in
+    assert (must_be_empty = []);
+    res
 
   let rec module_expr mexp =
     try
@@ -759,7 +771,7 @@ and module_type_constraint =
         | Tmod_functor (id, {loc}, _, _) ->
             (* CR jfuruse: must rethink *)
             record loc (Str (AStr_module (id, AMod_functor_parameter)));
-            record loc (Functor_parameter id);
+            record loc (Functor_parameter id); (* CR jfuruse: required? *)
         | Tmod_structure _
         | Tmod_apply _
         | Tmod_constraint _
@@ -779,7 +791,7 @@ and structure = {
         begin match sitem.str_desc with (* CR jfuruse; todo add env *)
         | Tstr_include (mexp, idents) ->
             let loc = sitem.str_loc in
-            let id_kid_list = aliases_of_include mexp idents in
+            let id_kid_list = try aliases_of_include mexp idents with e -> prerr_endline "structure_item include failed!!!"; raise e in
             let m = module_expr mexp in
             List.iter (fun (id, (k, id')) -> 
               record loc (Str (AStr_included (id, m, k, id')))) id_kid_list

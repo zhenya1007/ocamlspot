@@ -9,6 +9,6 @@ class nc = object
 end
 
 class nnc = object
-  inherit (* nc => *) let _y = 1 in nc (* <= nc *) (* limitation *)
+  inherit let _y = 1 in (* nc => *) nc (* <= nc *)
   method n = y (* ? nc *)
 end
