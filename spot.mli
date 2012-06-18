@@ -37,6 +37,7 @@ module Abstraction : sig
     | AMod_constraint of module_expr * Types.module_type
     | AMod_unpack     of module_expr
     | AMod_abstract (* used for Tmodtype_abstract *)
+    | AMod_functor_parameter
 
   (* structure abstraction : name - defloc asoc list *)
   and structure = structure_item list

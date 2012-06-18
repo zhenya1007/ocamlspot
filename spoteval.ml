@@ -342,6 +342,7 @@ module Eval = struct
     end
 
   and module_expr env idopt : module_expr -> Value.z = function
+    | AMod_functor_parameter -> eager (Parameter { PIdent.path= env.path; ident = idopt })
     | AMod_abstract -> eager (Error (Failure "abstract"))
     | AMod_ident p -> find_path env (Kind.Module, p)
     | AMod_packed s -> lazy (!packed env s)

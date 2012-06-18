@@ -1,3 +1,3 @@
-module F(A : (* A => *) sig val x : int end (* <= A *)) = struct
+module F((* A => *) A  (* <= A *): sig val x : int end) = struct
   let y = A.x (* ? A *)
 end

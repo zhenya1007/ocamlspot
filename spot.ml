@@ -68,6 +68,7 @@ module Abstraction = struct
     | AMod_constraint of module_expr * Types.module_type
     | AMod_unpack     of module_expr
     | AMod_abstract (* used for Tmodtype_abstract *)
+    | AMod_functor_parameter
 
   (* structure abstraction : name - defloc asoc list *)
   and structure = structure_item list
@@ -104,6 +105,7 @@ module Abstraction = struct
           format_module_expr mexp
           (Printtyp.modtype ~with_pos:true) mty
     | AMod_abstract -> fprintf ppf "<abst>"
+    | AMod_functor_parameter -> fprintf ppf "<functor_parameter>"
     | AMod_unpack mty -> 
         fprintf ppf "@[unpack@ : @[%a@]@]"
           format_module_expr mty
@@ -246,8 +248,12 @@ module Abstraction = struct
           List.map (fun (id, _, _) -> Kind.Type, id) typs
       | Tsig_modtype (id, _, _)   -> [Kind.Module_type, id]
       | Tsig_class clses -> 
-          List.map (fun cls -> 
-            Kind.Class, cls.ci_id_class) clses
+          List.concat_map (fun cls -> 
+            [Kind.Class, cls.ci_id_class; 
+             Kind.Class_type, cls.ci_id_class_type;
+             Kind.Type, cls.ci_id_object;
+             Kind.Type, cls.ci_id_typesharp]
+            ) clses
       | Tsig_class_type clses ->
           List.map (fun cls -> 
             Kind.Class_type, cls.ci_id_class) clses
@@ -385,7 +391,14 @@ module Abstraction = struct
           (* todo *) AStr_modtype (id, modtype_declaration mty_decl) (* sitem.sig_final_env can be used? *)) ]
 
     | Tsig_type typs -> List.concat_map (fun (id, _, td) -> aux id (fun () -> AStr_type id :: type_declaration td)) typs
-    | Tsig_class clses -> List.map (fun cls -> aux cls.ci_id_class (fun () -> AStr_class cls.ci_id_class)) clses
+    | Tsig_class clses -> 
+        (* CR jfuruse: still not sure which one is which *)
+        List.concat_map (fun cls -> 
+          [ AStr_class cls.ci_id_class; 
+            AStr_cltype  cls.ci_id_class_type;
+            AStr_type cls.ci_id_object;
+            AStr_type cls.ci_id_typesharp]
+        ) clses
     | Tsig_class_type clses -> List.map (fun cls -> aux cls.ci_id_class (fun () -> AStr_cltype cls.ci_id_class)) clses
 
     | Tsig_recmodule _ -> assert false
@@ -710,7 +723,16 @@ and class_field_kind =
       method! class_field_desc cfd = 
         begin match cfd with
         | Tcf_inher (_, ce, _, ivars, cmethods) -> 
-          let loc = ce.cl_loc in
+            (* try to have better location *)
+            let rec find ce = match ce.cl_desc with
+              | Tcl_ident _ 
+              | Tcl_structure _ 
+              | Tcl_fun _
+              | Tcl_apply _
+              | Tcl_constraint _ -> ce
+              | Tcl_let (_, _, _, ce) -> find ce
+            in
+            let loc = (find ce).cl_loc in
             List.iter (fun (_, id) -> record loc (Str (AStr_value id))) ivars;
             List.iter (fun (_, id) -> record loc (Str (AStr_value id))) cmethods
         | Tcf_val (_name, {loc}, _, id, _, _) -> record loc (Str (AStr_value id))
@@ -736,7 +758,7 @@ and module_type_constraint =
             record loc (Use (Kind.Module, path))
         | Tmod_functor (id, {loc}, _, _) ->
             (* CR jfuruse: must rethink *)
-            (* record loc (Str (AStr_module (id, ???))) *)
+            record loc (Str (AStr_module (id, AMod_functor_parameter)));
             record loc (Functor_parameter id);
         | Tmod_structure _
         | Tmod_apply _
@@ -903,6 +925,9 @@ and core_type =
         end;
         super#core_type_desc ctd
 
+      method! package_type pt =
+        record pt.pack_txt.loc (Use (Kind.Module_type, pt.pack_name));
+        super#package_type pt
 (*
 and package_type = {
   pack_name : Path.t;

@@ -7,7 +7,7 @@ end
 class (* c => *) c (* <= c *) ((* p => *) p (* <= p *) : int) = 
   let (* x => *) x (* <= x *) = 1 in
   let p' = p (* ? p *) in
-  object ((* self => *)self(* <= self *))
+  object (* self => *)(self)(* <= self *)
     inherit (* a => *) c0 (* <= a *)
 
     val mutable (* y => *) y (* <= y *) = x
