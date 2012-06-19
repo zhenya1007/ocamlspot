@@ -1,8 +1,7 @@
-(* M => *)
-module M = struct
+module (* M => *) M (* <= M *) = struct
   let (* M.y => *) y (* <= M.y *) = 2
 end
-(* <= M *)
+
 
 let (* x => *) x (* <= x *) = 1
 

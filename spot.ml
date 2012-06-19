@@ -210,13 +210,13 @@ module Abstraction = struct
 
   module T = struct
     let kident_of_sigitem = function
-      | Sig_value (id, _)         -> [Kind.Value, id]
-      | Sig_exception (id, _)     -> [Kind.Exception, id]
-      | Sig_module (id, _, _)     -> [Kind.Module, id]
-      | Sig_type (id, _, _)       -> [Kind.Type, id]
-      | Sig_modtype (id, _)       -> [Kind.Module_type, id]
-      | Sig_class (id, _, _)      -> [Kind.Class, id]
-      | Sig_class_type (id, _, _) -> [Kind.Class_type, id]
+      | Sig_value (id, _)         -> Kind.Value, id
+      | Sig_exception (id, _)     -> Kind.Exception, id
+      | Sig_module (id, _, _)     -> Kind.Module, id
+      | Sig_type (id, _, _)       -> Kind.Type, id
+      | Sig_modtype (id, _)       -> Kind.Module_type, id
+      | Sig_class (id, _, _)      -> Kind.Class, id
+      | Sig_class_type (id, _, _) -> Kind.Class_type, id
 
     let rec signature sg = AMod_structure (List.map signature_item sg)
       
@@ -264,24 +264,33 @@ module Abstraction = struct
 
   let aliases_of_include mexp ids =
     let sg = match mexp.mod_type with Mty_signature sg -> sg | _ -> assert false in
-    let kids = List.concat_map T.kident_of_sigitem sg in
-    (* [ids] only contain things with values, i.e. values, modules and classes *)
+    (* We cannot use kind directly since it does not distinguish normal values and primitives *)
 (*
     Format.eprintf "@[<2>DEBUG alias: [ @[%a@] ]@ + [ @[%a@] ]@]@."
       (Format.list ";@ " Ident.format) ids
       (Format.list ";@ " (fun ppf (k, id) -> Format.fprintf ppf "%s:%a" (Kind.name k) Ident.format id)) kids;
 *)
-    let must_be_empty, res = List.fold_left (fun (ids, res) (k, id) ->
-      match k with
-      | Kind.Value | Kind.Module | Kind.Class | Kind.Exception -> (* has value. id must be in ids *)
+    let must_be_empty, res = List.fold_left (fun (ids, res) sitem ->
+      let (k,_) = T.kident_of_sigitem sitem in
+      match sitem with
+      | Sig_value (id, { Types.val_kind = Types.Val_prim _ })
+      | Sig_type (id, _, _)
+      | Sig_modtype (id, _)
+      | Sig_class_type (id, _, _) -> 
+          (* They have no value, so id is not listed in [ids] *)
+          (ids, (Ident.unsafe_create_with_stamp (Ident0.name id) (-1), (k, id)) :: res)
+      | Sig_value (id, _) 
+      | Sig_exception (id, _)
+      | Sig_module (id, _, _)
+      | Sig_class (id, _, _) ->
+          (* They have a value, so id must be listed in [ids] *)
           begin match ids with
           | [] -> assert false
           | id'::ids ->
               assert (Ident0.name id = Ident0.name id');
               (ids, (id', (k,id)) :: res)
-          end
-      | _ (* has no value *) -> 
-          (ids, (Ident.unsafe_create_with_stamp (Ident0.name id) (-1), (k, id)) :: res)) (ids, []) kids
+          end) 
+      (ids, []) sg
     in
     assert (must_be_empty = []);
     res
