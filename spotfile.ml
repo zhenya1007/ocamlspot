@@ -88,7 +88,7 @@ let abstraction_of_cmt cmt = match cmt.cmt_annots with
         in
         Abstraction.AStr_module (Ident.create modname (* stamp is bogus *),
                                  Abstraction.AMod_packed fullpath)) files),
-      []
+      (Hashtbl.create 1 (* empty *))
   | Partial_implementation _parts | Partial_interface _parts -> assert false
 
 let abstraction_of_cmt cmt = 
