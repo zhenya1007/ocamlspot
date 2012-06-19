@@ -84,35 +84,6 @@ module Annot : sig
   val dummy : t
 end
 
-module Top : sig
-  val record_structure : Typedtree.structure -> unit
-  val record_signature : Typedtree.signature -> unit
-
-  val recorded : unit -> Abstraction.module_expr option
-end
-
-(* Spot file *)
-(*
-module File : sig
-  type elem =
-    | Argv of string array
-    | Source_path of string option
-    | Cwd of string
-    | Load_paths of string list
-    | Top of Abstraction.structure option
-    | Annots of (Location.t * Annot.t) list
-
-  (* marshalled type *)
-  type t = elem list
-
-  val dump : source: string option -> string -> unit
-  val dump_package : prefix: string -> source: string -> string list -> unit
-
-  val set_argv : string array -> unit
-    (** override the original Sys.argv. Required for ocamlspot --recheck *)
-end
-*)
-
 module Position : sig
 
   type t = { line_column : (int * int) option; 

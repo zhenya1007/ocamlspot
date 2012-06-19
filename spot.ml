@@ -206,8 +206,6 @@ module Abstraction = struct
   let cache_module_expr = Module_expr.Table.create 31
   let cache_structure_item = Structure_item.Table.create 31
 
-  let included_sig_identifier_table = Hashtbl.create 31
-
   module T = struct
     let kident_of_sigitem = function
       | Sig_value (id, _)         -> Kind.Value, id
@@ -237,29 +235,6 @@ module Abstraction = struct
     and modtype_declaration = function
       | Modtype_abstract -> AMod_structure []
       | Modtype_manifest mty -> module_type mty
-  end
-
-  module TT = struct
-    let kident_of_sigitem = function
-      | Tsig_value (id, _, _)     -> [Kind.Value, id]
-      | Tsig_exception (id, _, _) -> [Kind.Exception, id]
-      | Tsig_module (id, _, _) -> [Kind.Module, id]
-      | Tsig_type typs -> 
-          List.map (fun (id, _, _) -> Kind.Type, id) typs
-      | Tsig_modtype (id, _, _)   -> [Kind.Module_type, id]
-      | Tsig_class clses -> 
-          List.concat_map (fun cls -> 
-            [Kind.Class, cls.ci_id_class; 
-             Kind.Class_type, cls.ci_id_class_type;
-             Kind.Type, cls.ci_id_object;
-             Kind.Type, cls.ci_id_typesharp]
-            ) clses
-      | Tsig_class_type clses ->
-          List.map (fun cls -> 
-            Kind.Class_type, cls.ci_id_class) clses
-      | Tsig_recmodule _ -> assert false
-      | Tsig_open _ -> assert false
-      | Tsig_include _ -> assert false
   end
 
   let aliases_of_include' no_value_is_not_in_ids sg ids =
@@ -475,9 +450,6 @@ module Abstraction = struct
     | Ttype_record lst -> List.map (fun (id, {loc=_loc}, _, _, _) -> AStr_type id) lst
 end
 
-let protect name f v = try f v with e ->
-  Format.eprintf "Error: %s: %s@." name (Printexc.to_string e)
-    
 let protect' name f v = try f v with e ->
   Format.eprintf "Error: %s: %s@." name (Printexc.to_string e); raise e
     
@@ -1106,29 +1078,6 @@ and class_type_declaration =
   let dummy = Use (Kind.Value, Path.Pident (Ident.create_persistent "dummy"))
 end
 
-module Top = struct
-  let recorded = ref None
-  let clear () = recorded := None
-
-  let record_structure str = 
-    if !Clflags.annotations then begin
-      assert (!recorded = None); 
-      recorded := Some (Abstraction.structure str)
-    end
-
-  let record_structure = protect "Spot.Top.record_structure" record_structure 
-    
-  let record_signature sg = 
-    if !Clflags.annotations then begin
-      assert (!recorded = None); 
-      recorded := Some (Abstraction.signature sg)
-    end
-
-  let record_signature = protect "Spot.Top.record_signature" record_signature
-    
-  let recorded () = !recorded
-end
-
 module Position = struct
   open Lexing
 
@@ -1299,9 +1248,6 @@ module Region = struct
                bytes = Some (pos + 1)} }
 
   let point pos = { start = pos; end_ = Position.next pos }
-
-  let none = { start = Position.none;
-	       end_ = Position.none }
 
   let length_in_bytes t =
     let bytes = function
