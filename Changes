@@ -1,3 +1,11 @@
+2.0.0
+--------------
+
+For OCaml 4.00.0.
+
+- Now OCamlSpotter no longer requires compier patching. It is a standalone application.
+- Use -bin-annot compiler option to produce .cmt and .cmti files for OCamlSpotter.
+
 1.4.0
 --------------
 
