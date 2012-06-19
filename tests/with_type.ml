@@ -1,15 +1,15 @@
-(* S => *)
-module type S = sig
+
+module type (* S => *) S (* <= S *) = sig
   type (* elt => *) elt (* <= elt *)
 end
-(* <= S *)
+
 
 module type T = S (* ? S *) 
-  with type elt (* ? elt_impos *) = int 
+  with type elt (* ? elt *) = int 
 (* We have no position info for [elt]. No way to query... *)
 
 module M : functor(M' : S (* ? S *)) -> sig type t end with type t = M'.elt
-  = functor(M' : (* eltA => *) S (* <= eltA *) ) -> struct 
+  = functor((* eltA => *) M' (* <= eltA *) : S ) -> struct 
     (* No position info for the parameter M'. Use the one of S instead *)
     type t = M'.elt (* ? eltA *)
   end

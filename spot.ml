@@ -262,27 +262,27 @@ module Abstraction = struct
       | Tsig_include _ -> assert false
   end
 
-  let aliases_of_include mexp ids =
-    let sg = match mexp.mod_type with Mty_signature sg -> sg | _ -> assert false in
+  let aliases_of_include' no_value_is_not_in_ids sg ids =
     (* We cannot use kind directly since it does not distinguish normal values and primitives *)
-(*
-    Format.eprintf "@[<2>DEBUG alias: [ @[%a@] ]@ + [ @[%a@] ]@]@."
+    Debug.format "@[<2>DEBUG alias: ids=[ @[%a@] ]@ + sg=[ @[%a@] ]@]@."
       (Format.list ";@ " Ident.format) ids
-      (Format.list ";@ " (fun ppf (k, id) -> Format.fprintf ppf "%s:%a" (Kind.name k) Ident.format id)) kids;
-*)
+      (Format.list ";@ " (fun ppf (k, id) -> Format.fprintf ppf "%s:%a" (Kind.name k) Ident.format id)) (List.map T.kident_of_sigitem sg);
     let must_be_empty, res = List.fold_left (fun (ids, res) sitem ->
       let (k,_) = T.kident_of_sigitem sitem in
       match sitem with
       | Sig_value (id, { Types.val_kind = Types.Val_prim _ })
       | Sig_type (id, _, _)
       | Sig_modtype (id, _)
-      | Sig_class_type (id, _, _) -> 
+      | Sig_class_type (id, _, _) when no_value_is_not_in_ids -> 
           (* They have no value, so id is not listed in [ids] *)
           (ids, (Ident.unsafe_create_with_stamp (Ident0.name id) (-1), (k, id)) :: res)
       | Sig_value (id, _) 
       | Sig_exception (id, _)
       | Sig_module (id, _, _)
-      | Sig_class (id, _, _) ->
+      | Sig_class (id, _, _)
+      | Sig_type (id, _, _)
+      | Sig_modtype (id, _)
+      | Sig_class_type (id, _, _) ->
           (* They have a value, so id must be listed in [ids] *)
           begin match ids with
           | [] -> assert false
@@ -294,6 +294,10 @@ module Abstraction = struct
     in
     assert (must_be_empty = []);
     res
+
+  let aliases_of_include mexp ids =
+    let sg = try match Mtype.scrape mexp.mod_env mexp.mod_type with Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
+    aliases_of_include' true sg  ids
 
   let rec module_expr mexp =
     try
@@ -380,9 +384,9 @@ module Abstraction = struct
     | Tmty_functor (id, _, mty1, mty2) ->
         (* CR jfuruse: need to scrape ? but how ? *)
         AMod_functor(id, mty1.mty_type, module_type mty2)
+    | Tmty_with (mty, _) -> module_type mty (* CR jfuruse: ?? *)
 (*
-    | Tmty_with of module_type * (Path.t * Longident.t loc * with_constraint) list
-    | Tmty_typeof of module_expr
+    | Tmty_typeof of module_expr (* CR jfuruse: ?? *)
 *)
     | _ -> assert false
 
@@ -422,9 +426,15 @@ module Abstraction = struct
         ) clses
     | Tsig_class_type clses -> List.map (fun cls -> aux cls.ci_id_class (fun () -> AStr_cltype cls.ci_id_class)) clses
 
-    | Tsig_recmodule _ -> assert false
-    | Tsig_open _ -> assert false
-    | Tsig_include _ -> assert false
+    | Tsig_recmodule lst -> 
+        List.map (fun (id, _, mty) -> AStr_module (id, module_type mty)) lst
+    | Tsig_open _ -> []
+    | Tsig_include (mty, sg) -> 
+        let sg0 = try match Mtype.scrape mty.mty_env mty.mty_type with Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
+        let ids = List.map (fun sitem -> snd (T.kident_of_sigitem sitem)) sg in
+        let aliases = try aliases_of_include' false sg0 ids with _ -> assert false in
+        [AStr_include (module_type mty, aliases)]
+        
 	
   and modtype_declaration = function
     | Tmodtype_abstract -> AMod_abstract
@@ -882,7 +892,23 @@ and signature = {
   sig_final_env : Env.t;
 }
 
-add env
+ add env *)
+
+      method! signature_item si = 
+        begin match si.sig_desc with (* CR jfuruse; todo add env *)
+        | Tsig_include (mty, sg) -> 
+            let loc = si.sig_loc in
+            let m = Abstraction.module_type mty in
+            let sg0 = try match Mtype.scrape mty.mty_env mty.mty_type with Types.Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
+            let ids = List.map (fun si -> snd (T.kident_of_sigitem si)) sg in
+            let aliases = try aliases_of_include' false sg0 ids with _ -> assert false in
+            List.iter (fun (id, (k, id')) -> 
+              record loc (Str (AStr_included (id, m, k, id')))) aliases
+        | _ -> ()
+        end;
+        super#signature_item si
+
+(*
 and signature_item =
   { sig_desc: signature_item_desc;
     sig_env : Env.t; (* BINANNOT ADDED *)
@@ -903,7 +929,7 @@ and signature_item =
         | Tsig_modtype (id, {loc}, mtd) -> 
             record loc (Str (AStr_modtype (id, modtype_declaration mtd)))
         | Tsig_open (path, {loc}) -> record loc (Use (Kind.Module, path))
-        | Tsig_include _ -> ()
+        | Tsig_include _ -> () (* done in #signature_item *)
         | Tsig_class _ -> ()
         | Tsig_class_type _ -> ()
         end;

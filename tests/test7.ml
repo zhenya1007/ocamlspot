@@ -12,8 +12,7 @@ module O = struct
   let _ = N.y (* ? O.N.y *) 
 end
 
-(* P => *)
-module P = struct
+module (* P => *) P (* <= P *) = struct
   module Q = struct
     let x = 1
     include Char
@@ -21,4 +20,4 @@ module P = struct
     module String = String
   end
 end
-(* <= P *)
+

@@ -11,24 +11,23 @@
         | Psig_class_type cl ->
 *)
 
-(* M0 => *)
-module M0 : sig
+
+module (* M0 => *) M0 (* <= M0 *) : sig
   val v : int
   type   (* t => *) t (* <= t *) 
   exception E
   module M : sig end
   module rec MR : sig end
 
-  (* MT => *) module type MT = sig 
+  module type (* MT => *) MT (* <= MT *) = sig 
     type (* s => *) s (* <= s *) 
-  end (* <= MT *)
+  end 
 
   open Target (* ? Target *)
   include MT (* ? MT *)
-  class (* c => *) c : object end (* <= c *)
-  class type (* ct => *) ct = object end (* <= ct *)
+  class (* c => *) c (* <= c *) : object end 
+  class type (* ct => *) ct (* <= ct *) = object end 
 end
-(* <= M0 *)
 
 module Test : sig
   open M0 (* ? M0 *)
