@@ -115,6 +115,10 @@ module Option = struct
   let iter ~f = function
     | None -> ()
     | Some v -> f v
+
+  let default dv = function
+    | None -> dv
+    | Some v -> v
 end
 
 exception Finally of exn * exn

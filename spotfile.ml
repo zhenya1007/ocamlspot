@@ -25,7 +25,7 @@ open Cmt_format
 
 type file = {
   cmt            : Cmt_format.cmt_infos;
-  path           : string;
+  path           : string; (** source path. If packed, the .cmo itself *)
   flat           : Abstraction.structure;
   top            : Abstraction.structure;
   id_def_regions : (Ident.t, Region.t) Hashtbl.t;
@@ -34,8 +34,8 @@ type file = {
 }
 
 let source_path_of_cmt file = match file.cmt_sourcefile with 
-  | Some f -> Filename.concat file.cmt_builddir f
-  | None -> assert false
+  | Some f -> Some (Filename.concat file.cmt_builddir f)
+  | None -> None
 
 let dump_file file =
   eprintf "@[<v2>{ module= %S;@ path= %S;@ source= %S;@ builddir= %S;@ loadpath= [ @[%a@] ];@ argv= [| @[%a@] |];@ ... }@]@."
@@ -79,8 +79,17 @@ let abstraction_of_cmt cmt = match cmt.cmt_annots with
       | Abstraction.AMod_structure str -> str, loc_annots
       | _ -> assert false
       end
+  | Packed (_sg, files) ->
+      (List.map (fun file ->
+        let fullpath = if Filename.is_relative file then Filename.concat cmt.cmt_builddir file else file in
+        let modname = match Filename.split_extension (Filename.basename file) with 
+          | modname, ".cmo" -> String.capitalize modname
+          | _ -> assert false
+        in
+        Abstraction.AStr_module (Ident.create modname (* stamp is bogus *),
+                                 Abstraction.AMod_packed fullpath)) files),
+      []
   | Partial_implementation _parts | Partial_interface _parts -> assert false
-  | _ -> assert false
 
 let abstraction_of_cmt cmt = 
   try abstraction_of_cmt cmt with e -> 
@@ -91,7 +100,7 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
   open Abstraction
 
   module Load : sig
-  exception Old_cmt of string (* cmt *) * string (* source *)
+    exception Old_cmt of string (* cmt *) * string (* source *)
     val load : load_paths:string list -> string -> file
     val load_module : ?spit:bool -> load_paths:string list -> string -> file
   end = struct
@@ -133,7 +142,7 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
           Debug.format "cmt loaded now extracting things from %s ...@." path;
           let str, loc_annots = abstraction_of_cmt cmt in
           Debug.format "cmt loaded: abstraction extracted from %s@." path;
-          let path = source_path_of_cmt cmt in
+          let path = Option.default (Filename.chop_extension path ^ ".cmo") (source_path_of_cmt cmt) in
           let rannots = List.map (fun (loc, annot) -> 
             { Regioned.region = Region.of_parsing loc;  value = annot }) loc_annots
           in
@@ -182,15 +191,11 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
         | Not_found ->
               try
                 let file = load_directly path in
-                begin match file.path with 
-                | "" -> ()
-                | source -> 
-                    if not (check_time_stamp ~cmt:path source) then 
-                      if Spotconfig.strict_time_stamp then 
-                        raise (Old_cmt (path, source))
-                      else
-                        eprintf "Warning: source %s is newer than the cmt@." source
-                end;
+                if not (check_time_stamp ~cmt:path file.path) then 
+                  if Spotconfig.strict_time_stamp then 
+                    raise (Old_cmt (path, file.path))
+                  else
+                    eprintf "Warning: source %s is newer than the cmt@." file.path;
                 Hashtbl.replace cache path file;
                 file
               with
@@ -311,12 +316,10 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
     let find_loc pid =
       match  pid.PIdent.path with
       | "" -> Predefined
-      | _ ->
+      | path ->
           (* CR jfuruse: loading twice... *)
           Debug.format "Finding %a@." PIdent.format pid;
-          let file = 
-            Load.load ~load_paths:[] (cmt_of_file pid.PIdent.path) 
-          in
+          let file = Load.load ~load_paths:[] (cmt_of_file path) in
           match pid.PIdent.ident with
           | None -> File_itself (* the whole file *)
           | Some id -> 

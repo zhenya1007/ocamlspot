@@ -39,8 +39,8 @@ spotconfig.cmo : utils.cmi spot.cmi ext.cmo spotconfig.cmi
 spotconfig.cmx : utils.cmx spot.cmx ext.cmx spotconfig.cmi
 spotconfig_intf.cmo : spot.cmi ext.cmo
 spotconfig_intf.cmx : spot.cmx ext.cmx
-spoteval.cmo : utils.cmi spot.cmi spoteval.cmi
-spoteval.cmx : utils.cmx spot.cmx spoteval.cmi
+spoteval.cmo : utils.cmi spot.cmi ext.cmo spoteval.cmi
+spoteval.cmx : utils.cmx spot.cmx ext.cmx spoteval.cmi
 spotfile.cmo : utils.cmi spoteval.cmi spotconfig_intf.cmo spot.cmi \
     dotfile.cmo spotfile.cmi
 spotfile.cmx : utils.cmx spoteval.cmx spotconfig_intf.cmx spot.cmx \

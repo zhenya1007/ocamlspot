@@ -48,6 +48,7 @@ module Option : sig
   val map : f:('a -> 'b) -> 'a option -> 'b option
   val bind : 'a option -> ('a -> 'b option) -> 'b option
   val iter : f:('a -> unit) -> 'a option -> unit
+  val default : 'a -> 'a option -> 'a 
 end
 
 exception Finally of exn * exn

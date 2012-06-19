@@ -30,15 +30,16 @@ module PIdent = struct
 
   let format ppf id =
     fprintf ppf "%s%s" 
-      (if id.path = "" then ""
-        else 
-          (let len = String.length id.path in
-          if len > 20 then
-            "..." ^ String.sub id.path (len - 20) 20 
-          else id.path) ^ ":")
-        (match id.ident with
-        | Some id -> Ident.name id
-        | None -> "TOP")
+      (match id.path with
+      | "" -> ""
+      | p -> 
+          (let len = String.length p in
+           if len > 20 then
+             "..." ^ String.sub p (len - 20) 20 
+           else p) ^ ":")
+      (match id.ident with
+      | Some id -> Ident.name id
+      | None -> "TOP")
 end
 
 module Value : sig
@@ -268,9 +269,7 @@ module Eval = struct
         | None -> 
             if Ident.global id then
               lazy begin try
-                let path, str = 
-                  !str_of_global_ident ~load_paths:env.load_paths id
-                in
+                let path, str = !str_of_global_ident ~load_paths:env.load_paths id in
                 let str = Structure ( { PIdent.path = path; ident = None }, 
                                       str,
                                       None (* CR jfuruse: todo (read .mli *))
@@ -354,7 +353,8 @@ module Eval = struct
     end
 
   and module_expr env idopt : module_expr -> Value.z = function
-    | AMod_functor_parameter -> eager (Parameter { PIdent.path= env.path; ident = idopt })
+    | AMod_functor_parameter -> 
+        eager (Parameter { PIdent.path= env.path; ident = idopt })
     | AMod_abstract -> eager (Error (Failure "abstract"))
     | AMod_ident p -> find_path env (Kind.Module, p)
     | AMod_packed s -> lazy (!packed env s)

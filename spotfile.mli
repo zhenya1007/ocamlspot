@@ -18,7 +18,7 @@ open Spoteval
 
 type file = {
   cmt            : Cmt_format.cmt_infos;
-  path           : string;
+  path           : string; (** cmt file itself if packed *)
   flat           : Abstraction.structure;
   top            : Abstraction.structure;
   id_def_regions : (Ident.t, Region.t) Utils.Hashtbl.t;
@@ -26,7 +26,7 @@ type file = {
   tree           : Tree.t lazy_t
 }
 
-val source_path_of_cmt : cmt_infos -> string
+val source_path_of_cmt : cmt_infos -> string option
 val dump_file : file -> unit
 val cmt_of_file : string -> string
 val abstraction_of_cmt : cmt_infos -> Abstraction.structure * (Location.t * Annot.t) list
