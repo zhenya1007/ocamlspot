@@ -58,14 +58,14 @@ module Dump = struct
 
   let rannots_full file = 
     eprintf "@[<2>rannots =@ [ @[<v>%a@]@] ]@."
-      (Format.list ";@ " (Regioned.format Annot.format))
-      file.File.rannots
+      (Format.list ";@ " (Regioned.format (Format.list ";@ " Annot.format)))
+      !!(file.File.rannots)
   ;;
   
   let rannots_summary file = 
     eprintf "@[<2>rannots =@ [ @[<v>%a@]@] ]@."
-      (Format.list ";@ " (Regioned.format Annot.summary))
-      file.File.rannots
+      (Format.list ";@ " (Regioned.format (Format.list ";@ " Annot.summary)))
+      !!(file.File.rannots)
   ;;
   
   let tree file = Tree.dump !!(file.File.tree)
@@ -157,16 +157,15 @@ module Main = struct
       List.map fst (Tree.find_path_contains probe !!(file.File.tree))
     in
     match treepath with
-    | [] -> 
-	failwith (Printf.sprintf "nothing at %s" (Position.to_string pos))
+    | [] -> failwith (Printf.sprintf "nothing at %s" (Position.to_string pos))
     | { Regioned.region = r; _ } :: _ ->
 	
 	(* find annots bound to the region *)
         let annots = 
-	  List.filter_map (fun rannot ->
+	  List.concat_map (fun rannot ->
 	    if Region.compare r rannot.Regioned.region = `Same then 
-	      Some rannot.Regioned.value
-	    else None)
+	      rannot.Regioned.value
+	    else [])
 	    treepath
         in
 
@@ -196,12 +195,10 @@ module Main = struct
         printf "XTree: <%s:%s>@." file.File.path (Region.to_string r);
 
 	(* Find the innermost module *)
-        let rec find_module_path = function
-          | [] -> []
-          | { Regioned.value = Annot.Str (Abstraction.AStr_module (id, _)); _ } :: ls
-          | { Regioned.value = Annot.Str (Abstraction.AStr_modtype (id, _)); _ } :: ls ->
-              id :: find_module_path ls
-          | _ :: ls -> find_module_path ls
+        let find_module_path treepath = List.concat_map (fun { Regioned.value = annots } ->
+          List.filter_map (function 
+            | Annot.Str (Abstraction.AStr_module (id, _)) -> Some id
+            | _ -> None) annots) treepath
         in
         printf "In_module: %s@."
           (String.concat "." (List.map Ident0.name (List.rev (find_module_path treepath))));
@@ -296,17 +293,18 @@ module Main = struct
 	    | Path.Papply _ -> assert false
 	  in
 	  let base = base_ident path in
-	  List.iter (function
-	    | { Regioned.region= region; value= Annot.Use (k', path'); } when k = k' && base = base_ident path' ->
-	      begin match query_by_kind_path file k' path' with
-	      | Some found' when found = found' ->
-		  printf "<%s:%s>: %s@." 
-		    file.File.path
-		    (Region.to_string region)
-		    (Path.name path)
-	      | None | Some _ -> ()
-	      end
-	    | _ -> ()) file.File.rannots
+	  List.iter (fun { Regioned.region= region; value= annots } -> 
+                List.iter (function
+                  | Annot.Use (k', path') when k = k' && base = base_ident path' ->
+	              begin match query_by_kind_path file k' path' with
+	              | Some found' when found = found' ->
+		          printf "<%s:%s>: %s@." 
+		            file.File.path
+		            (Region.to_string region)
+		            (Path.name path)
+	              | None | Some _ -> ()
+	              end
+                  | _ -> ()) annots) !!(file.File.rannots)
 	| _ -> ());
     in
 

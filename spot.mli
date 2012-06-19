@@ -159,7 +159,7 @@ module Regioned : sig
 end
 
 module Tree : sig
-  type elem = Annot.t Regioned.t
+  type elem = Annot.t list Regioned.t
   type t
   val empty : t
   val is_empty : t -> bool

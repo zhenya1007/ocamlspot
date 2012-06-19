@@ -1348,10 +1348,10 @@ end
 
 (* annotation with region *)
 module RAnnot = struct
-  type t      = Annot.t Regioned.t
+  type t      = Annot.t list Regioned.t
   let split   = Regioned.split
   let compare = Regioned.compare
-  let format  = Regioned.format Annot.format
+  let format  = Regioned.format (Format.list ";@ " Annot.format)
 end
 
 module Tree = struct
@@ -1365,7 +1365,7 @@ module Tree = struct
   let iter = iter_elem
 
   let find_path_contains r t = 
-    let probe = { region = r; value = Annot.dummy } in
+    let probe = { region = r; value = [] (* dummy *) } in
     find_path_contains probe t
 
   let dump t = 
