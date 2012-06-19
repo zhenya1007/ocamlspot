@@ -97,7 +97,7 @@ let abstraction_of_cmt cmt =
     raise e
 
 module Make(Spotconfig : Spotconfig_intf.S) = struct
-  open Abstraction
+  (* open Abstraction *)
 
   module Load : sig
     exception Old_cmt of string (* cmt *) * string (* source *)
@@ -163,7 +163,7 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
             List.fold_left Tree.add Tree.empty rannots
           end in
           (* CR jfuruse: it is almost the same as id_def_regions_list *)
-          let flat = List.filter_map (fun (loc, annot) -> match annot with
+          let flat = List.filter_map (fun (_loc, annot) -> match annot with
               | Annot.Str sitem -> Some sitem
               | _ -> None) loc_annots
           in

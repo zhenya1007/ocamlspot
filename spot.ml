@@ -393,29 +393,15 @@ module Abstraction = struct
   and signature sg = AMod_structure (List.concat_map signature_item sg.sig_items)
 
   and signature_item sitem = 
-    let aux id f = f ()
-(*
-        (* Sigitem might be defined by include, but it is not recorded
-           in signature. We here try to recover it. *)
-        (* CR jfuruse: included modules may listed more than once *)
-        let sitem, recorded = Hashtbl.find included_sig_identifier_table id in
-        if !recorded then f ()
-        else begin
-          recorded := true;
-          sitem
-        end
-*)
-    in
     match sitem.sig_desc with
-    | Tsig_value (id, _, _) -> [aux id (fun () -> AStr_value id)]
-    | Tsig_exception (id, _, _) -> [aux id (fun () -> AStr_exception id)]
+    | Tsig_value (id, _, _) -> [AStr_value id]
+    | Tsig_exception (id, _, _) -> [AStr_exception id]
     | Tsig_module (id, _ , mty) ->
-        [aux id (fun () -> AStr_module (id, module_type mty))]
+        [AStr_module (id, module_type mty)]
     | Tsig_modtype (id, _, mty_decl) ->
-        [aux id (fun () -> 
-          (* todo *) AStr_modtype (id, modtype_declaration mty_decl) (* sitem.sig_final_env can be used? *)) ]
+        [(* todo *) AStr_modtype (id, modtype_declaration mty_decl) (* sitem.sig_final_env can be used? *) ]
 
-    | Tsig_type typs -> List.concat_map (fun (id, _, td) -> aux id (fun () -> AStr_type id :: type_declaration td)) typs
+    | Tsig_type typs -> List.concat_map (fun (id, _, td) -> AStr_type id :: type_declaration td) typs
     | Tsig_class clses -> 
         (* CR jfuruse: still not sure which one is which *)
         List.concat_map (fun cls -> 
@@ -424,7 +410,7 @@ module Abstraction = struct
             AStr_type cls.ci_id_object;
             AStr_type cls.ci_id_typesharp]
         ) clses
-    | Tsig_class_type clses -> List.map (fun cls -> aux cls.ci_id_class (fun () -> AStr_cltype cls.ci_id_class)) clses
+    | Tsig_class_type clses -> List.map (fun cls -> AStr_cltype cls.ci_id_class) clses
 
     | Tsig_recmodule lst -> 
         List.map (fun (id, _, mty) -> AStr_module (id, module_type mty)) lst
@@ -620,7 +606,7 @@ module Annot = struct
       | Tconstr (path, _, _) -> record loc (Use (Kind.Type, path)) 
       | _ -> (* strange.. *) ()
 
-    class fold = object (self)
+    class fold = object 
       inherit Ttfold.fold as super
 
       method! pattern p = 
