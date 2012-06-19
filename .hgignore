@@ -1,4 +1,4 @@
-.*\.(cm.*|annot)$
+.*\.(cm.*|annot|o)$
 .*~$
 ocamlspot$
 
