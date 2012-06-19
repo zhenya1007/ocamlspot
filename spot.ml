@@ -504,115 +504,75 @@ module Annot = struct
       (Type _ | Str _ | Module _ | Functor_parameter _ | Use _ | Non_expansive _
           | Mod_type _) -> false 
 
-  (* CR jfuruse: A Location.t contains a filename, though it is always
-     unique. Waste of 4xn bytes. *)
-  let recorded = (Hashtbl.create 1023 : (Location.t, (int * t list)) Hashtbl.t)
-
-  let clear () = Hashtbl.clear recorded
-
-  type location_property = Wellformed | Flipped | Over_files | Illformed
-
-  let check_location loc = 
-    if loc.Location.loc_start == Lexing.dummy_pos || loc.Location.loc_end == Lexing.dummy_pos then Illformed
-    else if loc.Location.loc_start = Lexing.dummy_pos || loc.Location.loc_end = Lexing.dummy_pos then Illformed
-    else 
-      (* If the file name is different between the start and the end, we cannot tell the wellformedness. *)
-      if loc.Location.loc_start.Lexing.pos_fname <> loc.Location.loc_end.Lexing.pos_fname then Over_files
-      else
-        (* P4 creates some flipped locations where loc_start > loc_end *)
-        match compare loc.Location.loc_start.Lexing.pos_cnum loc.Location.loc_end.Lexing.pos_cnum 
-        with
-        | -1 | 0 -> Wellformed
-        | _ -> Flipped
-
-  let record loc t = 
-    let really_record () = 
-      let num_records, records = 
-        try Hashtbl.find recorded loc with Not_found -> 0, []
-      in
-      (* CR jfuruse: I am not really sure the below is correct now, 
-         but I remember the huge compilation slow down... *)
-      (* This caching works horribly when too many things are defined 
-         at the same location. For example, a type definition of more than 
-         3000 variants, with sexp camlp4 extension, the compile time explodes
-         from 10secs to 4mins! Therefore this works 
-         only if [num_records <= 10] 
-      *)
-      if num_records <= 10 && List.exists (equal t) records then ()
-      else Hashtbl.replace recorded loc (num_records + 1, t :: records)
-    in
-    match check_location loc with
-    | Wellformed -> really_record ()
-    | Flipped -> 
-        if not loc.Location.loc_ghost then Format.eprintf "%aWarning: Flipped location.@." Location.print loc; 
-        really_record ()
-    | Illformed -> 
-        if not loc.Location.loc_ghost then Format.eprintf "%aWarning: Ill-formed location.@." Location.print loc
-    | Over_files -> ()
-
-  let record_constr_type_use loc ty =
-    let path_of_constr_type t =
-      let t = Ctype.repr t in 
-      match (Ctype.repr t).Types.desc with
-      | Types.Tconstr (p, _, _) -> Some p
-      | _ ->
-          Format.eprintf "Error: Spot.Annot.record_constr_type_use: not a constructor type: %a@." (Printtyp.type_expr ~with_pos:false) ty;
-          None
-    in
-    match path_of_constr_type ty with
-    | Some path -> record loc (Use (Kind.Type, path))
-    | None -> ()
-
-  let record_module_expr_def loc id modl =
-    protect "Spot.Annot.record_module_expr_def" (fun () ->
-      record loc (Str (Abstraction.AStr_module 
-	                  (id, 
-	                  (Abstraction.module_expr modl)))))
-      ()
-    
-  let record_module_expr_use loc modl =
-    protect "Spot.Annot.record_module_expr_use" (fun () ->
-      record loc (Module (Abstraction.module_expr modl));
-      record loc (Mod_type modl.Typedtree.mod_type))
-      ()
-
-(*
-  let record_include_sig loc mty sg =
-    protect "Spot.Annot.record_include_sig" (fun () ->
-      let kids = (* CR jfuruse: copy of structure_item_sub *) 
-	List.concat_map Abstraction.T.kident_of_sigitem sg
-      in
-      let sitem = Abstraction.AStr_include (Abstraction.module_type mty, kids)
-      in 
-      (* ocaml signature simply forgets the fact that kids are
-	 included. We memorize them here. *)
-      List.iter (fun (_,id) ->
-	Hashtbl.add
-          Abstraction.included_sig_identifier_table
-	  id (sitem, ref false (* never recorded in the parent sig yet *))) kids;
-      record loc (Str sitem))
-      ()
-*)
-
   module Record = struct
     open Asttypes
     open Typedtree
     open Abstraction
 
-    let record_record loc typ = 
+    (* CR jfuruse: A Location.t contains a filename, though it is always
+       unique. Waste of 4xn bytes. *)
+  (*
+    let recorded = (Hashtbl.create 1023 : (Location.t, (int * t list)) Hashtbl.t)
+  
+    let clear () = Hashtbl.clear recorded
+  *)
+  
+    type location_property = Wellformed | Flipped | Over_files | Illformed | Ghost
+  
+    let check_location loc = 
+      if loc.Location.loc_ghost then Ghost
+      else if loc.Location.loc_start == Lexing.dummy_pos || loc.Location.loc_end == Lexing.dummy_pos then Illformed
+      else if loc.Location.loc_start = Lexing.dummy_pos || loc.Location.loc_end = Lexing.dummy_pos then Illformed
+      else 
+        (* If the file name is different between the start and the end, we cannot tell the wellformedness. *)
+        if loc.Location.loc_start.Lexing.pos_fname <> loc.Location.loc_end.Lexing.pos_fname then Over_files
+        else
+          (* P4 creates some flipped locations where loc_start > loc_end *)
+          match compare loc.Location.loc_start.Lexing.pos_cnum loc.Location.loc_end.Lexing.pos_cnum 
+          with
+          | -1 | 0 -> Wellformed
+          | _ -> Flipped
+  
+    let record tbl loc t = 
+      let really_record () = 
+        let num_records, records = 
+          try Hashtbl.find tbl loc with Not_found -> 0, []
+        in
+        (* CR jfuruse: I am not really sure the below is correct now, 
+           but I remember the huge compilation slow down... *)
+        (* This caching works horribly when too many things are defined 
+           at the same location. For example, a type definition of more than 
+           3000 variants, with sexp camlp4 extension, the compile time explodes
+           from 10secs to 4mins! Therefore this works 
+           only if [num_records <= 10] 
+        *)
+        if num_records <= 10 && List.exists (equal t) records then ()
+        else Hashtbl.replace tbl loc (num_records + 1, t :: records)
+      in
+      match check_location loc with
+      | Wellformed -> really_record ()
+      | Flipped -> 
+          if not loc.Location.loc_ghost then Format.eprintf "%aWarning: Flipped location.@." Location.print loc; 
+          really_record ()
+      | Illformed -> 
+          if not loc.Location.loc_ghost then Format.eprintf "%aWarning: Ill-formed location.@." Location.print loc
+      | Ghost -> () (* just useless, i guess *)  
+      | Over_files -> ()
+
+    let record_record tbl loc typ = 
       let open Types in
       let open Ctype in
       match (repr typ).desc with
-      | Tconstr (path, _, _) -> record loc (Use (Kind.Type, path)) 
+      | Tconstr (path, _, _) -> record tbl loc (Use (Kind.Type, path)) 
       | _ -> (* strange.. *) ()
 
-    class fold = object 
+    class fold tbl = let record = record tbl in object 
       inherit Ttfold.fold as super
 
       method! pattern p = 
         record p.pat_loc (Type (p.pat_type, p.pat_env, `Pattern));
         begin match p.pat_desc with
-        | Tpat_record _ -> record_record p.pat_loc p.pat_type
+        | Tpat_record _ -> record_record tbl p.pat_loc p.pat_type
         | _ -> ()
         end;
         super#pattern p
@@ -641,7 +601,7 @@ module Annot = struct
       method! expression e = 
         record e.exp_loc (Type (e.exp_type, e.exp_env, `Expr));
         begin match e.exp_desc with
-        | Texp_record _ -> record_record e.exp_loc e.exp_type
+        | Texp_record _ -> record_record tbl e.exp_loc e.exp_type
         | _ -> ()
         end;
         super#expression e
@@ -1076,23 +1036,20 @@ and class_type_declaration =
     end
   end
 
-  let get_recorded () = Hashtbl.fold (fun k (_,vs) st -> 
-    List.map (fun v -> k,v) vs @ st) recorded []
-
   let record_structure str = 
     protect' "Spot.Annot.record_structure" (fun () ->
-      Hashtbl.clear recorded;
-      let o = new Record.fold in
+      let tbl = Hashtbl.create 1023 in
+      let o = new Record.fold tbl in
       ignore (o#structure str);
-      get_recorded ())
+      tbl)
       ()
 
   let record_signature sg = 
     protect' "Spot.Annot.record_signature" (fun () ->
-      Hashtbl.clear recorded;
-      let o = new Record.fold in
+      let tbl = Hashtbl.create 1023 in
+      let o = new Record.fold tbl in
       ignore (o#signature sg);
-      get_recorded ())
+      tbl)
       ()
 
   let string_of_at = function
@@ -1384,7 +1341,7 @@ module Regioned = struct
       { region = r12; value = v }) 
 
   let format f ppf { region = r; value = v } =
-    fprintf ppf "@[<2>%s: %a@]" 
+    fprintf ppf "@[<2>%s:@ @[%a@]@]" 
       (Region.to_string r) 
       f v
 end
@@ -1417,7 +1374,7 @@ module Tree = struct
 	  | None -> fprintf ppf "ROOT"
 	  | Some rrspot -> RAnnot.format ppf rrspot
 	in
-	eprintf "@[<2>%a =>@ %a@]@."
+	eprintf "@[<2>@[%a@] =>@ @[%a@]@]@."
 	  format_parent parent
 	  RAnnot.format rrspot) t
 end

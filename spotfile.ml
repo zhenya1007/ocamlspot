@@ -93,7 +93,7 @@ let abstraction_of_cmt cmt = match cmt.cmt_annots with
 
 let abstraction_of_cmt cmt = 
   try abstraction_of_cmt cmt with e -> 
-    Format.eprintf "AXXX %s@." (Printexc.to_string e);
+    Format.eprintf "Aiee %s@." (Printexc.to_string e);
     raise e
 
 module Make(Spotconfig : Spotconfig_intf.S) = struct
@@ -138,6 +138,7 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
       Debug.format "cmt loading from %s@." path;
       match load_cmt_file path with
       | Some cmt -> 
+          (* CR jfuruse: all things are not always required. so inefficient *)
           Debug.format "cmt loaded from %s@." path;
           Debug.format "cmt loaded now extracting things from %s ...@." path;
           let str, loc_annots = abstraction_of_cmt cmt in

@@ -74,27 +74,8 @@ module Annot : sig
     | Functor_parameter of Ident.t
     | Non_expansive of bool
 
-  val record : Location.t -> t -> unit
-    
-  (* [record_constr_type_use loc ty] records a constructor use of type [ty]
-     at the location [loc]. [ty] must be a constructor type, otherwise,
-     an error message is printed out. 
-  *)
-(*
-  val record_constr_type_use : Location.t -> Types.type_expr -> unit
-  val record_module_expr_def : Location.t -> Ident.t -> Typedtree.module_expr -> unit
-  val record_module_expr_use : Location.t -> Typedtree.module_expr -> unit
-*)
-(*
-  val record_include :
-    Location.t -> Typedtree.module_expr -> (* Types.signature -> *) unit
-  val record_include_sig :
-    Location.t -> Typedtree.module_type -> Types.signature -> unit
-  val record_module_type_def : Location.t -> Ident.t -> Typedtree.module_type -> unit
-*)
-
-  val record_structure : Typedtree.structure -> (Location.t * t) list
-  val record_signature : Typedtree.signature -> (Location.t * t) list
+  val record_structure : Typedtree.structure -> (Location.t, int * t list) Hashtbl.t
+  val record_signature : Typedtree.signature -> (Location.t, int * t list) Hashtbl.t
 
   val format : Format.formatter -> t -> unit
   val summary : Format.formatter -> t -> unit
