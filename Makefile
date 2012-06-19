@@ -53,9 +53,7 @@ ocamlspot: $(COMPOBJS) $(OBJS)
 opt.opt: ocamlspot.opt
 
 ocamlspot.opt: $(COMPXOBJS) $(XOBJS)
-	(cd ../asmrun; $(MAKE) meta.o dynlink.o)
-	$(OCAMLOPT) -o $@ $(COMPFLAGS) $(COMPXOBJS) unix.cmxa $(XOBJS) \
-	  ../asmrun/meta.o ../asmrun/dynlink.o -cclib "$(BYTECCLIBS)"
+	$(OCAMLOPT) -o $@ $(COMPFLAGS) $(COMPXOBJS) unix.cmxa ocamlcommon.cmxa $(XOBJS)
 
 #	$(CAMLOPT) $(LINKFLAGS) -ccopt "$(BYTECCLINKOPTS)" -o ocamlc.opt \
 #	  $(COMPOBJS:.cmo=.cmx) \
