@@ -13,19 +13,10 @@ OCAMLBIN = $(BINDIR)
 # Compilation
 #############
 OCAMLSRCDIR=..
-INCLUDES_DEP=-I $(OCAMLSRCDIR)/parsing \
-	-I $(OCAMLSRCDIR)/utils \
-	-I $(OCAMLSRCDIR)/typing \
-	-I $(OCAMLSRCDIR)/driver \
-	-I $(OCAMLSRCDIR)/bytecomp \
-	-I $(OCAMLSRCDIR)/tools \
-	-I $(OCAMLSRCDIR)/toplevel/ \
-	-I dir1 -I dir2
-
-OTHERS=../../otherlibs
+INCLUDES_DEP=-I dir1 -I dir2
 
 # Requires unix!
-COMPFLAGS= $(INCLUDES_DEP) -I $(OTHERS)/unix
+COMPFLAGS= $(INCLUDES_DEP)
 
 include Makefile.targets
 
@@ -77,7 +68,7 @@ clean:
 beforedepend::
 
 depend: beforedepend
-	$(CAMLRUN) ../../tools/ocamldep $(INCLUDES) -I dir1 -I dir2 *.mli *.ml */*.mli */*.ml > .depend
+	$(OCAMLDEP) $(INCLUDES) -I dir1 -I dir2 *.mli *.ml */*.mli */*.ml > .depend
 
 Makefile.targets: *.ml *.mli */*.ml
 	echo TARGETS= \\ > $@
