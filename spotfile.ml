@@ -28,8 +28,8 @@ type file = {
   path           : string; (** source path. If packed, the .cmo itself *)
   flat           : Abstraction.structure;
   top            : Abstraction.structure;
-  id_def_regions : (Ident.t, Region.t) Hashtbl.t;
-  rannots        : Annot.t Regioned.t list;
+  id_def_regions : (Ident.t, Region.t) Hashtbl.t lazy_t;
+  rannots        : Annot.t list Regioned.t list lazy_t;
   tree           : Tree.t lazy_t
 }
 
@@ -88,12 +88,12 @@ let abstraction_of_cmt cmt = match cmt.cmt_annots with
         in
         Abstraction.AStr_module (Ident.create modname (* stamp is bogus *),
                                  Abstraction.AMod_packed fullpath)) files),
-      []
+      (Hashtbl.create 1 (* empty *))
   | Partial_implementation _parts | Partial_interface _parts -> assert false
 
 let abstraction_of_cmt cmt = 
   try abstraction_of_cmt cmt with e -> 
-    Format.eprintf "AXXX %s@." (Printexc.to_string e);
+    Format.eprintf "Aiee %s@." (Printexc.to_string e);
     raise e
 
 module Make(Spotconfig : Spotconfig_intf.S) = struct
@@ -138,34 +138,37 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
       Debug.format "cmt loading from %s@." path;
       match load_cmt_file path with
       | Some cmt -> 
+          (* CR jfuruse: all things are not always required. so inefficient *)
           Debug.format "cmt loaded from %s@." path;
           Debug.format "cmt loaded now extracting things from %s ...@." path;
           let str, loc_annots = abstraction_of_cmt cmt in
           Debug.format "cmt loaded: abstraction extracted from %s@." path;
           let path = Option.default (Filename.chop_extension path ^ ".cmo") (source_path_of_cmt cmt) in
-          let rannots = List.map (fun (loc, annot) -> 
-            { Regioned.region = Region.of_parsing loc;  value = annot }) loc_annots
+          let rannots = lazy (Hashtbl.fold (fun loc (_,annots) st -> 
+            { Regioned.region = Region.of_parsing loc;  value = annots } :: st) loc_annots [])
           in
           Debug.format "cmt loaded: rannots created from %s@." path;
-          let id_def_regions_list = 
-              List.filter_map (fun (loc, annot) -> match annot with
-              | Annot.Str sitem ->
-                  begin match Abstraction.ident_of_structure_item sitem with
-                  | None -> None
-                  | Some (_kind, id) -> 
-                      Some (id, Region.of_parsing loc)
-                  end
-              | _ -> None) loc_annots
+          let id_def_regions = lazy (
+            let tbl = Hashtbl.create 1023 in
+            Hashtbl.iter (fun loc (_,annots) ->
+              List.iter (function
+                | Annot.Str sitem ->
+                    Option.iter (Abstraction.ident_of_structure_item sitem) ~f:(fun (_kind, id) ->
+                      Hashtbl.add tbl id (Region.of_parsing loc))
+                | _ -> ()) annots) loc_annots;
+            tbl)
           in
-          let id_def_regions = Hashtbl.of_list 1023 id_def_regions_list in
           Debug.format "cmt loaded: id_def_regions created from %s@." path;
           let tree = lazy begin
-            List.fold_left Tree.add Tree.empty rannots
+            Hashtbl.fold (fun loc (_, annots) st ->
+              Tree.add st { Regioned.region = Region.of_parsing loc; value = annots })
+              loc_annots Tree.empty 
           end in
           (* CR jfuruse: it is almost the same as id_def_regions_list *)
-          let flat = List.filter_map (fun (_loc, annot) -> match annot with
+          let flat = Hashtbl.fold (fun _loc (_, annots) st -> 
+            List.filter_map (function
               | Annot.Str sitem -> Some sitem
-              | _ -> None) loc_annots
+              | _ -> None) annots @ st) loc_annots []
           in
           Debug.format "cmt loaded: flat created from %s@." path;
           Debug.format "cmt analysis done from %s@." path;
@@ -324,7 +327,7 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
           | None -> File_itself (* the whole file *)
           | Some id -> 
               Found_at begin try
-                Hashtbl.find file.id_def_regions id
+                Hashtbl.find !!(file.id_def_regions) id
               with
               | Not_found ->
                   eprintf "Error: find location of id %a failed@."

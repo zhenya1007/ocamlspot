@@ -21,15 +21,15 @@ type file = {
   path           : string; (** cmt file itself if packed *)
   flat           : Abstraction.structure;
   top            : Abstraction.structure;
-  id_def_regions : (Ident.t, Region.t) Utils.Hashtbl.t;
-  rannots        : Annot.t Regioned.t list;
+  id_def_regions : (Ident.t, Region.t) Hashtbl.t lazy_t;
+  rannots        : Annot.t list Regioned.t list lazy_t;
   tree           : Tree.t lazy_t
 }
 
 val source_path_of_cmt : cmt_infos -> string option
 val dump_file : file -> unit
 val cmt_of_file : string -> string
-val abstraction_of_cmt : cmt_infos -> Abstraction.structure * (Location.t * Annot.t) list
+val abstraction_of_cmt : cmt_infos -> Abstraction.structure * (Location.t, (int (* CR jfuruse: useless *) * Annot.t list)) Hashtbl.t
 
 module Make(Spotconfig : Spotconfig_intf.S) : sig
   module Load : sig
