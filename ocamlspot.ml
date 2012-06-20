@@ -32,25 +32,6 @@ open Cmt_format
 
 module SAbs = Spot.Abstraction
 
-(*
-type binary_annots =
-  | Packed of Types.signature * string list
-  | Implementation of structure
-  | Interface of signature
-  | Partial_implementation of binary_part array
-  | Partial_interface of binary_part array
-
-and binary_part =
-  | Partial_structure of structure
-  | Partial_structure_item of structure_item
-  | Partial_expression of expression
-  | Partial_pattern of pattern
-  | Partial_class_expr of class_expr
-  | Partial_signature of signature
-  | Partial_signature_item of signature_item
-  | Partial_module_type of module_type
-*)
-
 module Dump = struct
   (* mainly debugging purpose *)
 
