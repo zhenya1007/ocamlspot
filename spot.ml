@@ -709,9 +709,11 @@ and structure = {
             record_def loc (AStr_exception id);
             record_use loc' K.Exception path
         | Tstr_module (id, {loc}, mexp) -> 
+            record loc (Mod_type mexp.mod_type);
             record_def loc (AStr_module (id, module_expr mexp))
         | Tstr_recmodule lst ->
             List.iter (fun (id, {loc}, _mty, mexp) ->
+              record loc (Mod_type mexp.mod_type);
               record_def loc (AStr_module (id, module_expr mexp))) lst
         | Tstr_modtype (id, {loc}, mty) -> 
             record_def loc (AStr_modtype (id, module_type mty))
@@ -800,9 +802,12 @@ and signature_item =
             List.iter (fun (id, {loc}, _) -> 
               record_def loc (AStr_type id)) lst
         | Tsig_exception (id, {loc}, _) -> record_def loc (AStr_exception id)
-        | Tsig_module (id, {loc}, mty) -> record_def loc (AStr_module (id, module_type mty))
+        | Tsig_module (id, {loc}, mty) -> 
+            record loc (Mod_type mty.mty_type);
+            record_def loc (AStr_module (id, module_type mty))
         | Tsig_recmodule lst -> 
             List.iter (fun (id, {loc}, mty) -> 
+              record loc (Mod_type mty.mty_type);
               record_def loc (AStr_module (id, module_type mty))) lst
         | Tsig_modtype (id, {loc}, mtd) -> 
             record_def loc (AStr_modtype (id, modtype_declaration mtd))
@@ -973,6 +978,7 @@ and class_type_declaration =
       let tbl = Hashtbl.create 1023 in
       let o = new Record.fold tbl in
       ignore (o#structure str);
+      Debug.format "structure recorded: %d records@." (Hashtbl.length tbl);
       tbl)
       ()
 
@@ -981,6 +987,7 @@ and class_type_declaration =
       let tbl = Hashtbl.create 1023 in
       let o = new Record.fold tbl in
       ignore (o#signature sg);
+      Debug.format "signature recorded: %d records@." (Hashtbl.length tbl);
       tbl)
       ()
 
