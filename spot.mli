@@ -58,6 +58,8 @@ module Abstraction : sig
   val structure : Typedtree.structure -> module_expr
   val signature : Typedtree.signature -> module_expr
 
+  val clear_cache : unit -> unit
+
   open Format
   val format_module_expr : formatter -> module_expr -> unit
   val format_structure : formatter -> structure -> unit

@@ -203,8 +203,13 @@ module Abstraction = struct
   open Typedtree
   open Asttypes
 
+  (* CR jfuruse: cache never cleaned! *)
   let cache_module_expr = Module_expr.Table.create 31
   let cache_structure_item = Structure_item.Table.create 31
+
+  let clear_cache () = 
+    Module_expr.Table.clear cache_module_expr;
+    Structure_item.Table.clear cache_structure_item
 
   module T = struct
     let kident_of_sigitem = function
