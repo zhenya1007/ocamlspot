@@ -50,7 +50,6 @@ module Abstraction : sig
     | AStr_modtype    of Ident.t * module_expr
     | AStr_class      of Ident.t
     | AStr_class_type of Ident.t
-    | AStr_include    of module_expr * (Ident.t * (Kind.t * Ident.t)) list
     | AStr_included   of Ident.t * module_expr * Kind.t * Ident.t
 
   val ident_of_structure_item : structure_item -> (Kind.t * Ident.t) option

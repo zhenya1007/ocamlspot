@@ -418,7 +418,7 @@ module Eval = struct
             | AStr_class      _ -> Kind.Class
             | AStr_class_type _ -> Kind.Class_type
             | AStr_included (_, _, kind, _) -> kind
-            | AStr_module _ | AStr_include _ -> assert false
+            | AStr_module _ -> assert false
           in
           (id, (kind, eager v)) :: str
 
@@ -491,80 +491,6 @@ module Eval = struct
                 Error (Failure "not found in include")
           end in
           (id', (k, v)) :: str
-
-      | AStr_include (mexp, aliases) ->
-          (* be careful: everything must be done lazily *)
-          let v = lazy begin
-            (* createate it lazily for recursiveness of flat *)
-            let env = Env.overrides env0 str in
-            !!(module_expr env None(*?*) mexp)
-          end in
-          let kid_ztbl = 
-            lazy begin match !!v with
-            | Structure (_, str, _ (* CR jfuruse *) ) -> 
-                List.map (fun (id, (k, v)) -> (k, id), v) str
-            | Parameter pid -> 
-                List.map (fun (_, (k,id)) -> (k, id), eager (Parameter pid)) aliases
-            | Ident _ -> assert false
-            | Closure _ -> assert false
-            | Error _ -> [] (* error *)
-            end
-          in
-          let str' = List.map (fun (id', (k, id)) ->
-            let v = lazy begin
-              let kid_tbl = !!kid_ztbl in
-              (* include does not preserve id stamp, so we must ignore them *)
-              match 
-                List.find_map_opt (fun ((k', id'), v) -> 
-                  if k = k' && Ident0.name id = Ident0.name id' then Some v else None) kid_tbl
-              with
-              | Some vz -> !!vz
-              | None -> 
-                Format.eprintf "INCLUDE ERROR: %s %a in @[%a@]@."
-                  (Kind.name k)
-                  Ident.format id
-                  (Format.list ";@ " (fun ppf ((k,id), _) -> 
-                    Format.fprintf ppf "%s %a" (Kind.name k) Ident.format id))
-                  kid_tbl;
-                Error (Failure "not found in include")
-            end in
-            id', (k, v)) aliases
-          in
-          str' @ str
-(*
-      | AStr_include (_ids (* CR jfuruse: todo *), mexp, kids) ->
-          (* be careful: everything must be done lazily *)
-          let v = lazy begin
-            (* createate it lazily for recursiveness of flat *)
-            let env = Env.overrides env0 str in
-            !!(module_expr env None(*?*) mexp)
-          end in
-          let kname_ztbl = 
-            lazy begin match !!v with
-            | Structure (_, str, _ (* CR jfuruse *) ) -> 
-                List.map (fun (id, (k, v)) -> (k, Ident0.name id), v) str
-            | Parameter pid -> 
-                List.map (fun (k,id) -> 
-                  (k, Ident0.name id), eager (Parameter pid)) kids
-            | Ident _ -> assert false
-            | Closure _ -> assert false
-            | Error _ -> [] (* error *)
-            end
-          in
-          let str' =
-            List.map (fun (k, id) ->
-              let v = 
-                lazy begin
-                  try
-                    !!(List.assoc (k, Ident0.name id) !!kname_ztbl)
-                  with
-                  | Not_found -> Error Not_found
-                end
-              in
-              id, (k, v)) kids
-          in
-          str' @ str
-*)
           ) [] sitems
 
   and apply v1 v2 =
