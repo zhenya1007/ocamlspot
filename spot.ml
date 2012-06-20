@@ -77,15 +77,15 @@ module Abstraction = struct
      same name *) 
 
   and structure_item = 
-    | AStr_value     of Ident.t
-    | AStr_type      of Ident.t
-    | AStr_exception of Ident.t
-    | AStr_module    of Ident.t * module_expr
-    | AStr_modtype   of Ident.t * module_expr
-    | AStr_class     of Ident.t
-    | AStr_cltype    of Ident.t
-    | AStr_include   of module_expr * (Ident.t * (Kind.t * Ident.t)) list
-    | AStr_included  of Ident.t * module_expr * Kind.t * Ident.t
+    | AStr_value      of Ident.t
+    | AStr_type       of Ident.t
+    | AStr_exception  of Ident.t
+    | AStr_module     of Ident.t * module_expr
+    | AStr_modtype    of Ident.t * module_expr
+    | AStr_class      of Ident.t
+    | AStr_class_type of Ident.t
+    | AStr_include    of module_expr * (Ident.t * (Kind.t * Ident.t)) list
+    | AStr_included   of Ident.t * module_expr * Kind.t * Ident.t
 
   let rec format_module_expr ppf = function
     | AMod_ident p -> fprintf ppf "%s" (Path.name p)
@@ -127,7 +127,7 @@ module Abstraction = struct
           (Ident.name id)
           format_module_expr mexp
     | AStr_class id -> fprintf ppf "class %s" (Ident.name id)
-    | AStr_cltype id -> fprintf ppf "class type %s" (Ident.name id)
+    | AStr_class_type id -> fprintf ppf "class type %s" (Ident.name id)
     | AStr_include (mexp, aliases) ->
         fprintf ppf "@[<v4>include %a@ { @[<v>%a@] }@]"
           format_module_expr mexp
@@ -151,7 +151,7 @@ module Abstraction = struct
     | AStr_module (id, _)  -> Some (Kind.Module, id)
     | AStr_modtype (id, _) -> Some (Kind.Module_type, id)
     | AStr_class id        -> Some (Kind.Class, id)
-    | AStr_cltype id       -> Some (Kind.Class_type, id)
+    | AStr_class_type id       -> Some (Kind.Class_type, id)
     | AStr_include _       -> None
     | AStr_included (id, _, kind, _) -> Some (kind, id)
 
@@ -177,7 +177,7 @@ module Abstraction = struct
 	| AStr_type id1, AStr_type id2
 	| AStr_exception id1, AStr_exception id2
 	| AStr_class id1, AStr_class id2
-	| AStr_cltype id1, AStr_cltype id2 -> id1 = id2
+	| AStr_class_type id1, AStr_class_type id2 -> id1 = id2
 	| AStr_module (id1, mexp1) , AStr_module (id2, mexp2) ->
 	    id1 = id2 && Module_expr.equal mexp1 mexp2
 	| AStr_modtype (id1, mty1), AStr_modtype (id2, mty2) ->
@@ -189,9 +189,9 @@ module Abstraction = struct
             id1 = id2 && kind1 = kind2 && id1' = id2'
             && Module_expr.equal mexp1 mexp2
 	| (AStr_value _ | AStr_type _ | AStr_exception _ | AStr_modtype _ 
-	  | AStr_class _ | AStr_cltype _ | AStr_module _ | AStr_include _ | AStr_included _),
+	  | AStr_class _ | AStr_class_type _ | AStr_module _ | AStr_include _ | AStr_included _),
 	  (AStr_value _ | AStr_type _ | AStr_exception _ | AStr_modtype _ 
-	  | AStr_class _ | AStr_cltype _ | AStr_module _ | AStr_include _ | AStr_included _) -> false
+	  | AStr_class _ | AStr_class_type _ | AStr_module _ | AStr_include _ | AStr_included _) -> false
 
       let hash = Hashtbl.hash
     end
@@ -225,7 +225,7 @@ module Abstraction = struct
       | Sig_module (id, mty, _) -> AStr_module (id, module_type mty)
       | Sig_modtype (id, mdtd) -> AStr_modtype (id, modtype_declaration mdtd)
       | Sig_class (id, _, _) -> AStr_class id
-      | Sig_class_type (id, _, _) -> AStr_cltype id
+      | Sig_class_type (id, _, _) -> AStr_class_type id
 
     and module_type = function
       | Mty_ident p -> AMod_ident p
@@ -345,7 +345,7 @@ module Abstraction = struct
     | Tstr_class classdescs ->
 	List.map (fun (cls, _names, _) -> AStr_class cls.ci_id_class) classdescs
     | Tstr_class_type iddecls ->
-	List.map (fun (id, _, _) -> AStr_cltype id) iddecls
+	List.map (fun (id, _, _) -> AStr_class_type id) iddecls
     | Tstr_include (mexp, ids) ->
         let aliases = try aliases_of_include mexp ids with _ -> assert false in
         [AStr_include (module_expr mexp, aliases)]
@@ -381,11 +381,11 @@ module Abstraction = struct
         (* CR jfuruse: still not sure which one is which *)
         List.concat_map (fun cls -> 
           [ AStr_class cls.ci_id_class; 
-            AStr_cltype  cls.ci_id_class_type;
+            AStr_class_type  cls.ci_id_class_type;
             AStr_type cls.ci_id_object;
             AStr_type cls.ci_id_typesharp]
         ) clses
-    | Tsig_class_type clses -> List.map (fun cls -> AStr_cltype cls.ci_id_class) clses
+    | Tsig_class_type clses -> List.map (fun cls -> AStr_class_type cls.ci_id_class) clses
 
     | Tsig_recmodule lst -> 
         List.map (fun (id, _, mty) -> AStr_module (id, module_type mty)) lst
@@ -721,7 +721,7 @@ and structure = {
             record_use loc K.Module path
         | Tstr_class_type lst ->
             List.iter (fun (id, {loc}, _) -> 
-              record_def loc (AStr_cltype id)) lst
+              record_def loc (AStr_class_type id)) lst
         | Tstr_include (_mexp, _idents) -> () (* done in #structure_item *)
         | Tstr_eval _ 
         | Tstr_value _ 
@@ -965,7 +965,7 @@ and class_type_declaration =
         let loc = ci.ci_id_name.loc in
         (* CR jfuruse: are they correct? *)
         record_def loc (AStr_class ci.ci_id_class);
-        record_def loc (AStr_cltype ci.ci_id_class_type);
+        record_def loc (AStr_class_type ci.ci_id_class_type);
         record_def loc (AStr_type ci.ci_id_object);
         record_def loc (AStr_type ci.ci_id_typesharp);
         super#class_infos f ci
