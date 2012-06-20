@@ -43,20 +43,22 @@ module Abstraction : sig
   and structure = structure_item list
 
   and structure_item = 
-    | AStr_value     of Ident.t
-    | AStr_type      of Ident.t
-    | AStr_exception of Ident.t
-    | AStr_module    of Ident.t * module_expr
-    | AStr_modtype   of Ident.t * module_expr
-    | AStr_class     of Ident.t
-    | AStr_cltype    of Ident.t
-    | AStr_include   of module_expr * (Ident.t * (Kind.t * Ident.t)) list
-    | AStr_included  of Ident.t * module_expr * Kind.t * Ident.t
+    | AStr_value      of Ident.t
+    | AStr_type       of Ident.t
+    | AStr_exception  of Ident.t
+    | AStr_module     of Ident.t * module_expr
+    | AStr_modtype    of Ident.t * module_expr
+    | AStr_class      of Ident.t
+    | AStr_class_type of Ident.t
+    | AStr_include    of module_expr * (Ident.t * (Kind.t * Ident.t)) list
+    | AStr_included   of Ident.t * module_expr * Kind.t * Ident.t
 
   val ident_of_structure_item : structure_item -> (Kind.t * Ident.t) option
 
   val structure : Typedtree.structure -> module_expr
   val signature : Typedtree.signature -> module_expr
+
+  val clear_cache : unit -> unit
 
   open Format
   val format_module_expr : formatter -> module_expr -> unit

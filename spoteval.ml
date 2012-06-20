@@ -405,18 +405,18 @@ module Eval = struct
       | AStr_type      id
       | AStr_exception id
       | AStr_class     id
-      | AStr_cltype    id ->
+      | AStr_class_type    id ->
           (* CR jfuruse: not sure *)
           let pident = { PIdent.path = env0.Env.path; ident = Some id } in
           let v = Ident pident in
           (* CR jfuruse: use ident_of_structure_item *)
           let kind = match sitem with
-            | AStr_value     _ -> Kind.Value
-            | AStr_type      _ -> Kind.Type
-            | AStr_exception _ -> Kind.Exception
-            | AStr_modtype   _ -> Kind.Module_type
-            | AStr_class     _ -> Kind.Class
-            | AStr_cltype    _ -> Kind.Class_type
+            | AStr_value      _ -> Kind.Value
+            | AStr_type       _ -> Kind.Type
+            | AStr_exception  _ -> Kind.Exception
+            | AStr_modtype    _ -> Kind.Module_type
+            | AStr_class      _ -> Kind.Class
+            | AStr_class_type _ -> Kind.Class_type
             | AStr_included (_, _, kind, _) -> kind
             | AStr_module _ | AStr_include _ -> assert false
           in
