@@ -101,7 +101,10 @@ let class_declaration cldecl =
     cty_path = path cldecl.cty_path;
     cty_new = Option.map cldecl.cty_new ~f:type_expr }
 
-let cltype_declaration _ = assert false
+let class_type_declaration ctd =
+  { ctd with clty_params = List.map type_expr ctd.clty_params;
+    clty_type = class_type ctd.clty_type;
+    clty_path = path ctd.clty_path }
 
 let rec module_type = function
   | Mty_ident p -> Mty_ident (path p)
@@ -124,7 +127,7 @@ and signature_item = function
   | Sig_class (id, cldecl, rec_status) ->
       Sig_class (ident id, class_declaration cldecl, rec_status)
   | Sig_class_type (id, cltdecl, rec_status) ->
-      Sig_class_type (ident id, cltype_declaration cltdecl, rec_status)
+      Sig_class_type (ident id, class_type_declaration cltdecl, rec_status)
 
 and modtype_declaration = function
   | Modtype_abstract -> Modtype_abstract
