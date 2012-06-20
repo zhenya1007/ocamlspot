@@ -396,53 +396,9 @@ module Abstraction = struct
         let aliases = try aliases_of_include' false sg0 ids with _ -> assert false in
         [AStr_include (module_type mty, aliases)]
         
-	
   and modtype_declaration = function
     | Tmodtype_abstract -> AMod_abstract
     | Tmodtype_manifest mty -> module_type mty
-
-(* This is wrong. This only flatten module related things and 
-   non modules like patterns are never flattened. 
-
-
-  let rec flatten str = List.concat_map flatten_item str
-
-  and flatten_item item = match item with
-    | AStr_value     _
-    | AStr_type      _
-    | AStr_exception _
-    | AStr_class     _
-    | AStr_cltype    _ -> [item]
-    | AStr_module  (_, mexp)
-    | AStr_modtype (_, mexp) -> item :: flatten_module_expr mexp
-    | AStr_include (mexp, aliases) ->
-        let flats = flatten_module_expr mexp in
-(* mexp can be just M, so we dont try expanding it
-        List.map (fun (id, ((k,id') as kid)) ->
-          try
-            Some (List.find (fun sitem -> ident_of_structure_item sitem = Some kid) flats)
-          with
-          | Not_found ->
-              Format.eprintf "@[<2>%s %a not found in@ @[%a@]@]@." 
-                (Kind.name k) Ident.format id'
-                format_structure flats;
-              None
-        )
-          aliases
-*)
-        item :: flats
-
-  and flatten_module_expr = function
-    | AMod_ident _ -> []
-    | AMod_packed _ -> []
-    | AMod_structure str -> flatten str
-    | AMod_functor (_, _, mexp) -> flatten_module_expr mexp
-    | AMod_apply (_, m) -> flatten_module_expr m
-    | AMod_constraint (m, _) -> flatten_module_expr m
-    | AMod_unpack m -> flatten_module_expr m
-    | AMod_abstract -> []
-*)
-
 
   and type_declaration td = match td.typ_kind with
     | Ttype_abstract -> []
