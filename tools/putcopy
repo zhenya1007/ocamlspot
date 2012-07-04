@@ -2,7 +2,7 @@
 
 # exec in camlimages directory
 
-open(IN, "find . -name '*.ml' -o -name '*.mli' -o -name '*.ml.in' -o -name '*.mli.in' -o -name '*.c' | grep -v \.hg |");
+open(IN, "find . -name '*.ml' -o -name '*.mli' -o -name '*.ml.in' -o -name '*.mli.in' -o -name '*.c' | grep -v \.hg | grep -v tests/ |");
 
 while(<IN>){
     chop;
@@ -41,7 +41,7 @@ while(<IN>){
 	while(<IN2>){ print OUT $_; }
 	close IN2;
 	close OUT;
-	`mv $file $file.bak`;
+	# `mv $file $file.bak`;
 	`mv $file.out $file`;
     } else {
 	# we have no copyright notice
@@ -62,7 +62,7 @@ while(<IN>){
 	while(<IN2>){ print OUT $_; }
 	close IN2;
 	close OUT;
-	`mv $file $file.bak`;
+	# `mv $file $file.bak`;
 	`mv $file.out $file`;
     }
 }
