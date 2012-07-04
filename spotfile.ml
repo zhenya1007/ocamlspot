@@ -143,7 +143,8 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
           Debug.format "cmt loaded now extracting things from %s ...@." path;
           let str, loc_annots = abstraction_of_cmt cmt in
           Debug.format "cmt loaded: abstraction extracted from %s@." path;
-          
+
+          (* CR jfuruse: this is a dirty workaround. It should be nice if we could know cmt is created by opt or byte *)          
           let cm_extension = 
             if List.exists (fun x -> match Filename.split_extension x with (_, ".cmx") -> true | _ -> false) (Array.to_list cmt.cmt_args)
             then ".cmx" else ".cmo"
