@@ -1,14 +1,17 @@
 (***********************************************************************)
 (*                                                                     *)
-(*                           Objective Caml                            *)
+(*                            OCamlSpotter                             *)
 (*                                                                     *)
-(*            Xavier Leroy, projet Cristal, INRIA Rocquencourt         *)
+(*                             Jun FURUSE                              *)
 (*                                                                     *)
-(*  Copyright 1996 Institut National de Recherche en Informatique et   *)
-(*  en Automatique.  All rights reserved.  This file is distributed    *)
-(*  under the terms of the Q Public License version 1.0.               *)
+(*   Copyright 2008-2012 Jun Furuse. All rights reserved.              *)
+(*   This file is distributed under the terms of the GNU Library       *)
+(*   General Public License, with the special exception on linking     *)
+(*   described in file LICENSE.                                        *)
 (*                                                                     *)
 (***********************************************************************)
+
+
 
 (* $Id: main.ml 10444 2010-05-20 14:06:29Z doligez $ *)
 
