@@ -83,7 +83,7 @@ let abstraction_of_cmt cmt = match cmt.cmt_annots with
       (List.map (fun file ->
         let fullpath = if Filename.is_relative file then Filename.concat cmt.cmt_builddir file else file in
         let modname = match Filename.split_extension (Filename.basename file) with 
-          | modname, ".cmo" -> String.capitalize modname
+          | modname, (".cmo" | ".cmx") -> String.capitalize modname
           | _ -> assert false
         in
         Abstraction.AStr_module (Ident.create modname (* stamp is bogus *),
@@ -143,7 +143,13 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
           Debug.format "cmt loaded now extracting things from %s ...@." path;
           let str, loc_annots = abstraction_of_cmt cmt in
           Debug.format "cmt loaded: abstraction extracted from %s@." path;
-          let path = Option.default (Filename.chop_extension path ^ ".cmo") (source_path_of_cmt cmt) in
+          
+          let cm_extension = 
+            if List.exists (fun x -> match Filename.split_extension x with (_, ".cmx") -> true | _ -> false) (Array.to_list cmt.cmt_args)
+            then ".cmx" else ".cmo"
+          in
+
+          let path = Option.default (Filename.chop_extension path ^ cm_extension) (source_path_of_cmt cmt) in
           let rannots = lazy (Hashtbl.fold (fun loc (_,annots) st -> 
             { Regioned.region = Region.of_parsing loc;  value = annots } :: st) loc_annots [])
           in

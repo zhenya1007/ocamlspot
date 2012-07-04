@@ -25,7 +25,18 @@ all: test2.cmo $(TARGETS)
 pack.cmo: packed.cmo
 	$(OCAMLC) -pack -o $@ $<
 
+packed.cmx: packed.ml
+	$(OCAMLOPT) -for-pack Pack $<   	
+
+packed.cmo: packed.ml
+	$(OCAMLC) -for-pack Pack $<   	
+
+pack.cmx: packed.cmx
+	$(OCAMLOPT) -pack -o $@ $<
+
 packed_alias.cmo: pack.cmo
+
+packed_alias.cmx: pack.cmx
 
 test2.cmo: test.cmo
 	$(OCAMLC) -pack -o $@ $<
