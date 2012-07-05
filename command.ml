@@ -11,8 +11,6 @@
 (*                                                                     *)
 (***********************************************************************)
 
-
-
 (* escape metacharacters for /bin/sh 
 
    Backslash quoting the following characters

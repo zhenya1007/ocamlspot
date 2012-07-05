@@ -9,19 +9,14 @@ while(<IN>){
     $file= $_;
     open(IN2, "$file");
     $_ = <IN2>;
-    if ( /\(\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*[\*]+\)/ ||
-	 /\/\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*[\*]+\//
+    if ( /\(\*{10}\**\)/ ||
+	 /\/\*{10}\**\//
 	){
 	# long comment, should be copyright notice
 	print STDERR "Find a copyright in $file";
 	open(OUT, "> $file.out");
-	if( $file =~ /freetype|examples|xvthumb|ps|bitmap\.ml|\/o[A-Z]/ ){
-	    print STDERR " (JPF only)\n";
-	    open(COPY, "tools/COPY-JPF");
-	} else {
-	    print STDERR "\n";
-	    open(COPY, "tools/COPY");
-	}
+	print STDERR "\n";
+	open(COPY, "tools/COPY");
 	if( $file =~ /\.c$/ ){  
 	    while(<COPY>){ 
 		s/[\(\)]/\//g;
@@ -32,12 +27,19 @@ while(<IN>){
 	}
 	close COPY;
 	while(<IN2>){
-	    if ( /\(\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*[\*]+\)/ ||
-		 /\/\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*[\*]+\//
+	    if ( /\(\*{10}\**\)/ ||
+		 /\/\*{10}\**\//
 		){
 		last;
 	    }
 	}
+
+	while(<IN2>){
+	    if ( ! /^\s*[\r\n]+$/ ){ last; }
+	}
+	print OUT "\n";
+	print OUT "$_";
+
 	while(<IN2>){ print OUT $_; }
 	close IN2;
 	close OUT;
@@ -59,6 +61,13 @@ while(<IN>){
 	}
 	close COPY;
 	print OUT $org;
+
+	while(<IN2>){
+	    if ( ! /^\s*[\r\n]+$/ ){ last; }
+	}
+	print OUT "\n";
+	print OUT "$_";
+
 	while(<IN2>){ print OUT $_; }
 	close IN2;
 	close OUT;

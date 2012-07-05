@@ -11,7 +11,6 @@
 (*                                                                     *)
 (***********************************************************************)
 
-
 (* This module is extended in ocamlspot, therefore it cannot be .mli *)
 
 (* Annotations 

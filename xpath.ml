@@ -11,7 +11,6 @@
 (*                                                                     *)
 (***********************************************************************)
 
-
 (* extend the original module *)
 open Path
 module Ident = struct

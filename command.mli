@@ -11,8 +11,6 @@
 (*                                                                     *)
 (***********************************************************************)
 
-
-
 val escaped : (char -> bool) -> string -> string
 val escaped_for_shell : string -> string
 val shell : string list -> int

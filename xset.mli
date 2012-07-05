@@ -11,8 +11,6 @@
 (*                                                                     *)
 (***********************************************************************)
 
-
-
 (* Set with binary custom search *)
 
 module type OrderedType = Set.OrderedType

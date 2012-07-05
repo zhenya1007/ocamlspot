@@ -11,7 +11,6 @@
 (*                                                                     *)
 (***********************************************************************)
 
-
 (* Annotations 
 
    Annotations are stored in .spot with their locations
