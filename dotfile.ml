@@ -1,10 +1,10 @@
 (***********************************************************************)
 (*                                                                     *)
-(*                            ocamlspotter                             *)
+(*                            OCamlSpotter                             *)
 (*                                                                     *)
 (*                             Jun FURUSE                              *)
 (*                                                                     *)
-(*   Copyright 2008, 2009 Jun Furuse. All rights reserved.             *)
+(*   Copyright 2008-2012 Jun Furuse. All rights reserved.              *)
 (*   This file is distributed under the terms of the GNU Library       *)
 (*   General Public License, with the special exception on linking     *)
 (*   described in file LICENSE.                                        *)
@@ -20,10 +20,12 @@
       is searched in $DIR/dirname/subdir/.
 *)
 
+open Utils
+
 let name = ".ocamlspot"
 
 let rec find absdir =
-  let path = Filename.concat absdir name in
+  let path = absdir ^/ name in
   if Sys.file_exists path then Some (absdir, path)
   else if absdir = "/" then None
   else find (Filename.dirname absdir)

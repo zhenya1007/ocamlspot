@@ -1,15 +1,16 @@
-#########################################################################
-#                                                                       #
-#                             OCamlSpotter                              #
-#                                                                       #
-#                              Jun FURUSE                               #
-#                                                                       #
-#     Copyright 2008 Jun Furuse. All rights reserved.                   #
-#     This file is distributed under the terms of the GNU Library       #
-#     General Public License, with the special exception on linking     #
-#     described in file LICENSE.                                        #
-#                                                                       #
-#########################################################################
+#######################################################################
+#                                                                     #
+#                            OCamlSpotter                             #
+#                                                                     #
+#                             Jun FURUSE                              #
+#                                                                     #
+#   Copyright 2008-2012 Jun Furuse. All rights reserved.              #
+#   This file is distributed under the terms of the GNU Library       #
+#   General Public License, with the special exception on linking     #
+#   described in file LICENSE.                                        #
+#                                                                     #
+#######################################################################
+
 
 OCAMLDIR=$(PREFIX)/lib/ocaml/
 include $(OCAMLDIR)/Makefile.config
@@ -17,8 +18,8 @@ include $(OCAMLDIR)/Makefile.config
 # Various commands and dir
 ##########################
 CAMLRUN= ocamlrun
-OCAMLC   = ocamlc -annot -bin-annot -w Ae-4-9 -warn-error Ae-4-9-32-33-34
-OCAMLOPT = ocamlopt -annot -bin-annot -w A-4-9 -warn-error Ae-4-9-32-33-34
+OCAMLC   = ocamlc -annot -bin-annot -w A-4-9 -warn-error A-4-9-32-33-34
+OCAMLOPT = ocamlopt -annot -bin-annot -w A-4-9 -warn-error A-4-9-32-33-34
 OCAMLDEP = ocamldep
 OCAMLLEX = ocamllex
 OCAMLYACC= ocamlyacc
@@ -28,7 +29,7 @@ OCAMLBIN = $(BINDIR)
 # Compilation
 #############
 OCAMLSRCDIR=..
-INCLUDES_DEP=-I $(OCAMLDIR)/compiler-libs
+INCLUDES_DEP=-I +compiler-libs
 
 # Requires unix!
 COMPFLAGS= $(INCLUDES_DEP) -I +unix

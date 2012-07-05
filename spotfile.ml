@@ -1,10 +1,10 @@
 (***********************************************************************)
 (*                                                                     *)
-(*                            ocamlspotter                             *)
+(*                            OCamlSpotter                             *)
 (*                                                                     *)
 (*                             Jun FURUSE                              *)
 (*                                                                     *)
-(*   Copyright 2008, 2009 Jun Furuse. All rights reserved.             *)
+(*   Copyright 2008-2012 Jun Furuse. All rights reserved.              *)
 (*   This file is distributed under the terms of the GNU Library       *)
 (*   General Public License, with the special exception on linking     *)
 (*   described in file LICENSE.                                        *)
@@ -34,7 +34,7 @@ type file = {
 }
 
 let source_path_of_cmt file = match file.cmt_sourcefile with 
-  | Some f -> Some (Filename.concat file.cmt_builddir f)
+  | Some f -> Some (file.cmt_builddir ^/ f)
   | None -> None
 
 let dump_file file =
@@ -64,7 +64,7 @@ let cmt_of_file file =
   in
   match dirname with
   | None -> filename
-  | Some d -> Filename.concat d filename
+  | Some d -> d ^/ filename
 
 let abstraction_of_cmt cmt = match cmt.cmt_annots with
   | Implementation str -> 
@@ -81,9 +81,9 @@ let abstraction_of_cmt cmt = match cmt.cmt_annots with
       end
   | Packed (_sg, files) ->
       (List.map (fun file ->
-        let fullpath = if Filename.is_relative file then Filename.concat cmt.cmt_builddir file else file in
+        let fullpath = if Filename.is_relative file then cmt.cmt_builddir ^/ file else file in
         let modname = match Filename.split_extension (Filename.basename file) with 
-          | modname, ".cmo" -> String.capitalize modname
+          | modname, (".cmo" | ".cmx") -> String.capitalize modname
           | _ -> assert false
         in
         Abstraction.AStr_module (Ident.create modname (* stamp is bogus *),
@@ -129,8 +129,7 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
           end
         in
         List.find Sys.file_exists 
-          (List.map (fun d -> 
-            Filename.concat d source_base) source_dirs)
+          (List.map (fun d -> d ^/ source_base) source_dirs)
 
     let load_cmt_file file = snd (Cmt_format.read file)
 
@@ -143,7 +142,14 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
           Debug.format "cmt loaded now extracting things from %s ...@." path;
           let str, loc_annots = abstraction_of_cmt cmt in
           Debug.format "cmt loaded: abstraction extracted from %s@." path;
-          let path = Option.default (Filename.chop_extension path ^ ".cmo") (source_path_of_cmt cmt) in
+
+          (* CR jfuruse: this is a dirty workaround. It should be nice if we could know cmt is created by opt or byte *)          
+          let cm_extension = 
+            if List.exists (fun x -> match Filename.split_extension x with (_, ".cmx") -> true | _ -> false) (Array.to_list cmt.cmt_args)
+            then ".cmx" else ".cmo"
+          in
+
+          let path = Option.default (Filename.chop_extension path ^ cm_extension) (source_path_of_cmt cmt) in
           let rannots = lazy (Hashtbl.fold (fun loc (_,annots) st -> 
             { Regioned.region = Region.of_parsing loc;  value = annots } :: st) loc_annots [])
           in
@@ -260,11 +266,10 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
                 in
                 assert (found_dir = found_dir');
                 let dir = 
-                  if Filename.is_relative build_dir then 
-                    Filename.concat found_dir build_dir
+                  if Filename.is_relative build_dir then found_dir ^/ build_dir
                   else build_dir
                 in
-                Filename.concat dir rel_cmtname))
+                dir ^/ rel_cmtname))
       in
       try load ~load_paths cmtname with
       | e -> 
