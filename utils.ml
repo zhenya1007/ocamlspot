@@ -169,7 +169,7 @@ module Unix = struct
       }
 
   let path ~depth ~dir base =
-    let path = match Filename.concat dir base with
+    let path = match dir ^/ base with
       | "./." -> "."
       | s -> s
     in
