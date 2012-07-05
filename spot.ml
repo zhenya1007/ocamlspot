@@ -97,7 +97,6 @@ module Abstraction = struct
     | AStr_modtype    of Ident.t * module_expr
     | AStr_class      of Ident.t
     | AStr_class_type of Ident.t
-    | AStr_include    of module_expr * (Ident.t * (Kind.t * Ident.t)) list
     | AStr_included   of Ident.t * module_expr * Kind.t * Ident.t
 
   let rec format_module_expr ppf = function
@@ -141,15 +140,6 @@ module Abstraction = struct
           format_module_expr mexp
     | AStr_class id -> fprintf ppf "class %s" (Ident.name id)
     | AStr_class_type id -> fprintf ppf "class type %s" (Ident.name id)
-    | AStr_include (mexp, aliases) ->
-        fprintf ppf "@[<v4>include %a@ { @[<v>%a@] }@]"
-          format_module_expr mexp
-          (list ";@ " (fun ppf (id', (k,id)) -> 
-            fprintf ppf "%s %a = %a" 
-              (Kind.name k)
-              Ident.format id' 
-              Ident.format id))
-          aliases
     | AStr_included (id, mexp, kind, id') ->
         fprintf ppf "@[<v4>included %s %a = %a@ { @[<v>%a@] }@]"
           (Kind.name kind)
@@ -164,8 +154,7 @@ module Abstraction = struct
     | AStr_module (id, _)  -> Some (Kind.Module, id)
     | AStr_modtype (id, _) -> Some (Kind.Module_type, id)
     | AStr_class id        -> Some (Kind.Class, id)
-    | AStr_class_type id       -> Some (Kind.Class_type, id)
-    | AStr_include _       -> None
+    | AStr_class_type id   -> Some (Kind.Class_type, id)
     | AStr_included (id, _, kind, _) -> Some (kind, id)
 
   module Module_expr = struct
@@ -195,16 +184,13 @@ module Abstraction = struct
 	    id1 = id2 && Module_expr.equal mexp1 mexp2
 	| AStr_modtype (id1, mty1), AStr_modtype (id2, mty2) ->
             id1 = id2 && Module_expr.equal mty1 mty2
-	| AStr_include (mexp1, aliases1), AStr_include (mexp2, aliases2) ->
-            aliases1 = aliases2
-            && Module_expr.equal mexp1 mexp2
 	| AStr_included (id1, mexp1, kind1, id1'), AStr_included (id2, mexp2, kind2, id2') ->
             id1 = id2 && kind1 = kind2 && id1' = id2'
             && Module_expr.equal mexp1 mexp2
 	| (AStr_value _ | AStr_type _ | AStr_exception _ | AStr_modtype _ 
-	  | AStr_class _ | AStr_class_type _ | AStr_module _ | AStr_include _ | AStr_included _),
+	  | AStr_class _ | AStr_class_type _ | AStr_module _ | AStr_included _),
 	  (AStr_value _ | AStr_type _ | AStr_exception _ | AStr_modtype _ 
-	  | AStr_class _ | AStr_class_type _ | AStr_module _ | AStr_include _ | AStr_included _) -> false
+	  | AStr_class _ | AStr_class_type _ | AStr_module _ | AStr_included _) -> false
 
       let hash = Hashtbl.hash
     end
@@ -364,9 +350,11 @@ module Abstraction = struct
 	List.map (fun (cls, _names, _) -> AStr_class cls.ci_id_class) classdescs
     | Tstr_class_type iddecls ->
 	List.map (fun (id, _, _) -> AStr_class_type id) iddecls
-    | Tstr_include (mexp, ids) ->
-        let aliases = try aliases_of_include mexp ids with _ -> assert false in
-        [AStr_include (module_expr mexp, aliases)]
+    | Tstr_include (mexp, idents) ->
+        let id_kid_list = try aliases_of_include mexp idents with e -> prerr_endline "structure_item include failed!!!"; raise e in
+        let m = module_expr mexp in
+        List.map (fun (id, (k, id')) -> AStr_included (id, m, k, id')) id_kid_list
+
 
   (* CR jfuruse: caching like module_expr_sub *)
   and module_type mty = module_type_desc mty.mty_desc
@@ -409,10 +397,11 @@ module Abstraction = struct
         List.map (fun (id, _, mty) -> AStr_module (id, module_type mty)) lst
     | Tsig_open _ -> []
     | Tsig_include (mty, sg) -> 
+        let m = module_type mty in
         let sg0 = try match Mtype.scrape mty.mty_env mty.mty_type with Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
-        let ids = List.map (fun sitem -> snd (T.kident_of_sigitem sitem)) sg in
+        let ids = List.map (fun si -> snd (T.kident_of_sigitem si)) sg in
         let aliases = try aliases_of_include' false sg0 ids with _ -> assert false in
-        [AStr_include (module_type mty, aliases)]
+        List.map (fun (id, (k, id')) -> AStr_included (id, m, k, id')) aliases
         
   and modtype_declaration = function
     | Tmodtype_abstract -> AMod_abstract

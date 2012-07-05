@@ -29,7 +29,7 @@ OCAMLBIN = $(BINDIR)
 # Compilation
 #############
 OCAMLSRCDIR=..
-INCLUDES_DEP=-I $(OCAMLDIR)/compiler-libs
+INCLUDES_DEP=-I +compiler-libs
 
 # Requires unix!
 COMPFLAGS= $(INCLUDES_DEP) -I +unix
