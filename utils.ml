@@ -116,8 +116,8 @@ module Option = struct
     | None -> ()
     | Some v -> f v
 
-  let default dv = function
-    | None -> dv
+  let default df = function
+    | None -> df ()
     | Some v -> v
 end
 
@@ -133,6 +133,9 @@ let protect ~f x ~(finally : 'a -> unit) =
   finally x;
   res
 ;;
+
+let failwithf fmt = Printf.kprintf failwith fmt
+let invalid_argf fmt = Printf.kprintf invalid_arg fmt
 
 module Unix = struct
   include Unix

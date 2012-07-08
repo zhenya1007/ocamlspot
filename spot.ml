@@ -1299,3 +1299,64 @@ module Tree = struct
 	  RAnnot.format rrspot) t
 end
 
+(* Minimum data for spotting, which are saved into spot files *)
+module File = struct
+  type t = {
+    modname        : string;
+    builddir       : string; 
+    loadpath       : string list;
+    args           : string array;
+    path           : string; (** source path. If packed, the .cmo itself *)
+    top            : Abstraction.structure;
+    loc_annots     : (Location.t, Annot.t list) Hashtbl.t
+  }
+
+  let save path t =
+    let oc = open_out_bin path in
+    output_string oc "spot";
+    output_string oc Checksum.char16;
+    output_value oc t;
+    close_out oc
+
+  let load path =
+    let ic = open_in path in
+    let buf = String.create 4 in
+    really_input ic buf 0 4;
+    if buf <> "spot" then failwithf "file %s is not a spot file" path;
+    let buf = String.create 16 in
+    really_input ic buf 0 16;
+    if buf <> Checksum.char16 then failwithf "file %s has an incompatible checksum" path;
+    let v = input_value ic in
+    close_in ic;
+    v
+
+  let of_cmt cmt =
+    let ext = if Cmt.is_opt cmt then ".cmx" else ".cmo" in
+    let path = Option.default (Filename.chop_extension path ^ ext) (Cmt.source_path cmt) in
+    { modname = cmt.cmt_modname;
+      builddir = cmt.cmt_builddir;
+      loadpath = cmt.cmt_loadpath;
+      args = cmt.cmt_args;
+      path; 
+      top;
+      loc_annots;
+    }
+end
+
+(* Spot info for each compilation unit *)
+module Unit = struct
+  type t = {
+    modname        : string;
+    builddir       : string; 
+    loadpath       : string list;
+    args           : string array;
+    path           : string; (** source path. If packed, the .cmo itself *)
+    top            : Abstraction.structure;
+
+    flat           : Abstraction.structure lazy_t;
+    id_def_regions : (Ident.t, Region.t) Hashtbl.t lazy_t;
+    rannots        : Annot.t list Regioned.t list lazy_t;
+    tree           : Tree.t lazy_t
+  }
+end
+

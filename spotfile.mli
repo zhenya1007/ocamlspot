@@ -16,8 +16,12 @@ open Spoteval
 open Cmt_format
 open Spoteval
 
-type file = {
-  cmt            : Cmt_format.cmt_infos;
+type t = {
+  modname        : string;
+  builddir       : string; 
+  loadpath       : string list;
+  args           : string array;
+
   path           : string; (** cmt file itself if packed *)
   flat           : Abstraction.structure;
   top            : Abstraction.structure;
@@ -26,24 +30,23 @@ type file = {
   tree           : Tree.t lazy_t
 }
 
-val source_path_of_cmt : cmt_infos -> string option
-val dump_file : file -> unit
-val cmt_of_file : string -> string
-val abstraction_of_cmt : cmt_infos -> Abstraction.structure * (Location.t, (int (* CR jfuruse: useless *) * Annot.t list)) Hashtbl.t
+module Cmt : sig
+  val of_path : string -> string
+end
+
+val dump : t -> unit
 
 module Make(Spotconfig : Spotconfig_intf.S) : sig
-  module Load : sig
-    exception Old_cmt of string * string
-    val load : load_paths:string list -> string -> file
-    val load_module : ?spit:bool -> load_paths:string list -> string -> file (* CR jfuruse: spit *)
-  end
   exception Old_cmt of string * string
-  val load : load_paths:string list -> string -> file
-  val load_module : ?spit:bool -> load_paths:string list -> string -> file (* CR jfuruse: spit *)
-  val empty_env   : file -> Env.t
-  val invalid_env : file -> Env.t
+  val load : load_paths:string list -> string -> t
+  val load_module : ?spit:bool -> load_paths:string list -> string -> t (* CR jfuruse: spit *)
+
+  val empty_env   : t -> Env.t
+  val invalid_env : t -> Env.t
+
   type result = File_itself | Found_at of Region.t | Predefined
-  val find_path_in_flat : file -> Kind.t * Path.t -> PIdent.t * result
+
+  val find_path_in_flat : t -> Kind.t * Path.t -> PIdent.t * result
   val str_of_global_ident : load_paths:string list -> Ident.t -> string * Value.structure
   val eval_packed : Env.t -> string -> Value.t
 end

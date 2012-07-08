@@ -28,14 +28,12 @@ module File = struct
   include Spotfile.Make(C)
 end
 
-open Cmt_format
-
 module SAbs = Spot.Abstraction
 
 module Dump = struct
   (* mainly debugging purpose *)
 
-  let file = File.dump_file
+  let file = File.dump
 
   let rannots_full file = 
     eprintf "@[<2>rannots =@ [ @[<v>%a@]@] ]@."
@@ -103,14 +101,14 @@ module Main = struct
   ;;
 
   let info path =
-    let file = load (File.cmt_of_file path) in
+    let file = load (File.Cmt.of_path path) in
     printf "Compile: %s@."
       (String.concat " " 
          (List.map Command.escaped_for_shell 
-            (Array.to_list file.File.cmt.cmt_args)));
+            (Array.to_list file.File.args)));
     printf "@[<v2>Included_dirs:@ %a@]@."
       (Format.list "" pp_print_string)
-      file.File.cmt.cmt_loadpath
+      file.File.loadpath
 
   let query_by_kind_path file kind path = 
     try Some (File.find_path_in_flat file (kind, path)) with Not_found -> None
@@ -210,9 +208,9 @@ module Main = struct
           match List.filter (function Annot.Type _ -> true | _ -> false) annots with
           (* CR jfuruse: Sometimes more than one Annot.Type are found at the same place... *)
           | Annot.Type (typ, env, `Expr) :: _ -> 
-              printf "Expand: @[%a@]@." Typeexpand.format_as_expr (Typeexpand.expand file.File.cmt.cmt_loadpath env typ)
+              printf "Expand: @[%a@]@." Typeexpand.format_as_expr (Typeexpand.expand file.File.loadpath env typ)
           | Annot.Type (typ, env, `Pattern) :: _ -> 
-              printf "Expand: @[%a@]@." Typeexpand.format_as_pattern (Typeexpand.expand file.File.cmt.cmt_loadpath env typ)
+              printf "Expand: @[%a@]@." Typeexpand.format_as_pattern (Typeexpand.expand file.File.loadpath env typ)
           | Annot.Type (_typ, _env, `Val) :: _ -> ()
           | _ -> ()
         end;
@@ -224,7 +222,7 @@ module Main = struct
     (* CR jfuruse: dup *)
     Debug.format "ocamlspot %s%s@." path (C.SearchSpec.to_string spec);
     Debug.format "cwd: %s@." (Sys.getcwd ());
-    let path = File.cmt_of_file path in
+    let path = File.Cmt.of_path path in
     let file = load path in
 
     let query_kind_path k path = print_query_result k (query_by_kind_path file k path) in
@@ -259,7 +257,7 @@ module Main = struct
     (* CR jfuruse: dup *)
     Debug.format "ocamlspot %s%s@." path (C.SearchSpec.to_string spec);
     Debug.format "cwd: %s@." (Sys.getcwd ());
-    let path = File.cmt_of_file path in
+    let path = File.Cmt.of_path path in
     let file = load path in
 
     let find_by_kind_path k path found =
@@ -336,7 +334,7 @@ module Main = struct
   let recheck files =
     let recheck mlpath =
       Debug.format "cwd: %s@." (Sys.getcwd ());
-      let path = File.cmt_of_file mlpath in
+      let path = File.Cmt.of_path mlpath in
       let file = File.load ~load_paths: ["."] path in
     
       printf "Compile: %s@."

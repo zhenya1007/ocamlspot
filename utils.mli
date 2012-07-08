@@ -61,12 +61,14 @@ module Option : sig
   val map : f:('a -> 'b) -> 'a option -> 'b option
   val bind : 'a option -> ('a -> 'b option) -> 'b option
   val iter : f:('a -> unit) -> 'a option -> unit
-  val default : 'a -> 'a option -> 'a 
+  val default : (unit -> 'a) -> 'a option -> 'a 
 end
 
 exception Finally of exn * exn
 
 val protect : f:('a -> 'b) -> 'a -> finally:('a -> unit) -> 'b
+val failwithf : ('a, unit, string, 'b) format4 -> 'a
+val invalid_argf : ('a, unit, string, 'b) format4 -> 'a
 
 module Unix : sig
   include module type of Unix
