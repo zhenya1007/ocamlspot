@@ -164,3 +164,44 @@ module Tree : sig
   val dump : t -> unit
 end
 
+module File : sig
+  type t = {
+    modname    : string;
+    builddir   : string;
+    loadpath   : string list;
+    args       : string array;
+    path       : string;
+    top        : Abstraction.structure;
+    loc_annots : (Location.t, Annot.t list) Utils.Hashtbl.t;
+  }
+
+  val dump : t -> unit
+  val save : string -> t -> unit
+  val load : string -> t
+
+  val of_cmt 
+    : string (* the cmt file path name *)
+      -> Cmt_format.cmt_infos -> t
+end
+
+module Unit : sig
+  type t = {
+    modname    : string;
+    builddir   : string;
+    loadpath   : string list;
+    args       : string array;
+    path       : string;
+    top        : Abstraction.structure;
+    loc_annots : (Location.t, Annot.t list) Hashtbl.t;
+
+    (* the following fields are computed from the above, the fields from File.t *) 
+
+    flat           : Abstraction.structure lazy_t;
+    id_def_regions : (Ident.t, Region.t) Hashtbl.t lazy_t;
+    rannots        : Annot.t list Regioned.t list lazy_t;
+    tree           : Tree.t lazy_t;
+  }
+  val dump : t -> unit (** just same as File.dump. Ignores the added fields *)
+  val of_file : File.t -> t
+  val to_file : t -> File.t
+end

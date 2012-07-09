@@ -1314,6 +1314,14 @@ module File = struct
     loc_annots     : (Location.t, Annot.t list) Hashtbl.t
   }
 
+  let dump file =
+    eprintf "@[<v2>{ module= %S;@ path= %S;@ builddir= %S;@ loadpath= [ @[%a@] ];@ argv= [| @[%a@] |];@ ... }@]@."
+      file.modname
+      file.path
+      file.builddir
+      (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) file.loadpath
+      (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) (Array.to_list file.args)
+
   let save path t =
     let oc = open_out_bin path in
     output_string oc "spot";
@@ -1365,7 +1373,7 @@ module File = struct
       Format.eprintf "Aiee %s@." (Printexc.to_string e);
       raise e
 
-  let of_cmt path (* the output file *) cmt =
+  let of_cmt path (* the cmt file path *) cmt =
     let path = Option.default (Cmt.source_path cmt) (fun () -> 
       let ext = if Cmt.is_opt cmt then ".cmx" else ".cmo" in
       Filename.chop_extension path ^ ext)
@@ -1390,11 +1398,67 @@ module Unit = struct
     args           : string array;
     path           : string; (** source path. If packed, the .cmo itself *)
     top            : Abstraction.structure;
+    loc_annots     : (Location.t, Annot.t list) Hashtbl.t;
 
     flat           : Abstraction.structure lazy_t;
     id_def_regions : (Ident.t, Region.t) Hashtbl.t lazy_t;
     rannots        : Annot.t list Regioned.t list lazy_t;
     tree           : Tree.t lazy_t
   }
-end
 
+  (* same as File.dump, ignoring new additions in Unit *)
+  let dump file =
+    eprintf "@[<v2>{ module= %S;@ path= %S;@ builddir= %S;@ loadpath= [ @[%a@] ];@ argv= [| @[%a@] |];@ ... }@]@."
+      file.modname
+      file.path
+      file.builddir
+      (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) file.loadpath
+      (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) (Array.to_list file.args)
+
+  let to_file { modname; builddir; loadpath; args; path; top ; loc_annots } = 
+    { File.modname;
+      builddir;
+      loadpath;
+      args;
+      path;
+      top;
+      loc_annots;
+    }
+
+  let of_file ({ File.loc_annots; } as f) = 
+    let rannots = lazy (Hashtbl.fold (fun loc annots st -> 
+      { Regioned.region = Region.of_parsing loc;  value = annots } :: st) 
+                          loc_annots [])
+    in
+    let id_def_regions = lazy (
+      let tbl = Hashtbl.create 1023 in
+      Hashtbl.iter (fun loc annots ->
+        List.iter (function
+          | Annot.Str sitem ->
+              Option.iter (Abstraction.ident_of_structure_item sitem) ~f:(fun (_kind, id) ->
+                Hashtbl.add tbl id (Region.of_parsing loc))
+          | _ -> ()) annots) loc_annots;
+      tbl)
+    in
+    let tree = lazy begin
+      Hashtbl.fold (fun loc annots st ->
+        Tree.add st { Regioned.region = Region.of_parsing loc; value = annots })
+        loc_annots Tree.empty 
+    end in
+    (* CR jfuruse: it is almost the same as id_def_regions_list *)
+    let flat = lazy (Hashtbl.fold (fun _loc annots st -> 
+      List.filter_map (function
+        | Annot.Str sitem -> Some sitem
+        | _ -> None) annots @ st) loc_annots [])
+    in
+    { modname    = f.File.modname;
+      builddir   = f.File.builddir;
+      loadpath   = f.File.loadpath;
+      args       = f.File.args;
+      path       = f.File.path;
+      top        = f.File.top;
+      loc_annots = f.File.loc_annots;
+      
+      flat; id_def_regions; rannots; tree; 
+    }
+end
