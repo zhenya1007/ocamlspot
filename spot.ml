@@ -471,9 +471,10 @@ module Annot = struct
   
     let record tbl loc t = 
       let really_record () = 
-        let num_records, records = 
-          try Hashtbl.find tbl loc with Not_found -> 0, []
+        let records = 
+          try Hashtbl.find tbl loc with Not_found -> []
         in
+(*
         (* CR jfuruse: I am not really sure the below is correct now, 
            but I remember the huge compilation slow down... *)
         (* This caching works horribly when too many things are defined 
@@ -484,6 +485,8 @@ module Annot = struct
         *)
         if num_records <= 10 && List.exists (equal t) records then ()
         else Hashtbl.replace tbl loc (num_records + 1, t :: records)
+*)
+        Hashtbl.replace tbl loc (t :: records)
       in
       match check_location loc with
       | Wellformed -> really_record ()
@@ -1330,13 +1333,48 @@ module File = struct
     close_in ic;
     v
 
-  let of_cmt cmt =
-    let ext = if Cmt.is_opt cmt then ".cmx" else ".cmo" in
-    let path = Option.default (Filename.chop_extension path ^ ext) (Cmt.source_path cmt) in
-    { modname = cmt.cmt_modname;
+  open Cmt_format
+
+  let abstraction cmt = match cmt.cmt_annots with
+    | Implementation str -> 
+        let loc_annots = Annot.record_structure str in
+        begin match Abstraction.structure str with
+        | Abstraction.AMod_structure str -> str, loc_annots
+        | _ -> assert false
+        end
+    | Interface sg -> 
+        let loc_annots = Annot.record_signature sg in
+        begin match Abstraction.signature sg with
+        | Abstraction.AMod_structure str -> str, loc_annots
+        | _ -> assert false
+        end
+    | Packed (_sg, files) ->
+        (List.map (fun file ->
+          let fullpath = if Filename.is_relative file then cmt.cmt_builddir ^/ file else file in
+          let modname = match Filename.split_extension (Filename.basename file) with 
+            | modname, (".cmo" | ".cmx") -> String.capitalize modname
+            | _ -> assert false
+          in
+          Abstraction.AStr_module (Ident.create modname (* stamp is bogus *),
+                                   Abstraction.AMod_packed fullpath)) files),
+        (Hashtbl.create 1 (* empty *))
+    | Partial_implementation _parts | Partial_interface _parts -> assert false
+  
+  let abstraction cmt = 
+    try abstraction cmt with e -> 
+      Format.eprintf "Aiee %s@." (Printexc.to_string e);
+      raise e
+
+  let of_cmt path (* the output file *) cmt =
+    let path = Option.default (Cmt.source_path cmt) (fun () -> 
+      let ext = if Cmt.is_opt cmt then ".cmx" else ".cmo" in
+      Filename.chop_extension path ^ ext)
+    in
+    let top, loc_annots = abstraction cmt in
+    { modname  = cmt.cmt_modname;
       builddir = cmt.cmt_builddir;
       loadpath = cmt.cmt_loadpath;
-      args = cmt.cmt_args;
+      args     = cmt.cmt_args;
       path; 
       top;
       loc_annots;

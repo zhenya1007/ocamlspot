@@ -19,6 +19,8 @@ xprinttyp.cmi :
 xset.cmi :
 checksum.cmo :
 checksum.cmx :
+cmt.cmo :
+cmt.cmx :
 command.cmo : command.cmi
 command.cmx : command.cmi
 dotfile.cmo : utils.cmi
@@ -35,8 +37,10 @@ ocamlspot.cmx : utils.cmx typeexpand.cmx spotfile.cmx spoteval.cmx \
     spotconfig.cmx spot.cmx pathreparse.cmx ext.cmx command.cmx
 pathreparse.cmo : utils.cmi spot.cmi locident.cmi ext.cmo pathreparse.cmi
 pathreparse.cmx : utils.cmx spot.cmx locident.cmx ext.cmx pathreparse.cmi
-spot.cmo : utils.cmi ttfold.cmi treeset.cmi ext.cmo checksum.cmo spot.cmi
-spot.cmx : utils.cmx ttfold.cmx treeset.cmx ext.cmx checksum.cmx spot.cmi
+spot.cmo : utils.cmi ttfold.cmi treeset.cmi ext.cmo cmt.cmo checksum.cmo \
+    spot.cmi
+spot.cmx : utils.cmx ttfold.cmx treeset.cmx ext.cmx cmt.cmx checksum.cmx \
+    spot.cmi
 spotconfig.cmo : utils.cmi spot.cmi ext.cmo spotconfig.cmi
 spotconfig.cmx : utils.cmx spot.cmx ext.cmx spotconfig.cmi
 spotconfig_intf.cmo : spot.cmi ext.cmo
@@ -51,6 +55,8 @@ treeset.cmo : xset.cmi treeset.cmi
 treeset.cmx : xset.cmx treeset.cmi
 ttfold.cmo : ttfold.cmi
 ttfold.cmx : ttfold.cmi
+ttfold.out.cmo :
+ttfold.out.cmx :
 typeFix.cmo : utils.cmi name.cmi typeFix.cmi
 typeFix.cmx : utils.cmx name.cmx typeFix.cmi
 typedtreefold.cmo :

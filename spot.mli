@@ -88,8 +88,8 @@ module Annot : sig
     | Functor_parameter of Ident.t
     | Non_expansive of bool
 
-  val record_structure : Typedtree.structure -> (Location.t, int * t list) Hashtbl.t
-  val record_signature : Typedtree.signature -> (Location.t, int * t list) Hashtbl.t
+  val record_structure : Typedtree.structure -> (Location.t, t list) Hashtbl.t
+  val record_signature : Typedtree.signature -> (Location.t, t list) Hashtbl.t
 
   val format : Format.formatter -> t -> unit
   val summary : Format.formatter -> t -> unit

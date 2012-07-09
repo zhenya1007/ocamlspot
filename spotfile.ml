@@ -164,14 +164,15 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
           let top, loc_annots = Cmt.abstraction cmt in
           Debug.format "cmt loaded: abstraction extracted from %s@." path;
 
-          let path = Option.default (Filename.chop_extension path ^ if Cmt.is_opt cmt then ".cmx" else ".cmo") (Cmt.source_path cmt) in
-          let rannots = lazy (Hashtbl.fold (fun loc (_,annots) st -> 
+          let path = Option.default (Cmt.source_path cmt) (fun () ->
+            Filename.chop_extension path ^ if Cmt.is_opt cmt then ".cmx" else ".cmo") in
+          let rannots = lazy (Hashtbl.fold (fun loc annots st -> 
             { Regioned.region = Region.of_parsing loc;  value = annots } :: st) loc_annots [])
           in
           Debug.format "cmt loaded: rannots created from %s@." path;
           let id_def_regions = lazy (
             let tbl = Hashtbl.create 1023 in
-            Hashtbl.iter (fun loc (_,annots) ->
+            Hashtbl.iter (fun loc annots ->
               List.iter (function
                 | Annot.Str sitem ->
                     Option.iter (Abstraction.ident_of_structure_item sitem) ~f:(fun (_kind, id) ->
@@ -181,12 +182,12 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
           in
           Debug.format "cmt loaded: id_def_regions created from %s@." path;
           let tree = lazy begin
-            Hashtbl.fold (fun loc (_, annots) st ->
+            Hashtbl.fold (fun loc annots st ->
               Tree.add st { Regioned.region = Region.of_parsing loc; value = annots })
               loc_annots Tree.empty 
           end in
           (* CR jfuruse: it is almost the same as id_def_regions_list *)
-          let flat = Hashtbl.fold (fun _loc (_, annots) st -> 
+          let flat = Hashtbl.fold (fun _loc annots st -> 
             List.filter_map (function
               | Annot.Str sitem -> Some sitem
               | _ -> None) annots @ st) loc_annots []

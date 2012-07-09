@@ -116,7 +116,7 @@ module Option = struct
     | None -> ()
     | Some v -> f v
 
-  let default df = function
+  let default v df = match v with
     | None -> df ()
     | Some v -> v
 end
