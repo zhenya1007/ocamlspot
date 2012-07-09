@@ -111,6 +111,14 @@ module Main = struct
       (Format.list "" pp_print_string)
       file.Unit.loadpath
 
+  let write_spot path =
+    let file = load (Cmt.of_path path) in
+    let spot = match Filename.split_extension path with
+      | body, (".cmi" | ".mli" | ".cmti") -> body ^ ".spit"
+      | body, _ -> body ^ ".spot"
+    in
+    Spot.File.save spot (Spot.Unit.to_file file)
+
   let query_by_kind_path file kind path = 
     try Some (File.find_path_in_flat file (kind, path)) with Not_found -> None
   ;;
@@ -355,6 +363,7 @@ module Main = struct
     match C.mode with
     | `Dump path                   -> ignore (load path)
     | `Info path                   -> info path
+    | `Spot path                   -> write_spot path
     | `Query (path, spec)          -> query path spec
 (*
     | `Typecheck args              -> typecheck args
