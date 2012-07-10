@@ -366,10 +366,8 @@ module Abstraction = struct
         (* CR jfuruse: need to scrape ? but how ? *)
         AMod_functor(id, mty1.mty_type, module_type mty2)
     | Tmty_with (mty, _) -> module_type mty (* CR jfuruse: ?? *)
-(*
-    | Tmty_typeof of module_expr (* CR jfuruse: ?? *)
-*)
-    | _ -> assert false
+    | Tmty_typeof mexp ->  (* CR jfuruse: ?? *)
+        T.module_type mexp.mod_type
 
   and signature sg = AMod_structure (List.concat_map signature_item sg.sig_items)
 
@@ -1366,8 +1364,8 @@ module File = struct
         (List.map (fun file ->
           let fullpath = if Filename.is_relative file then cmt.cmt_builddir ^/ file else file in
           let modname = match Filename.split_extension (Filename.basename file) with 
-            | modname, (".cmo" | ".cmx") -> String.capitalize modname
-            | _ -> assert false
+            | modname, (".cmo" | ".cmx" | ".cmi") -> String.capitalize modname
+            | _ -> Format.eprintf "packed module with strange name: %s@." file; assert false
           in
           Abstraction.AStr_module (Ident.create modname (* stamp is bogus *),
                                    Abstraction.AMod_packed fullpath)) files),
@@ -1375,7 +1373,10 @@ module File = struct
     | Partial_implementation _parts | Partial_interface _parts -> assert false
   
   let abstraction cmt = 
-    with_ref Config.load_path cmt.cmt_loadpath (fun () -> 
+    let load_path = List.map (fun p ->
+      cmt.cmt_builddir ^/ p) cmt.cmt_loadpath
+    in
+    with_ref Config.load_path load_path (fun () -> 
       try abstraction cmt; with e -> 
         Format.eprintf "Aiee %s@." (Printexc.to_string e);
         raise e)
