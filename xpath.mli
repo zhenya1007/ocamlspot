@@ -18,3 +18,5 @@ val local : t -> bool
     (** return true if "local" *)
 val parse : Name.t -> t
 val format : Format.formatter -> t -> unit
+
+val to_longident : t -> Longident.t

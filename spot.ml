@@ -789,7 +789,13 @@ and signature = {
         | Tsig_include (mty, sg) -> 
             let loc = si.sig_loc in
             let m = Abstraction.module_type mty in
-            let sg0 = try match Mtype.scrape mty.mty_env mty.mty_type with Types.Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
+            let sg0 = match Mtype.scrape mty.mty_env mty.mty_type with 
+              | Types.Mty_signature sg -> sg 
+              | Types.Mty_functor _ -> assert false
+              | Types.Mty_ident _path -> 
+                  (* Strange... failed to scrape? *)
+                  assert false
+            in
             let ids = List.map (fun si -> snd (T.kident_of_sigitem si)) sg in
             let aliases = try aliases_of_include' false sg0 ids with _ -> assert false in
             List.iter (fun (id, (k, id')) -> 
@@ -1369,9 +1375,10 @@ module File = struct
     | Partial_implementation _parts | Partial_interface _parts -> assert false
   
   let abstraction cmt = 
-    try abstraction cmt with e -> 
-      Format.eprintf "Aiee %s@." (Printexc.to_string e);
-      raise e
+    with_ref Config.load_path cmt.cmt_loadpath (fun () -> 
+      try abstraction cmt; with e -> 
+        Format.eprintf "Aiee %s@." (Printexc.to_string e);
+        raise e)
 
   let of_cmt path (* the cmt file path *) cmt =
     let path = Option.default (Cmt.source_path cmt) (fun () -> 

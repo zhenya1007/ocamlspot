@@ -69,6 +69,7 @@ exception Finally of exn * exn
 val protect : f:('a -> 'b) -> 'a -> finally:('a -> unit) -> 'b
 val failwithf : ('a, unit, string, 'b) format4 -> 'a
 val invalid_argf : ('a, unit, string, 'b) format4 -> 'a
+val with_ref : 'a ref -> 'a -> (unit -> 'b) -> 'b
 
 module Unix : sig
   include module type of Unix

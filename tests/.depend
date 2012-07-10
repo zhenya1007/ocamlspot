@@ -1,6 +1,8 @@
 bigmodtest.cmi : target.cmo
 class.cmi :
 class2.cmi :
+include_sig.cmi : included_sig2.cmo included_sig.cmi
+included_sig.cmi :
 open_in_mli.cmi : target.cmo
 siginclude.cmi :
 siginclude2.cmi :
@@ -60,6 +62,8 @@ included.cmo :
 included.cmx :
 included_and_flat.cmo :
 included_and_flat.cmx :
+included_sig2.cmo :
+included_sig2.cmx :
 included_value.cmo :
 included_value.cmx :
 including.cmo : included.cmo
