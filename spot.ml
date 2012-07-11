@@ -451,11 +451,10 @@ module Annot = struct
     let clear () = Hashtbl.clear recorded
   *)
   
-    type location_property = Wellformed | Flipped | Over_files | Illformed | Ghost
+    type location_property = Wellformed | Flipped | Over_files | Illformed
   
     let check_location loc = 
-      if loc.Location.loc_ghost then Ghost
-      else if loc.Location.loc_start == Lexing.dummy_pos || loc.Location.loc_end == Lexing.dummy_pos then Illformed
+      if loc.Location.loc_start == Lexing.dummy_pos || loc.Location.loc_end == Lexing.dummy_pos then Illformed
       else if loc.Location.loc_start = Lexing.dummy_pos || loc.Location.loc_end = Lexing.dummy_pos then Illformed
       else 
         (* If the file name is different between the start and the end, we cannot tell the wellformedness. *)
@@ -493,7 +492,6 @@ module Annot = struct
           really_record ()
       | Illformed -> 
           if not loc.Location.loc_ghost then Format.eprintf "%aWarning: Ill-formed location.@." Location.print loc
-      | Ghost -> () (* just useless, i guess *)  
       | Over_files -> ()
 
     let record_record tbl loc typ = 
