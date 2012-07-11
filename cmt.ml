@@ -1,12 +1,24 @@
+(***********************************************************************)
+(*                                                                     *)
+(*                            OCamlSpotter                             *)
+(*                                                                     *)
+(*                             Jun FURUSE                              *)
+(*                                                                     *)
+(*   Copyright 2008-2012 Jun Furuse. All rights reserved.              *)
+(*   This file is distributed under the terms of the GNU Library       *)
+(*   General Public License, with the special exception on linking     *)
+(*   described in file LICENSE.                                        *)
+(*                                                                     *)
+(***********************************************************************)
 open Utils
+
 open Cmt_format
 
-let source_path file = match file.cmt_sourcefile with 
-    | Some f -> Some (file.cmt_builddir ^/ f)
-    | None -> None
+let source_path file = 
+  Option.map file.cmt_sourcefile ~f:(fun f -> file.cmt_builddir ^/ f)
 
-(* xxx.{ml,cmo,cmx,spot} => xxx.spot 
-   xxx.{mli,cmi,spit} => xxx.spit *)
+(* xxx.{ml,cmo,cmx,spot} => xxx.cmt
+   xxx.{mli,cmi,spit}    => xxx.cmti *)
 let of_path path =
   let dirname, filename =
     try
@@ -18,7 +30,7 @@ let of_path path =
   in
   let filename =
     match Filename.split_extension filename with
-    | body, (".cmi" | ".mli" | ".cmti") -> body ^ ".cmti"
+    | body, (".cmi" | ".mli" | ".cmti" | ".spit") -> body ^ ".cmti"
     | body, _ -> body ^ ".cmt"
   in
   match dirname with
@@ -27,4 +39,8 @@ let of_path path =
 
 (* CR jfuruse: this is a dirty workaround. It should be nice if we could know cmt is created by opt or byte *)          
 let is_opt cmt = 
-  List.exists (fun x -> match Filename.split_extension x with (_, ".cmx") -> true | _ -> false) (Array.to_list cmt.cmt_args)
+  (* We cannot guess this simply by the compiler name "ocamlc" or "ocamlopt", 
+     since someone can create a modified compiler like gcaml *)
+  List.exists (fun x -> match Filename.split_extension x with 
+    | (_, ".cmx") -> true 
+    | _ -> false) (Array.to_list cmt.cmt_args)

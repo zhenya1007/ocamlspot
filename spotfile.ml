@@ -21,7 +21,6 @@ module Ident0 = Ident
 
 open Spot
 open Spoteval
-open Cmt_format
 
 module Make(Spotconfig : Spotconfig_intf.S) = struct
   (* open Abstraction *)
