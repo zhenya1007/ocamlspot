@@ -20,230 +20,228 @@ module Ident0 = Ident
 open Spot
 open Spoteval
 
-module Make(Spotconfig : Spotconfig_intf.S) = struct
+module Load : sig
+  exception Old_cmt of string (* cmt *) * string (* source *)
+  val load : load_paths:string list -> string -> Unit.t
+  val load_module : ?spit:bool -> load_paths:string list -> string -> Unit.t
+end = struct
 
-  module Load : sig
-    exception Old_cmt of string (* cmt *) * string (* source *)
-    val load : load_paths:string list -> string -> Unit.t
-    val load_module : ?spit:bool -> load_paths:string list -> string -> Unit.t
-  end = struct
+  let check_time_stamp ~cmt source =
+    let stat_cmt = Unix.stat cmt in
+    let stat_source = Unix.stat source in
+      (* Needs = : for packed modules, .cmt and the source .cmo are written 
+         almost at the same moment. *)
+    stat_cmt.Unix.st_mtime >= stat_source.Unix.st_mtime
 
-    let check_time_stamp ~cmt source =
-      let stat_cmt = Unix.stat cmt in
-      let stat_source = Unix.stat source in
-        (* Needs = : for packed modules, .cmt and the source .cmo are written 
-           almost at the same moment. *)
-      stat_cmt.Unix.st_mtime >= stat_source.Unix.st_mtime
+  let find_alternative_source ~cmt source =
+      (* if [source] is not found, we try finding files with the same basename
+         in
+         - the directory of [cmt]
+         - the directory of [cmt] points to (if [cmt] is symlink)
+       *)
+    let source_base = Filename.basename source in
+    let source_dirs =
+        Filename.dirname cmt ::
+        begin 
+          let stat_cmt = Unix.lstat cmt in
+          if stat_cmt.Unix.st_kind = Unix.S_LNK then
+            [ Filename.dirname (Unix.readlink cmt) ]
+          else []
+        end
+      in
+      List.find Sys.file_exists 
+        (List.map (fun d -> d ^/ source_base) source_dirs)
 
-    let find_alternative_source ~cmt source =
-        (* if [source] is not found, we try finding files with the same basename
-           in
-           - the directory of [cmt]
-           - the directory of [cmt] points to (if [cmt] is symlink)
-         *)
-      let source_base = Filename.basename source in
-      let source_dirs =
-          Filename.dirname cmt ::
-          begin 
-            let stat_cmt = Unix.lstat cmt in
-            if stat_cmt.Unix.st_kind = Unix.S_LNK then
-              [ Filename.dirname (Unix.readlink cmt) ]
-            else []
-          end
-        in
-        List.find Sys.file_exists 
-          (List.map (fun d -> d ^/ source_base) source_dirs)
+  let load_cmt_file file = snd (Cmt_format.read file)
 
-    let load_cmt_file file = snd (Cmt_format.read file)
+  let load_directly path : Unit.t =
+    Debug.format "cmt loading from %s@." path;
+    match load_cmt_file path with
+    | Some cmt -> Spot.Unit.of_file (Spot.File.of_cmt path cmt)
+    | None -> failwith (sprintf "load_directly failed: %s" path)
 
-    let load_directly path : Unit.t =
-      Debug.format "cmt loading from %s@." path;
-      match load_cmt_file path with
-      | Some cmt -> Spot.Unit.of_file (Spot.File.of_cmt path cmt)
-      | None -> failwith (sprintf "load_directly failed: %s" path)
+  exception Old_cmt of string (* cmt *) * string (* source *)
 
-    exception Old_cmt of string (* cmt *) * string (* source *)
+  (* CR jfuruse: exception *)
+  (* CRv2 jfuruse: add and check cache time stamp *)
+  let load_directly_with_cache : string -> Unit.t = 
+    let cache = Hashtbl.create 17 in
+    fun path ->
+      try 
+        Hashtbl.find cache path
+      with
+      | Not_found ->
+          try
+            let file = load_directly path in
+            if not (check_time_stamp ~cmt:path file.Unit.path) then 
+              if Spotconfig.strict_time_stamp then 
+                raise (Old_cmt (path, file.Unit.path))
+              else
+                eprintf "Warning: source %s is newer than the cmt@." file.Unit.path;
+            Hashtbl.replace cache path file;
+            file
+          with
+          | Not_found ->
+              failwith (Printf.sprintf "failed to find cmt file %s" path)
 
-    (* CR jfuruse: exception *)
-    (* CRv2 jfuruse: add and check cache time stamp *)
-    let load_directly_with_cache : string -> Unit.t = 
-      let cache = Hashtbl.create 17 in
-      fun path ->
-        try 
-          Hashtbl.find cache path
+  let find_in_path load_paths body ext =
+    let body_ext = body ^ ext in
+    let find_in_path load_paths name = 
+      try Misc.find_in_path load_paths name with Not_found ->
+        Misc.find_in_path_uncap load_paths name
+    in
+    try find_in_path load_paths body_ext with Not_found ->
+    (* We do not give up yet.
+       .cmt file is not found, 
+       but we still find a .cmi which is sym-linked to the original directory with .cmt
+    *)
+    let cminame = body ^ ".cmi" in
+      try
+      let cmipath = find_in_path load_paths cminame in
+      let stat = Unix.lstat cmipath in
+      if stat.Unix.st_kind = Unix.S_LNK then begin
+        let cmipath = Filename.dirname cmipath ^/ Unix.readlink cmipath in
+        let cmtpath = Filename.chop_extension cmipath ^ ext in
+        if Sys.file_exists cmtpath then begin
+          Debug.format "Found an alternative %s: %s@." ext cmtpath;
+            cmtpath 
+          end else failwith (Printf.sprintf "cmt file not found: %s, neither in %s" body_ext cmtpath)
+        end else raise Not_found
+      with
+      | (Failure _ as e) -> raise e
+      | _ -> failwith (Printf.sprintf "cmt file not found: %s" body_ext)
+    
+
+  let load ~load_paths cmtname : Unit.t =
+    Debug.format "@[<2>cmt searching %s in@ paths [@[%a@]]@]@." 
+        cmtname
+        (Format.list "; " (fun ppf x -> fprintf ppf "%S" x)) 
+        load_paths;
+    let body, ext = Filename.split_extension cmtname in
+    let path = find_in_path load_paths body ext in
+    load_directly_with_cache path
+
+  let load ~load_paths cmtname : Unit.t =
+    let alternate_cmtname = 
+      if Filename.is_relative cmtname then None
+      else
+        Option.bind (Dotfile.find_and_load (Filename.dirname cmtname)) 
+          (fun (found_dir, dotfile) ->
+            Option.map dotfile.Dotfile.build_dir ~f:(fun build_dir ->
+              let length_found_dir = String.length found_dir in
+              let found_dir' = 
+                String.sub cmtname 0 length_found_dir
+              in
+              let rel_cmtname =
+                String.sub cmtname 
+                  (length_found_dir + 1)
+                  (String.length cmtname - length_found_dir - 1)
+              in
+              assert (found_dir = found_dir');
+              let dir = 
+                if Filename.is_relative build_dir then found_dir ^/ build_dir
+                else build_dir
+              in
+              dir ^/ rel_cmtname))
+    in
+    try load ~load_paths cmtname with
+    | e -> 
+        match alternate_cmtname with
+        | Some cmtname -> load ~load_paths cmtname
+        | None -> raise e
+
+  (* CR jfuruse: searching algorithm must be reconsidered *)        
+  let load_module ?(spit=false) ~load_paths name =
+    let cmtname = name ^ if spit then ".cmti" else ".cmt" in
+    try
+      load ~load_paths cmtname
+    with
+    | Failure s ->
+        let spitname = name ^ if spit then ".cmt" else ".cmti" in
+        Format.printf "%s load failed. Try to load %s@."
+          cmtname spitname;
+        try
+          load ~load_paths spitname
         with
-        | Not_found ->
-            try
-              let file = load_directly path in
-              if not (check_time_stamp ~cmt:path file.Unit.path) then 
-                if Spotconfig.strict_time_stamp then 
-                  raise (Old_cmt (path, file.Unit.path))
-                else
-                  eprintf "Warning: source %s is newer than the cmt@." file.Unit.path;
-              Hashtbl.replace cache path file;
-              file
+        | Failure s' -> failwithf "%s\n%s" s s'
+end
+
+include Load
+
+let empty_env file =
+  { Env.path = file.Unit.path;
+    cwd = file.Unit.builddir;
+    load_paths = file.Unit.loadpath;
+    binding = Binding.empty }
+
+let invalid_env file =
+  { Env.path = file.Unit.path;
+    cwd = file.Unit.builddir;
+    load_paths = file.Unit.loadpath;
+    binding = Binding.invalid }
+    
+type result =
+    | File_itself
+    | Found_at of Region.t
+    | Predefined
+
+let find_path_in_flat file path : PIdent.t * result =
+  let env = 
+    let env = invalid_env file in
+    let str = Eval.structure env !!(file.Unit.flat) in
+    Binding.set env.Env.binding str; (* dirty hack *)
+    env
+  in
+  let find_loc pid =
+    match  pid.PIdent.path with
+    | "" -> Predefined
+    | path ->
+        (* CR jfuruse: loading twice... *)
+        Debug.format "Finding %a@." PIdent.format pid;
+        let file = Load.load ~load_paths:[] (Cmt.of_path path) in
+        match pid.PIdent.ident with
+        | None -> File_itself (* the whole file *)
+        | Some id -> 
+            Found_at begin try
+              Hashtbl.find !!(file.Unit.id_def_regions) id
             with
             | Not_found ->
-                failwith (Printf.sprintf "failed to find cmt file %s" path)
+                eprintf "Error: find location of id %a failed@."
+                  PIdent.format pid;
+                raise Not_found
+            end
+  in
+  
+  let eval_and_find path =
+    (* we need evaluate the path *)
+    let v = !!(Eval.find_path env path) in
+    Debug.format "Value=%a@." Value.Format.t v;
+    match v with
+    | Value.Ident id -> id, find_loc id
+    | Value.Parameter id -> id, find_loc id
+    | Value.Structure (id, _, _)  -> id, find_loc id
+    | Value.Closure (id, _, _, _, _) -> id, find_loc id
+    | Value.Error (Failure _ as e) -> raise e
+    | Value.Error (Load.Old_cmt _ as exn) -> raise exn
+    | Value.Error exn -> raise exn
+  in
+  eval_and_find path
 
-    let find_in_path load_paths body ext =
-      let body_ext = body ^ ext in
-      let find_in_path load_paths name = 
-        try Misc.find_in_path load_paths name with Not_found ->
-          Misc.find_in_path_uncap load_paths name
-      in
-      try find_in_path load_paths body_ext with Not_found ->
-      (* We do not give up yet.
-         .cmt file is not found, 
-         but we still find a .cmi which is sym-linked to the original directory with .cmt
-      *)
-      let cminame = body ^ ".cmi" in
-        try
-        let cmipath = find_in_path load_paths cminame in
-        let stat = Unix.lstat cmipath in
-        if stat.Unix.st_kind = Unix.S_LNK then begin
-          let cmipath = Filename.dirname cmipath ^/ Unix.readlink cmipath in
-          let cmtpath = Filename.chop_extension cmipath ^ ext in
-          if Sys.file_exists cmtpath then begin
-            Debug.format "Found an alternative %s: %s@." ext cmtpath;
-              cmtpath 
-            end else failwith (Printf.sprintf "cmt file not found: %s, neither in %s" body_ext cmtpath)
-          end else raise Not_found
-        with
-        | (Failure _ as e) -> raise e
-        | _ -> failwith (Printf.sprintf "cmt file not found: %s" body_ext)
-      
+let str_of_global_ident ~load_paths id =
+  assert (Ident.global id);
+  let file = Load.load_module ~spit:Spotconfig.print_interface ~load_paths (Ident0.name id) in
+  file.Unit.path,
+  Eval.structure (empty_env file) file.Unit.top
 
-    let load ~load_paths cmtname : Unit.t =
-      Debug.format "@[<2>cmt searching %s in@ paths [@[%a@]]@]@." 
-          cmtname
-          (Format.list "; " (fun ppf x -> fprintf ppf "%S" x)) 
-          load_paths;
-        let body, ext = Filename.split_extension cmtname in
-      let path = find_in_path load_paths body ext in
-      load_directly_with_cache path
+let _ = Eval.str_of_global_ident := str_of_global_ident
 
-    let load ~load_paths cmtname : Unit.t =
-      let alternate_cmtname = 
-        if Filename.is_relative cmtname then None
-        else
-          Option.bind (Dotfile.find_and_load (Filename.dirname cmtname)) 
-            (fun (found_dir, dotfile) ->
-              Option.map dotfile.Dotfile.build_dir ~f:(fun build_dir ->
-                let length_found_dir = String.length found_dir in
-                let found_dir' = 
-                  String.sub cmtname 0 length_found_dir
-                in
-                let rel_cmtname =
-                  String.sub cmtname 
-                    (length_found_dir + 1)
-                    (String.length cmtname - length_found_dir - 1)
-                in
-                assert (found_dir = found_dir');
-                let dir = 
-                  if Filename.is_relative build_dir then found_dir ^/ build_dir
-                  else build_dir
-                in
-                dir ^/ rel_cmtname))
-      in
-      try load ~load_paths cmtname with
-      | e -> 
-          match alternate_cmtname with
-          | Some cmtname -> load ~load_paths cmtname
-          | None -> raise e
+let eval_packed env file =
+  let f = Load.load ~load_paths:[""] (Cmt.of_path (env.Env.cwd ^/ file)) in
+  Value.Structure ({ PIdent.path = f.Unit.path; ident = None },
+                  Eval.structure (empty_env f) f.Unit.top,
+                  None (* packed has no .mli *))
 
-    (* CR jfuruse: searching algorithm must be reconsidered *)        
-    let load_module ?(spit=false) ~load_paths name =
-      let cmtname = name ^ if spit then ".cmti" else ".cmt" in
-      try
-        load ~load_paths cmtname
-      with
-      | Failure s ->
-          let spitname = name ^ if spit then ".cmt" else ".cmti" in
-          Format.printf "%s load failed. Try to load %s@."
-            cmtname spitname;
-          try
-            load ~load_paths spitname
-          with
-          | Failure s' -> failwithf "%s\n%s" s s'
-  end
-
-  include Load
-
-  let empty_env file =
-    { Env.path = file.Unit.path;
-      cwd = file.Unit.builddir;
-      load_paths = file.Unit.loadpath;
-      binding = Binding.empty }
-
-  let invalid_env file =
-    { Env.path = file.Unit.path;
-      cwd = file.Unit.builddir;
-      load_paths = file.Unit.loadpath;
-      binding = Binding.invalid }
-      
-  type result =
-      | File_itself
-      | Found_at of Region.t
-      | Predefined
-
-  let find_path_in_flat file path : PIdent.t * result =
-    let env = 
-      let env = invalid_env file in
-      let str = Eval.structure env !!(file.Unit.flat) in
-      Binding.set env.Env.binding str; (* dirty hack *)
-      env
-    in
-    let find_loc pid =
-      match  pid.PIdent.path with
-      | "" -> Predefined
-      | path ->
-          (* CR jfuruse: loading twice... *)
-          Debug.format "Finding %a@." PIdent.format pid;
-          let file = Load.load ~load_paths:[] (Cmt.of_path path) in
-          match pid.PIdent.ident with
-          | None -> File_itself (* the whole file *)
-          | Some id -> 
-              Found_at begin try
-                Hashtbl.find !!(file.Unit.id_def_regions) id
-              with
-              | Not_found ->
-                  eprintf "Error: find location of id %a failed@."
-                    PIdent.format pid;
-                  raise Not_found
-              end
-    in
-    
-    let eval_and_find path =
-      (* we need evaluate the path *)
-      let v = !!(Eval.find_path env path) in
-      Debug.format "Value=%a@." Value.Format.t v;
-      match v with
-      | Value.Ident id -> id, find_loc id
-      | Value.Parameter id -> id, find_loc id
-      | Value.Structure (id, _, _)  -> id, find_loc id
-      | Value.Closure (id, _, _, _, _) -> id, find_loc id
-      | Value.Error (Failure _ as e) -> raise e
-      | Value.Error (Load.Old_cmt _ as exn) -> raise exn
-      | Value.Error exn -> raise exn
-    in
-    eval_and_find path
-
-  let str_of_global_ident ~load_paths id =
-    assert (Ident.global id);
-    let file = Load.load_module ~spit:Spotconfig.print_interface ~load_paths (Ident0.name id) in
-    file.Unit.path,
-    Eval.structure (empty_env file) file.Unit.top
-
-  let _ = Eval.str_of_global_ident := str_of_global_ident
-
-  let eval_packed env file =
-    let f = Load.load ~load_paths:[""] (Cmt.of_path (env.Env.cwd ^/ file)) in
-    Value.Structure ({ PIdent.path = f.Unit.path; ident = None },
-                    Eval.structure (empty_env f) f.Unit.top,
-                    None (* packed has no .mli *))
-
-  let _ = Eval.packed := eval_packed
+let _ = Eval.packed := eval_packed
 
 (*
   let dump_elem = function
@@ -265,4 +263,3 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
 
   let dump_elems elems = List.iter dump_elem elems
 *)
-end

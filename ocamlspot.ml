@@ -21,12 +21,8 @@ open Ext
 open Spot
 open Spoteval
 
+module File = Spotfile
 module C = Spotconfig
-
-module File = struct
-  include Spotfile
-  include Spotfile.Make(C)
-end
 
 module SAbs = Spot.Abstraction
 

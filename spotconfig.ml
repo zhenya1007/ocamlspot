@@ -39,6 +39,7 @@ let strict_time_stamp      = ref false
 let print_interface        = ref false
 let type_expand            = ref false
 let rest_args_rev          = ref []
+let use_spot               = ref false
 
 let _ = 
   Arg.parse (Arg.align
@@ -83,6 +84,9 @@ let _ =
 
       "--eager-dump", 
       Arg.Set eager_dump, " : eager evaluation at dump";
+
+      "--use-spot", 
+      Arg.Set use_spot, " : use spot files instead of cmt, if exists";
     ])
     (fun s -> rev_anonargs := s :: !rev_anonargs)
     (Printf.sprintf 
@@ -125,6 +129,7 @@ let no_definition_analysis = !no_definition_analysis
 let strict_time_stamp      = !strict_time_stamp
 let print_interface        = !print_interface
 let type_expand            = !type_expand
+let use_spot               = !use_spot
 
 let dump_any = 
   dump_file || dump_rannots <> `None || dump_tree || dump_top || dump_flat
