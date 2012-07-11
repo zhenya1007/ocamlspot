@@ -1342,13 +1342,13 @@ module File = struct
   let abstraction cmt = match cmt.cmt_annots with
     | Implementation str -> 
         let loc_annots = Annot.record_structure str in
-        begin match Abstraction.structure str with
+        begin match Abstraction.top_structure str with
         | Abstraction.AMod_structure str -> str, loc_annots
         | _ -> assert false
         end
     | Interface sg -> 
         let loc_annots = Annot.record_signature sg in
-        begin match Abstraction.signature sg with
+        begin match Abstraction.top_signature sg with
         | Abstraction.AMod_structure str -> str, loc_annots
         | _ -> assert false
         end
