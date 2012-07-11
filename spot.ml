@@ -270,7 +270,7 @@ module Abstraction = struct
 
   let aliases_of_include mexp ids =
     let sg = try match Mtype.scrape mexp.mod_env mexp.mod_type with Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
-    aliases_of_include' true sg  ids
+    aliases_of_include' true sg ids
 
   let rec module_expr mexp =
     try
@@ -295,10 +295,7 @@ module Abstraction = struct
 	   module_expr is nicely cached. *)
 	structure str
     | Tmod_functor (id, _, mty, mexp) ->
-        let mty = 
-          try Mtype.scrape mexp.mod_env mty.mty_type with _ -> assert false
-        in
-	AMod_functor(id, mty, module_expr mexp)
+	AMod_functor(id, mty.mty_type, module_expr mexp)
     | Tmod_apply (mexp1, mexp2, _mcoercion) -> (* CR jfuruse ? *)
 	AMod_apply (module_expr mexp1, module_expr mexp2)
     | Tmod_constraint (mexp, mty_, _constraint, _mcoercion) ->
