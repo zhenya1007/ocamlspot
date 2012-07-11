@@ -24,11 +24,6 @@ let magic_number = "OCamlSpot"
 let ocaml_version = "4.00.0"
 let version = "2.0.0"
 
-module Location_bound = struct
-  open Location
-  let upperbound loc by = { loc with loc_end = by.loc_start }
-end
-
 module Kind = struct
   type t = 
     | Value | Type | Exception 
@@ -202,7 +197,6 @@ module Abstraction = struct
   open Typedtree
   open Asttypes
 
-  (* CR jfuruse: cache never cleaned! *)
   let cache_module_expr = Module_expr.Table.create 31
   let cache_structure_item = Structure_item.Table.create 31
 
@@ -409,6 +403,9 @@ module Abstraction = struct
     | Ttype_abstract -> []
     | Ttype_variant lst -> List.map (fun (id, {loc=_loc}, _, _) -> AStr_type id) lst
     | Ttype_record lst -> List.map (fun (id, {loc=_loc}, _, _, _) -> AStr_type id) lst
+
+  let top_structure str = clear_cache (); structure str
+  let top_signature sg =  clear_cache (); signature sg
 end
 
 let protect' name f v = try f v with e ->

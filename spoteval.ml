@@ -124,7 +124,7 @@ end = struct
       
   module Binding = struct
     type t = binding
-    let error () = raise (Failure "Binding: premature")
+    let error () = failwith "Binding: premature"
     let with_check f t = 
       match !t with
       | None -> error ()
@@ -166,7 +166,7 @@ end = struct
     and env e = binding e.binding
     and binding b =
       match !b with
-      | None -> raise (Failure "Enforcer.binding: binding is premature")
+      | None -> failwith "Enforcer.binding: binding is premature"
       | Some str -> structure str
     and structure str = List.iter structure_item str
     and structure_item (_, (_, zt)) = z zt

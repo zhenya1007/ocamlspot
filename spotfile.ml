@@ -11,8 +11,6 @@
 (*                                                                     *)
 (***********************************************************************)
 
-(* module names may corride in different source/spot files *)
-
 open Format
 open Utils
 
@@ -23,7 +21,6 @@ open Spot
 open Spoteval
 
 module Make(Spotconfig : Spotconfig_intf.S) = struct
-  (* open Abstraction *)
 
   module Load : sig
     exception Old_cmt of string (* cmt *) * string (* source *)
@@ -76,18 +73,18 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
           Hashtbl.find cache path
         with
         | Not_found ->
-              try
-                let file = load_directly path in
-                if not (check_time_stamp ~cmt:path file.Unit.path) then 
-                  if Spotconfig.strict_time_stamp then 
-                    raise (Old_cmt (path, file.Unit.path))
-                  else
-                    eprintf "Warning: source %s is newer than the cmt@." file.Unit.path;
-                Hashtbl.replace cache path file;
-                file
-              with
-              | Not_found ->
-                  failwith (Printf.sprintf "failed to find cmt file %s" path)
+            try
+              let file = load_directly path in
+              if not (check_time_stamp ~cmt:path file.Unit.path) then 
+                if Spotconfig.strict_time_stamp then 
+                  raise (Old_cmt (path, file.Unit.path))
+                else
+                  eprintf "Warning: source %s is newer than the cmt@." file.Unit.path;
+              Hashtbl.replace cache path file;
+              file
+            with
+            | Not_found ->
+                failwith (Printf.sprintf "failed to find cmt file %s" path)
 
     let find_in_path load_paths body ext =
       let body_ext = body ^ ext in
@@ -168,9 +165,7 @@ module Make(Spotconfig : Spotconfig_intf.S) = struct
           try
             load ~load_paths spitname
           with
-          | Failure s' ->
-                (* CR jfuruse: ugly! *)
-              raise (Failure (s ^ "\n" ^ s'))
+          | Failure s' -> failwithf "%s\n%s" s s'
   end
 
   include Load
