@@ -5,7 +5,7 @@ pathreparse.cmi : spot.cmi
 spot.cmi :
 spotconfig.cmi : spotconfig_intf.cmo
 spoteval.cmi : utils.cmi spot.cmi
-spotfile.cmi : utils.cmi spoteval.cmi spotconfig_intf.cmo spot.cmi
+spotfile.cmi : spoteval.cmi spotconfig_intf.cmo spot.cmi
 treeset.cmi : xset.cmi
 ttfold.cmi :
 typeFix.cmi :
@@ -19,8 +19,8 @@ xprinttyp.cmi :
 xset.cmi :
 command.cmo : command.cmi
 command.cmx : command.cmi
-dotfile.cmo :
-dotfile.cmx :
+dotfile.cmo : utils.cmi
+dotfile.cmx : utils.cmx
 ext.cmo : xprinttyp.cmi xpath.cmi xlongident.cmi xident.cmi
 ext.cmx : xprinttyp.cmx xpath.cmx xlongident.cmx xident.cmx
 locident.cmo : locident.cmi
@@ -59,8 +59,6 @@ typeexpand.cmo : utils.cmi typeexpand.cmi
 typeexpand.cmx : utils.cmx typeexpand.cmi
 utils.cmo : utils.cmi
 utils.cmx : utils.cmi
-x.cmo :
-x.cmx :
 xident.cmo : name.cmi xident.cmi
 xident.cmx : name.cmx xident.cmi
 xlongident.cmo : xlongident.cmi
