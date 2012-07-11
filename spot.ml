@@ -542,6 +542,8 @@ module Annot = struct
         begin match ee with 
         | Texp_constraint _ -> ()
         | Texp_open (path, {loc}, _) -> record_use loc K.Module path
+        | Texp_poly _ -> ()
+        | Texp_newtype _ -> ()
         end;
         super#exp_extra ee
 
@@ -574,13 +576,12 @@ module Annot = struct
               record_use loc K.Type path) lst
         | Texp_letmodule (id, {loc}, mexp, _) -> 
             record_def loc (AStr_module (id, module_expr mexp))
-        | Texp_newtype (_string, _expr) (* CR jfuruse: ? *) -> ()
         | Texp_constant _ | Texp_let _ | Texp_function _
         | Texp_apply _ | Texp_match _ | Texp_try _
         | Texp_tuple _ | Texp_variant _ | Texp_array _
         | Texp_ifthenelse _ | Texp_sequence _ | Texp_while _
         | Texp_when _ | Texp_send _ | Texp_assert _ | Texp_assertfalse
-        | Texp_lazy _ | Texp_poly _ | Texp_object _ | Texp_pack _ -> ()
+        | Texp_lazy _ | Texp_object _ | Texp_pack _ -> ()
         end;
         super#expression_desc ed
 (*          
