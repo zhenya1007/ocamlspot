@@ -28,35 +28,34 @@ module File = struct
   include Spotfile.Make(C)
 end
 
-open Cmt_format
-
 module SAbs = Spot.Abstraction
 
 module Dump = struct
   (* mainly debugging purpose *)
 
-  let file = File.dump_file
+  let file = Spot.File.dump
+  let unit = Spot.Unit.dump
 
-  let rannots_full file = 
+  let rannots_full unit = 
     eprintf "@[<2>rannots =@ [ @[<v>%a@]@] ]@."
       (Format.list ";@ " (Regioned.format (Format.list ";@ " Annot.format)))
-      !!(file.File.rannots)
+      !!(unit.Unit.rannots)
   ;;
   
-  let rannots_summary file = 
+  let rannots_summary unit = 
     eprintf "@[<2>rannots =@ [ @[<v>%a@]@] ]@."
       (Format.list ";@ " (Regioned.format (Format.list ";@ " Annot.summary)))
-      !!(file.File.rannots)
+      !!(unit.Unit.rannots)
   ;;
   
-  let tree file = Tree.dump !!(file.File.tree)
+  let tree unit = Tree.dump !!(unit.Unit.tree)
   ;;
 
   let top file = 
     eprintf "@[<2>top =@ @[%a@]@]@." 
-      Abstraction.format_structure file.File.top;
+      Abstraction.format_structure file.Unit.top;
     let str = 
-      Eval.structure (File.empty_env file) file.File.top
+      Eval.structure (File.empty_env file) file.Unit.top
     in
     if C.eager_dump then begin
       let module Enforcer = Value.Enforcer(struct end) in
@@ -67,10 +66,10 @@ module Dump = struct
 
   let flat file = 
     eprintf "@[<2>flat =@ @[%a@]@]@." 
-      Abstraction.format_structure file.File.flat;
+      Abstraction.format_structure !!(file.Unit.flat);
     let str = 
       let env = File.invalid_env file in
-      let str = Eval.structure env file.File.flat in
+      let str = Eval.structure env !!(file.Unit.flat) in
       Binding.set env.Env.binding str; (* dirty hack (dup code) *)
       str
     in
@@ -92,7 +91,7 @@ module Main = struct
 
     let file = File.load ~load_paths: ["."] path in
     
-    if C.dump_file then Dump.file file;
+    if C.dump_file then Dump.unit file; (* CR jfuruse: to be fixed *)
     if C.dump_rannots = `Full then Dump.rannots_full file;
     if C.dump_rannots = `Summary then Dump.rannots_summary file;
     if C.dump_tree then Dump.tree file;
@@ -103,14 +102,22 @@ module Main = struct
   ;;
 
   let info path =
-    let file = load (File.cmt_of_file path) in
+    let file = load (Cmt.of_path path) in
     printf "Compile: %s@."
       (String.concat " " 
          (List.map Command.escaped_for_shell 
-            (Array.to_list file.File.cmt.cmt_args)));
+            (Array.to_list file.Unit.args)));
     printf "@[<v2>Included_dirs:@ %a@]@."
       (Format.list "" pp_print_string)
-      file.File.cmt.cmt_loadpath
+      file.Unit.loadpath
+
+  let write_spot path =
+    let file = load (Cmt.of_path path) in
+    let spot = match Filename.split_extension path with
+      | body, (".cmi" | ".mli" | ".cmti") -> body ^ ".spit"
+      | body, _ -> body ^ ".spot"
+    in
+    Spot.File.save spot (Spot.Unit.to_file file)
 
   let query_by_kind_path file kind path = 
     try Some (File.find_path_in_flat file (kind, path)) with Not_found -> None
@@ -135,7 +142,7 @@ module Main = struct
     let probe = Region.point pos in
     let treepath = 
       (* subtree is not used *)
-      List.map fst (Tree.find_path_contains probe !!(file.File.tree))
+      List.map fst (Tree.find_path_contains probe !!(file.Unit.tree))
     in
     match treepath with
     | [] -> failwith (Printf.sprintf "nothing at %s" (Position.to_string pos))
@@ -157,7 +164,7 @@ module Main = struct
 	    List.find_map_opt (function
 	      | Annot.Use (_, path) -> 
 		  (* Find subpath *)
-		  begin match Pathreparse.get file.File.path r pos path with    
+		  begin match Pathreparse.get file.Unit.path r pos path with    
 		  | None -> None
 		  | Some (path', r) -> 
 		      if path = path' then None (* as original *)
@@ -173,7 +180,7 @@ module Main = struct
 
 	(* Tree is an older format. XTree is a newer which is the same as one for Spot *)
         printf "Tree: %s@." (Region.to_string r);
-        printf "XTree: <%s:%s>@." file.File.path (Region.to_string r);
+        printf "XTree: <%s:%s>@." file.Unit.path (Region.to_string r);
 
 	(* Find the innermost module *)
         let find_module_path treepath = List.concat_map (fun { Regioned.value = annots } ->
@@ -210,9 +217,9 @@ module Main = struct
           match List.filter (function Annot.Type _ -> true | _ -> false) annots with
           (* CR jfuruse: Sometimes more than one Annot.Type are found at the same place... *)
           | Annot.Type (typ, env, `Expr) :: _ -> 
-              printf "Expand: @[%a@]@." Typeexpand.format_as_expr (Typeexpand.expand file.File.cmt.cmt_loadpath env typ)
+              printf "Expand: @[%a@]@." Typeexpand.format_as_expr (Typeexpand.expand file.Unit.loadpath env typ)
           | Annot.Type (typ, env, `Pattern) :: _ -> 
-              printf "Expand: @[%a@]@." Typeexpand.format_as_pattern (Typeexpand.expand file.File.cmt.cmt_loadpath env typ)
+              printf "Expand: @[%a@]@." Typeexpand.format_as_pattern (Typeexpand.expand file.Unit.loadpath env typ)
           | Annot.Type (_typ, _env, `Val) :: _ -> ()
           | _ -> ()
         end;
@@ -224,7 +231,7 @@ module Main = struct
     (* CR jfuruse: dup *)
     Debug.format "ocamlspot %s%s@." path (C.SearchSpec.to_string spec);
     Debug.format "cwd: %s@." (Sys.getcwd ());
-    let path = File.cmt_of_file path in
+    let path = Cmt.of_path path in
     let file = load path in
 
     let query_kind_path k path = print_query_result k (query_by_kind_path file k path) in
@@ -259,7 +266,7 @@ module Main = struct
     (* CR jfuruse: dup *)
     Debug.format "ocamlspot %s%s@." path (C.SearchSpec.to_string spec);
     Debug.format "cwd: %s@." (Sys.getcwd ());
-    let path = File.cmt_of_file path in
+    let path = Cmt.of_path path in
     let file = load path in
 
     let find_by_kind_path k path found =
@@ -280,18 +287,18 @@ module Main = struct
 	              begin match query_by_kind_path file k' path' with
 	              | Some found' when found = found' ->
 		          printf "<%s:%s>: %s@." 
-		            file.File.path
+		            file.Unit.path
 		            (Region.to_string region)
 		            (Path.name path)
 	              | None | Some _ -> ()
 	              end
-                  | _ -> ()) annots) !!(file.File.rannots)
+                  | _ -> ()) annots) !!(file.Unit.rannots)
 	| _ -> ());
     in
 
     let by_kind_path file k path =
       Debug.format "Searching %s:%s:%s ...@." 
-	file.File.path 
+	file.Unit.path 
 	(Kind.to_string k) 
 	(Path.name path); 
       let res = query_by_kind_path file k path in
@@ -303,7 +310,7 @@ module Main = struct
 
     let by_pos file pos = 
       eprintf "Searching %s:%s ...@." 
-	file.File.path 
+	file.Unit.path 
 	(Position.to_string pos);
       match List.find_map_opt (function 
 	| Annot.Str str_item -> 
@@ -336,15 +343,15 @@ module Main = struct
   let recheck files =
     let recheck mlpath =
       Debug.format "cwd: %s@." (Sys.getcwd ());
-      let path = File.cmt_of_file mlpath in
-      let file = File.load ~load_paths: ["."] path in
+      let path = Cmt.of_path mlpath in
+      let file = Unit.load ~load_paths: ["."] path in
     
       printf "Compile: %s@."
         (String.concat " " 
           (List.map Command.escaped_for_shell 
-            (Array.to_list file.File.argv)));
+            (Array.to_list file.Unit.argv)));
       let command = 
-	Sys.argv.(0) :: List.tl (Array.to_list file.File.argv) 
+	Sys.argv.(0) :: List.tl (Array.to_list file.Unit.argv) 
       in
       Xmain.main (Array.of_list command)
     in
@@ -356,6 +363,7 @@ module Main = struct
     match C.mode with
     | `Dump path                   -> ignore (load path)
     | `Info path                   -> info path
+    | `Spot path                   -> write_spot path
     | `Query (path, spec)          -> query path spec
 (*
     | `Typecheck args              -> typecheck args

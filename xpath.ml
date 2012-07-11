@@ -13,6 +13,7 @@
 
 (* extend the original module *)
 open Path
+module Ident0 = Ident
 module Ident = struct
   include Ident
   include Xident
@@ -45,3 +46,9 @@ let parse s =
 open Format
 let format ppf p = pp_print_string ppf (name p)
 
+let rec to_longident = 
+  let open Longident in
+  function
+  | Pident id -> Lident (Ident0.name id )
+  | Pdot (p, name, _) -> Ldot (to_longident p, name)
+  | Papply (p1, p2) -> Lapply (to_longident p1, to_longident p2)

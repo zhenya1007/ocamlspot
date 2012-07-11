@@ -366,10 +366,8 @@ module Abstraction = struct
         (* CR jfuruse: need to scrape ? but how ? *)
         AMod_functor(id, mty1.mty_type, module_type mty2)
     | Tmty_with (mty, _) -> module_type mty (* CR jfuruse: ?? *)
-(*
-    | Tmty_typeof of module_expr (* CR jfuruse: ?? *)
-*)
-    | _ -> assert false
+    | Tmty_typeof mexp ->  (* CR jfuruse: ?? *)
+        T.module_type mexp.mod_type
 
   and signature sg = AMod_structure (List.concat_map signature_item sg.sig_items)
 
@@ -470,9 +468,10 @@ module Annot = struct
   
     let record tbl loc t = 
       let really_record () = 
-        let num_records, records = 
-          try Hashtbl.find tbl loc with Not_found -> 0, []
+        let records = 
+          try Hashtbl.find tbl loc with Not_found -> []
         in
+(*
         (* CR jfuruse: I am not really sure the below is correct now, 
            but I remember the huge compilation slow down... *)
         (* This caching works horribly when too many things are defined 
@@ -483,6 +482,8 @@ module Annot = struct
         *)
         if num_records <= 10 && List.exists (equal t) records then ()
         else Hashtbl.replace tbl loc (num_records + 1, t :: records)
+*)
+        Hashtbl.replace tbl loc (t :: records)
       in
       match check_location loc with
       | Wellformed -> really_record ()
@@ -784,7 +785,13 @@ and signature = {
         | Tsig_include (mty, sg) -> 
             let loc = si.sig_loc in
             let m = Abstraction.module_type mty in
-            let sg0 = try match Mtype.scrape mty.mty_env mty.mty_type with Types.Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
+            let sg0 = match Mtype.scrape mty.mty_env mty.mty_type with 
+              | Types.Mty_signature sg -> sg 
+              | Types.Mty_functor _ -> assert false
+              | Types.Mty_ident _path -> 
+                  (* Strange... failed to scrape? *)
+                  assert false
+            in
             let ids = List.map (fun si -> snd (T.kident_of_sigitem si)) sg in
             let aliases = try aliases_of_include' false sg0 ids with _ -> assert false in
             List.iter (fun (id, (k, id')) -> 
@@ -1297,3 +1304,167 @@ module Tree = struct
 	  RAnnot.format rrspot) t
 end
 
+(* Minimum data for spotting, which are saved into spot files *)
+module File = struct
+  type t = {
+    modname        : string;
+    builddir       : string; 
+    loadpath       : string list;
+    args           : string array;
+    path           : string; (** source path. If packed, the .cmo itself *)
+    top            : Abstraction.structure;
+    loc_annots     : (Location.t, Annot.t list) Hashtbl.t
+  }
+
+  let dump file =
+    eprintf "@[<v2>{ module= %S;@ path= %S;@ builddir= %S;@ loadpath= [ @[%a@] ];@ argv= [| @[%a@] |];@ ... }@]@."
+      file.modname
+      file.path
+      file.builddir
+      (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) file.loadpath
+      (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) (Array.to_list file.args)
+
+  let save path t =
+    let oc = open_out_bin path in
+    output_string oc "spot";
+    output_string oc Checksum.char16;
+    output_value oc t;
+    close_out oc
+
+  let load path =
+    let ic = open_in path in
+    let buf = String.create 4 in
+    really_input ic buf 0 4;
+    if buf <> "spot" then failwithf "file %s is not a spot file" path;
+    let buf = String.create 16 in
+    really_input ic buf 0 16;
+    if buf <> Checksum.char16 then failwithf "file %s has an incompatible checksum" path;
+    let v = input_value ic in
+    close_in ic;
+    v
+
+  open Cmt_format
+
+  let abstraction cmt = match cmt.cmt_annots with
+    | Implementation str -> 
+        let loc_annots = Annot.record_structure str in
+        begin match Abstraction.structure str with
+        | Abstraction.AMod_structure str -> str, loc_annots
+        | _ -> assert false
+        end
+    | Interface sg -> 
+        let loc_annots = Annot.record_signature sg in
+        begin match Abstraction.signature sg with
+        | Abstraction.AMod_structure str -> str, loc_annots
+        | _ -> assert false
+        end
+    | Packed (_sg, files) ->
+        (List.map (fun file ->
+          let fullpath = if Filename.is_relative file then cmt.cmt_builddir ^/ file else file in
+          let modname = match Filename.split_extension (Filename.basename file) with 
+            | modname, (".cmo" | ".cmx" | ".cmi") -> String.capitalize modname
+            | _ -> Format.eprintf "packed module with strange name: %s@." file; assert false
+          in
+          Abstraction.AStr_module (Ident.create modname (* stamp is bogus *),
+                                   Abstraction.AMod_packed fullpath)) files),
+        (Hashtbl.create 1 (* empty *))
+    | Partial_implementation _parts | Partial_interface _parts -> assert false
+  
+  let abstraction cmt = 
+    let load_path = List.map (fun p ->
+      cmt.cmt_builddir ^/ p) cmt.cmt_loadpath
+    in
+    with_ref Config.load_path load_path (fun () -> 
+      try abstraction cmt; with e -> 
+        Format.eprintf "Aiee %s@." (Printexc.to_string e);
+        raise e)
+
+  let of_cmt path (* the cmt file path *) cmt =
+    let path = Option.default (Cmt.source_path cmt) (fun () -> 
+      let ext = if Cmt.is_opt cmt then ".cmx" else ".cmo" in
+      Filename.chop_extension path ^ ext)
+    in
+    let top, loc_annots = abstraction cmt in
+    { modname  = cmt.cmt_modname;
+      builddir = cmt.cmt_builddir;
+      loadpath = cmt.cmt_loadpath;
+      args     = cmt.cmt_args;
+      path; 
+      top;
+      loc_annots;
+    }
+end
+
+(* Spot info for each compilation unit *)
+module Unit = struct
+  type t = {
+    modname        : string;
+    builddir       : string; 
+    loadpath       : string list;
+    args           : string array;
+    path           : string; (** source path. If packed, the .cmo itself *)
+    top            : Abstraction.structure;
+    loc_annots     : (Location.t, Annot.t list) Hashtbl.t;
+
+    flat           : Abstraction.structure lazy_t;
+    id_def_regions : (Ident.t, Region.t) Hashtbl.t lazy_t;
+    rannots        : Annot.t list Regioned.t list lazy_t;
+    tree           : Tree.t lazy_t
+  }
+
+  (* same as File.dump, ignoring new additions in Unit *)
+  let dump file =
+    eprintf "@[<v2>{ module= %S;@ path= %S;@ builddir= %S;@ loadpath= [ @[%a@] ];@ argv= [| @[%a@] |];@ ... }@]@."
+      file.modname
+      file.path
+      file.builddir
+      (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) file.loadpath
+      (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) (Array.to_list file.args)
+
+  let to_file { modname; builddir; loadpath; args; path; top ; loc_annots } = 
+    { File.modname;
+      builddir;
+      loadpath;
+      args;
+      path;
+      top;
+      loc_annots;
+    }
+
+  let of_file ({ File.loc_annots; } as f) = 
+    let rannots = lazy (Hashtbl.fold (fun loc annots st -> 
+      { Regioned.region = Region.of_parsing loc;  value = annots } :: st) 
+                          loc_annots [])
+    in
+    let id_def_regions = lazy (
+      let tbl = Hashtbl.create 1023 in
+      Hashtbl.iter (fun loc annots ->
+        List.iter (function
+          | Annot.Str sitem ->
+              Option.iter (Abstraction.ident_of_structure_item sitem) ~f:(fun (_kind, id) ->
+                Hashtbl.add tbl id (Region.of_parsing loc))
+          | _ -> ()) annots) loc_annots;
+      tbl)
+    in
+    let tree = lazy begin
+      Hashtbl.fold (fun loc annots st ->
+        Tree.add st { Regioned.region = Region.of_parsing loc; value = annots })
+        loc_annots Tree.empty 
+    end in
+    (* CR jfuruse: it is almost the same as id_def_regions_list *)
+    let flat = lazy (Hashtbl.fold (fun _loc annots st -> 
+      List.filter_map (function
+        | Annot.Str sitem -> Some sitem
+        | _ -> None) annots @ st) loc_annots [])
+    in
+    { modname    = f.File.modname;
+      builddir   = f.File.builddir;
+      loadpath   = f.File.loadpath;
+      args       = f.File.args;
+      path       = f.File.path;
+      top        = f.File.top;
+      loc_annots = f.File.loc_annots;
+      
+      flat; id_def_regions; rannots; tree; 
+    }
+end

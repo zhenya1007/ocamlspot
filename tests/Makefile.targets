@@ -27,8 +27,11 @@ include_exception.cmo \
 include_functor_app.cmo \
 include_modtype.cmo \
 include_override.cmo \
+include_sig.cmi \
 included.cmo \
 included_and_flat.cmo \
+included_sig.cmi \
+included_sig2.cmo \
 included_value.cmo \
 including.cmo \
 inherit.cmo \
