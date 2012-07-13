@@ -269,7 +269,7 @@ module Abstraction = struct
     res
 
   let aliases_of_include mexp ids =
-    let sg = try match Mtype.scrape mexp.mod_env mexp.mod_type with Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
+    let sg = try match Mtype.scrape (Cmt.recover_env mexp.mod_env) mexp.mod_type with Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
     aliases_of_include' true sg ids
 
   let rec module_expr mexp =
@@ -387,7 +387,7 @@ module Abstraction = struct
     | Tsig_open _ -> []
     | Tsig_include (mty, sg) -> 
         let m = module_type mty in
-        let sg0 = try match Mtype.scrape mty.mty_env mty.mty_type with Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
+        let sg0 = try match Mtype.scrape (Cmt.recover_env mty.mty_env) mty.mty_type with Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
         let ids = List.map (fun si -> snd (T.kident_of_sigitem si)) sg in
         let aliases = try aliases_of_include' false sg0 ids with _ -> assert false in
         List.map (fun (id, (k, id')) -> AStr_included (id, m, k, id')) aliases
@@ -780,7 +780,7 @@ and signature = {
         | Tsig_include (mty, sg) -> 
             let loc = si.sig_loc in
             let m = Abstraction.module_type mty in
-            let sg0 = match Mtype.scrape mty.mty_env mty.mty_type with 
+            let sg0 = match Mtype.scrape (Cmt.recover_env mty.mty_env) mty.mty_type with 
               | Types.Mty_signature sg -> sg 
               | Types.Mty_functor _ -> assert false
               | Types.Mty_ident _path -> 
