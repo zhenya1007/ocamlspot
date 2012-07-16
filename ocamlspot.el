@@ -15,7 +15,7 @@
 ;
 ; Write the following to your .emacs
 
-
+; CR jfuruse: no tree node found is displayed when ocamlspot program is not found
 
 ;; load-path
 ; (setq load-path (cons "WHERE-YOU-HAVE-INSTALLED-THE-ELISP" load-path))
