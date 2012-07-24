@@ -22,10 +22,6 @@ val magic_number : string
 val ocaml_version : string
 val version : string
 
-module Location_bound : sig
-  val upperbound : Location.t -> Location.t -> Location.t
-end
-
 module Kind : sig
   type t = 
     | Value | Type | Exception 
@@ -67,8 +63,8 @@ module Abstraction : sig
 
   val ident_of_structure_item : structure_item -> (Kind.t * Ident.t) option
 
-  val structure : Typedtree.structure -> module_expr
-  val signature : Typedtree.signature -> module_expr
+  val top_structure : Typedtree.structure -> module_expr
+  val top_signature : Typedtree.signature -> module_expr
 
   val clear_cache : unit -> unit
 

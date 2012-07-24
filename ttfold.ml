@@ -550,14 +550,9 @@ class fold =
       | Texp_assert _x -> let o = o#expression _x in o
       | Texp_assertfalse -> o
       | Texp_lazy _x -> let o = o#expression _x in o
-      | Texp_poly (_x, _x_i1) ->
-          let o = o#expression _x in
-          let o = o#option (fun o -> o#core_type) _x_i1 in o
       | Texp_object (_x, _x_i1) ->
           let o = o#class_structure _x in
           let o = o#list (fun o -> o#string) _x_i1 in o
-      | Texp_newtype (_x, _x_i1) ->
-          let o = o#string _x in let o = o#expression _x_i1 in o
       | Texp_pack _x -> let o = o#module_expr _x in o
     method expression : expression -> 'self_type =
       fun
@@ -585,6 +580,10 @@ class fold =
           let o = o#unknown _x in
           let o = o#loc (fun o -> o#unknown) _x_i1 in
           let o = o#unknown _x_i2 in o
+      | Texp_poly _x_i1 ->
+          let o = o#option (fun o -> o#core_type) _x_i1 in o
+      | Texp_newtype _x ->
+          let o = o#string _x in o
     method exception_declaration : exception_declaration -> 'self_type =
       fun { exn_params = _x; exn_exn = _x_i1; exn_loc = _x_i2 } ->
         let o = o#list (fun o -> o#core_type) _x in

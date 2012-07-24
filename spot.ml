@@ -24,11 +24,6 @@ let magic_number = "OCamlSpot"
 let ocaml_version = "4.00.0"
 let version = "2.0.0"
 
-module Location_bound = struct
-  open Location
-  let upperbound loc by = { loc with loc_end = by.loc_start }
-end
-
 module Kind = struct
   type t = 
     | Value | Type | Exception 
@@ -202,7 +197,6 @@ module Abstraction = struct
   open Typedtree
   open Asttypes
 
-  (* CR jfuruse: cache never cleaned! *)
   let cache_module_expr = Module_expr.Table.create 31
   let cache_structure_item = Structure_item.Table.create 31
 
@@ -275,8 +269,8 @@ module Abstraction = struct
     res
 
   let aliases_of_include mexp ids =
-    let sg = try match Mtype.scrape mexp.mod_env mexp.mod_type with Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
-    aliases_of_include' true sg  ids
+    let sg = try match Mtype.scrape (Cmt.recover_env mexp.mod_env) mexp.mod_type with Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
+    aliases_of_include' true sg ids
 
   let rec module_expr mexp =
     try
@@ -301,10 +295,7 @@ module Abstraction = struct
 	   module_expr is nicely cached. *)
 	structure str
     | Tmod_functor (id, _, mty, mexp) ->
-        let mty = 
-          try Mtype.scrape mexp.mod_env mty.mty_type with _ -> assert false
-        in
-	AMod_functor(id, mty, module_expr mexp)
+	AMod_functor(id, mty.mty_type, module_expr mexp)
     | Tmod_apply (mexp1, mexp2, _mcoercion) -> (* CR jfuruse ? *)
 	AMod_apply (module_expr mexp1, module_expr mexp2)
     | Tmod_constraint (mexp, mty_, _constraint, _mcoercion) ->
@@ -396,7 +387,7 @@ module Abstraction = struct
     | Tsig_open _ -> []
     | Tsig_include (mty, sg) -> 
         let m = module_type mty in
-        let sg0 = try match Mtype.scrape mty.mty_env mty.mty_type with Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
+        let sg0 = try match Mtype.scrape (Cmt.recover_env mty.mty_env) mty.mty_type with Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
         let ids = List.map (fun si -> snd (T.kident_of_sigitem si)) sg in
         let aliases = try aliases_of_include' false sg0 ids with _ -> assert false in
         List.map (fun (id, (k, id')) -> AStr_included (id, m, k, id')) aliases
@@ -409,6 +400,9 @@ module Abstraction = struct
     | Ttype_abstract -> []
     | Ttype_variant lst -> List.map (fun (id, {loc=_loc}, _, _) -> AStr_type id) lst
     | Ttype_record lst -> List.map (fun (id, {loc=_loc}, _, _, _) -> AStr_type id) lst
+
+  let top_structure str = clear_cache (); structure str
+  let top_signature sg =  clear_cache (); signature sg
 end
 
 let protect' name f v = try f v with e ->
@@ -548,6 +542,8 @@ module Annot = struct
         begin match ee with 
         | Texp_constraint _ -> ()
         | Texp_open (path, {loc}, _) -> record_use loc K.Module path
+        | Texp_poly _ -> ()
+        | Texp_newtype _ -> ()
         end;
         super#exp_extra ee
 
@@ -580,13 +576,12 @@ module Annot = struct
               record_use loc K.Type path) lst
         | Texp_letmodule (id, {loc}, mexp, _) -> 
             record_def loc (AStr_module (id, module_expr mexp))
-        | Texp_newtype (_string, _expr) (* CR jfuruse: ? *) -> ()
         | Texp_constant _ | Texp_let _ | Texp_function _
         | Texp_apply _ | Texp_match _ | Texp_try _
         | Texp_tuple _ | Texp_variant _ | Texp_array _
         | Texp_ifthenelse _ | Texp_sequence _ | Texp_while _
         | Texp_when _ | Texp_send _ | Texp_assert _ | Texp_assertfalse
-        | Texp_lazy _ | Texp_poly _ | Texp_object _ | Texp_pack _ -> ()
+        | Texp_lazy _ | Texp_object _ | Texp_pack _ -> ()
         end;
         super#expression_desc ed
 (*          
@@ -785,7 +780,7 @@ and signature = {
         | Tsig_include (mty, sg) -> 
             let loc = si.sig_loc in
             let m = Abstraction.module_type mty in
-            let sg0 = match Mtype.scrape mty.mty_env mty.mty_type with 
+            let sg0 = match Mtype.scrape (Cmt.recover_env mty.mty_env) mty.mty_type with 
               | Types.Mty_signature sg -> sg 
               | Types.Mty_functor _ -> assert false
               | Types.Mty_ident _path -> 
@@ -1348,13 +1343,13 @@ module File = struct
   let abstraction cmt = match cmt.cmt_annots with
     | Implementation str -> 
         let loc_annots = Annot.record_structure str in
-        begin match Abstraction.structure str with
+        begin match Abstraction.top_structure str with
         | Abstraction.AMod_structure str -> str, loc_annots
         | _ -> assert false
         end
     | Interface sg -> 
         let loc_annots = Annot.record_signature sg in
-        begin match Abstraction.signature sg with
+        begin match Abstraction.top_signature sg with
         | Abstraction.AMod_structure str -> str, loc_annots
         | _ -> assert false
         end
