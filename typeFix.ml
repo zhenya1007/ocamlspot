@@ -54,10 +54,10 @@ let type_expr =
             begin match (repr ty1).desc with
             | Tconstr(path, [ty], abbrev) when Path.same path Predef.path_option ->
                 (* we do not copy abbrev but it is ok *)
-      	  Tarrow (l, 
-	  		  { ty1 with desc = Tconstr(path, [f ty], abbrev) },
-	  		  f ty2,
-	  		  comm)
+      	        Tarrow (l, 
+	  		{ ty1 with desc = Tconstr(path, [f ty], abbrev) },
+	  		f ty2,
+	  		comm)
             | _ -> (* not option ? *) default t
             end
 	  | Tvariant row_desc -> (* we cannot use copy_type_desc *)
