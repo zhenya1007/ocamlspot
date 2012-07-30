@@ -28,10 +28,19 @@ end = struct
 
   let check_time_stamp ~cmt source =
     let stat_cmt = Unix.stat cmt in
-    let stat_source = Unix.stat source in
-      (* Needs = : for packed modules, .cmt and the source .cmo are written 
-         almost at the same moment. *)
-    stat_cmt.Unix.st_mtime >= stat_source.Unix.st_mtime
+    try
+      let stat_source = Unix.stat source in
+        (* Needs = : for packed modules, .cmt and the source .cmo are written 
+           almost at the same moment. *)
+      stat_cmt.Unix.st_mtime >= stat_source.Unix.st_mtime
+    with
+    | Unix.Unix_error(_, "stat", _) ->
+        (* CR jfuruse: Camlp4.cmt created from Camlp4.cmx but Camlp4.cmx
+           is not installed!!! In such a case, we cannot check the time
+           stamp check... (still we can try against Camlp4.cmi installed)
+        *)
+        eprintf "Warning: source %s does not exist. Time stamp check was skipped.@." source;
+        true
 
   let find_alternative_source ~cmt source =
       (* if [source] is not found, we try finding files with the same basename
@@ -57,7 +66,8 @@ end = struct
   let load_directly path : Unit.t =
     Debug.format "cmt loading from %s@." path;
     match load_cmt_file path with
-    | Some cmt -> Spot.Unit.of_file (Spot.File.of_cmt path cmt)
+    | Some cmt -> 
+        Spot.Unit.of_file (Spot.File.of_cmt path cmt)
     | None -> failwith (sprintf "load_directly failed: %s" path)
 
   exception Old_cmt of string (* cmt *) * string (* source *)
@@ -87,6 +97,11 @@ end = struct
   let find_in_path load_paths body ext =
     let body_ext = body ^ ext in
     let find_in_path load_paths name = 
+      Debug.format "@[<2>searching %s in@ pwd=%s@ paths=[@[%a@]]@]@." 
+        name
+        (Sys.getcwd ())
+        (Format.list "; " (fun ppf x -> fprintf ppf "%S" x)) 
+        load_paths;
       try Misc.find_in_path load_paths name with Not_found ->
         Misc.find_in_path_uncap load_paths name
     in
@@ -113,10 +128,6 @@ end = struct
     
 
   let load ~load_paths cmtname : Unit.t =
-    Debug.format "@[<2>cmt searching %s in@ paths [@[%a@]]@]@." 
-        cmtname
-        (Format.list "; " (fun ppf x -> fprintf ppf "%S" x)) 
-        load_paths;
     let body, ext = Filename.split_extension cmtname in
     let path = find_in_path load_paths body ext in
     load_directly_with_cache path

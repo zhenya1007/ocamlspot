@@ -280,7 +280,7 @@ module Eval = struct
                 str
               with
               | e -> 
-                  eprintf "LOAD FAILIURE %s: %s@." (Ident.name id) (Printexc.to_string e);
+                  eprintf "LOAD FAILURE %s: %s@." (Ident.name id) (Printexc.to_string e);
                   Error e
               end
             else begin 
@@ -332,11 +332,13 @@ module Eval = struct
 
   and find_ident (str : Value.structure) (kind, name, pos) : Value.z =
     let name_filter = fun (id, (k,_)) -> 
+(*
       Debug.format "DEBUG: %s %s ? %s %s@."
         (Kind.to_string kind)
         name 
         (Kind.to_string k)
         (Ident0.name id);
+*)
       k = kind && Ident0.name id = name in
     (* CR jfuruse: double check by pos! *)
     lazy begin
