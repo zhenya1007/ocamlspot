@@ -253,7 +253,7 @@ module Eval = struct
   open Value
   module Format = OCaml.Format
 
-  let str_of_global_ident = ref (fun ~load_paths:_ _ -> assert false : load_paths: string list -> Ident.t -> string * Value.structure)
+  let str_of_global_ident = ref (fun ~cwd:_ ~load_paths:_ _ -> assert false : cwd: string -> load_paths: string list -> Ident.t -> string * Value.structure)
   let packed = ref (fun _ _ -> assert false : Env.t -> string -> Value.t)
 
   let rec find_path env (kind, p) : Value.z = 
@@ -269,7 +269,7 @@ module Eval = struct
         | None -> 
             if Ident.global id then
               lazy begin try
-                let path, str = !str_of_global_ident ~load_paths:env.load_paths id in
+                let path, str = !str_of_global_ident ~cwd:env.cwd ~load_paths:env.load_paths id in
                 let str = Structure ( { PIdent.path = path; ident = None }, 
                                       str,
                                       None (* CR jfuruse: todo (read .mli *))
