@@ -145,6 +145,14 @@ let with_ref r v f =
 module Unix = struct
   include Unix
 
+  let kind path = try Some (Unix.stat path).st_kind with _ -> None
+
+  let is_dir path = kind path = Some S_DIR
+end
+
+module Find = struct
+  open Unix
+
   (* run [f] on files in [path] *)
   let folddir ~f ~init path =
     let dh = opendir path in

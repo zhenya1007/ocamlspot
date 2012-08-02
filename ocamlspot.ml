@@ -266,11 +266,11 @@ module Main = struct
     let file = load path in
 
     let find_by_kind_path k path found =
-      Unix.find targets ~f:(fun pathname ->
-	match Filename.split_extension pathname.Unix.base with
+      Find.find targets ~f:(fun pathname ->
+	match Filename.split_extension pathname.Find.base with
 	| _body, (".cmti" | ".cmt") ->
-	  let file = load pathname.Unix.path in
-	  Debug.format "Searching %s@." pathname.Unix.path;
+	  let file = load pathname.Find.path in
+	  Debug.format "Searching %s@." pathname.Find.path;
 	  let base_ident = function
 	    | Path.Pident id -> Ident0.name id
 	    | Path.Pdot (_, name, _) -> name

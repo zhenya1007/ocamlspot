@@ -73,7 +73,12 @@ val with_ref : 'a ref -> 'a -> (unit -> 'b) -> 'b
 
 module Unix : sig
   include module type of Unix
+  val kind : string -> file_kind option
+  val is_dir : string -> bool
+end
 
+module Find : sig
+  open Unix
   type path = 
       { dir : string;
 	base : string;
@@ -84,6 +89,8 @@ module Unix : sig
 
   val prune : unit -> unit
   val find : f:(path -> unit) -> string list -> unit
+  val kind : path -> file_kind option
+  val is_dir : path -> bool
 end
 
 module Hashtbl : sig
