@@ -88,11 +88,11 @@ module Main = struct
     let file = File.load ~load_paths: ["."] path in
     
     if C.dump_file then Dump.unit file; (* CR jfuruse: to be fixed *)
-    if C.dump_rannots = `Full then Dump.rannots_full file;
-    if C.dump_rannots = `Summary then Dump.rannots_summary file;
     if C.dump_tree then Dump.tree file;
-    if C.dump_top then Dump.top file;
+    if C.dump_top  then Dump.top  file;
     if C.dump_flat then Dump.flat file;
+    if C.dump_rannots = `Full    then Dump.rannots_full    file;
+    if C.dump_rannots = `Summary then Dump.rannots_summary file;
 
     file
   ;;
@@ -113,6 +113,8 @@ module Main = struct
       | body, (".cmi" | ".mli" | ".cmti") -> body ^ ".spit"
       | body, _ -> body ^ ".spot"
     in
+    Debug.format "Writing %s@." spot;
+    (* CR jfuruse: BUG in ocamlbuild _build setting, the output file is written into the source dir, not the dest dir *)
     Spot.File.save spot (Spot.Unit.to_file file)
 
   let query_by_kind_path file kind path = 
