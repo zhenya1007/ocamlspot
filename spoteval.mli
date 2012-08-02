@@ -96,7 +96,7 @@ end
 module Eval : sig
   (** These function ref will be initialized from ocamlspot.ml *)
   val str_of_global_ident :
-    (load_paths:string list -> Ident.t -> string * Value.structure) ref
+    (cwd:string -> load_paths:string list -> Ident.t -> string * Value.structure) ref
   val packed : (Env.t -> string -> Value.t) ref
     
   val find_path : Env.t -> Kind.t * Path.t -> Value.z

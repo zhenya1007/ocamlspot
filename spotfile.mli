@@ -18,7 +18,7 @@ open Spoteval
 
 exception Old_cmt of string * string
 val load : load_paths:string list -> string -> Unit.t
-val load_module : ?spit:bool -> load_paths:string list -> string -> Unit.t (* CR jfuruse: spit *)
+val load_module : ?spit:bool -> cwd:string -> load_paths:string list -> string -> Unit.t (* CR jfuruse: spit *)
 
 val empty_env   : Unit.t -> Env.t
 val invalid_env : Unit.t -> Env.t
@@ -26,6 +26,6 @@ val invalid_env : Unit.t -> Env.t
 type result = File_itself | Found_at of Region.t | Predefined
 
 val find_path_in_flat : Unit.t -> Kind.t * Path.t -> PIdent.t * result
-val str_of_global_ident : load_paths:string list -> Ident.t -> string * Value.structure
+val str_of_global_ident : cwd:string -> load_paths:string list -> Ident.t -> string * Value.structure
 val eval_packed : Env.t -> string -> Value.t
 

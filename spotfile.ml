@@ -23,15 +23,24 @@ open Spoteval
 module Load : sig
   exception Old_cmt of string (* cmt *) * string (* source *)
   val load : load_paths:string list -> string -> Unit.t
-  val load_module : ?spit:bool -> load_paths:string list -> string -> Unit.t
+  val load_module : ?spit:bool -> cwd:string -> load_paths:string list -> string -> Unit.t
 end = struct
 
   let check_time_stamp ~cmt source =
     let stat_cmt = Unix.stat cmt in
-    let stat_source = Unix.stat source in
-      (* Needs = : for packed modules, .cmt and the source .cmo are written 
-         almost at the same moment. *)
-    stat_cmt.Unix.st_mtime >= stat_source.Unix.st_mtime
+    try
+      let stat_source = Unix.stat source in
+        (* Needs = : for packed modules, .cmt and the source .cmo are written 
+           almost at the same moment. *)
+      stat_cmt.Unix.st_mtime >= stat_source.Unix.st_mtime
+    with
+    | Unix.Unix_error(_, "stat", _) ->
+        (* CR jfuruse: Camlp4.cmt created from Camlp4.cmx but Camlp4.cmx
+           is not installed!!! In such a case, we cannot check the time
+           stamp check... (still we can try against Camlp4.cmi installed)
+        *)
+        eprintf "Warning: source %s does not exist. Time stamp check was skipped.@." source;
+        true
 
   let find_alternative_source ~cmt source =
       (* if [source] is not found, we try finding files with the same basename
@@ -57,7 +66,8 @@ end = struct
   let load_directly path : Unit.t =
     Debug.format "cmt loading from %s@." path;
     match load_cmt_file path with
-    | Some cmt -> Spot.Unit.of_file (Spot.File.of_cmt path cmt)
+    | Some cmt -> 
+        Spot.Unit.of_file (Spot.File.of_cmt path cmt)
     | None -> failwith (sprintf "load_directly failed: %s" path)
 
   exception Old_cmt of string (* cmt *) * string (* source *)
@@ -87,6 +97,11 @@ end = struct
   let find_in_path load_paths body ext =
     let body_ext = body ^ ext in
     let find_in_path load_paths name = 
+      Debug.format "@[<2>searching %s in@ pwd=%s@ paths=[@[%a@]]@]@." 
+        name
+        (Sys.getcwd ())
+        (Format.list "; " (fun ppf x -> fprintf ppf "%S" x)) 
+        load_paths;
       try Misc.find_in_path load_paths name with Not_found ->
         Misc.find_in_path_uncap load_paths name
     in
@@ -113,10 +128,6 @@ end = struct
     
 
   let load ~load_paths cmtname : Unit.t =
-    Debug.format "@[<2>cmt searching %s in@ paths [@[%a@]]@]@." 
-        cmtname
-        (Format.list "; " (fun ppf x -> fprintf ppf "%S" x)) 
-        load_paths;
     let body, ext = Filename.split_extension cmtname in
     let path = find_in_path load_paths body ext in
     load_directly_with_cache path
@@ -150,11 +161,16 @@ end = struct
         | Some cmtname -> load ~load_paths cmtname
         | None -> raise e
 
+  let with_cwd cwd f = 
+    let d = Sys.getcwd () in
+    protect ~f:(fun () -> Sys.chdir cwd; f ()) () 
+      ~finally: (fun _ -> Sys.chdir d)
+
   (* CR jfuruse: searching algorithm must be reconsidered *)        
-  let load_module ?(spit=false) ~load_paths name =
+  let load_module ?(spit=false) ~cwd ~load_paths name =
     let cmtname = name ^ if spit then ".cmti" else ".cmt" in
     try
-      load ~load_paths cmtname
+      with_cwd cwd (fun () -> load ~load_paths cmtname)
     with
     | Failure s ->
         let spitname = name ^ if spit then ".cmt" else ".cmti" in
@@ -227,9 +243,9 @@ let find_path_in_flat file path : PIdent.t * result =
   in
   eval_and_find path
 
-let str_of_global_ident ~load_paths id =
+let str_of_global_ident ~cwd ~load_paths id =
   assert (Ident.global id);
-  let file = Load.load_module ~spit:Spotconfig.print_interface ~load_paths (Ident0.name id) in
+  let file = Load.load_module ~spit:Spotconfig.print_interface ~cwd ~load_paths (Ident0.name id) in
   file.Unit.path,
   Eval.structure (empty_env file) file.Unit.top
 
