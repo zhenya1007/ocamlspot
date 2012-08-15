@@ -75,6 +75,13 @@ module Unix : sig
   include module type of Unix
   val kind : string -> file_kind option
   val is_dir : string -> bool
+  val gen_timed : (unit -> 't) -> ('t -> 't -> 't) -> ('a -> 'b) -> 'a -> 'b * 't
+  val timed : ('a -> 'b) -> 'a -> 'b * float
+  module Process_times : sig
+    type t = process_times
+    val (-) : t -> t -> t
+    val timed : ('a -> 'b) -> 'a -> 'b * t
+  end
 end
 
 module Find : sig
