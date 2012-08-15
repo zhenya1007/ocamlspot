@@ -50,7 +50,7 @@ let load s =
   let build_dir = ref None in
   let set name ref v =
     match !ref with
-    | Some _ -> failwith (Printf.sprintf "key %s is defined twice" name)
+    | Some _ -> failwithf "key %s is defined twice" name
     | None -> ref := Some v
   in
   let ic = open_in s in
@@ -61,8 +61,8 @@ let load s =
     | "build_dir", Some s -> 
         set "build_dir" build_dir s;
         load ()
-    | "build_dir", None -> failwith (Printf.sprintf "key %S must have a value" key)
-    | key, _ -> failwith (Printf.sprintf "unknown key %S" key)
+    | "build_dir", None -> failwithf "key %S must have a value" key
+    | key, _ -> failwithf "unknown key %S" key
   in
   try load () with End_of_file ->
     close_in ic;

@@ -68,7 +68,7 @@ end = struct
     match load_cmt_file path with
     | Some cmt -> 
         Spot.Unit.of_file (Spot.File.of_cmt path cmt)
-    | None -> failwith (sprintf "load_directly failed: %s" path)
+    | None -> failwithf "load_directly failed: %s" path
 
   exception Old_cmt of string (* cmt *) * string (* source *)
 
@@ -92,7 +92,7 @@ end = struct
             file
           with
           | Not_found ->
-              failwith (Printf.sprintf "failed to find cmt file %s" path)
+              failwithf "failed to find cmt file %s" path
 
   let find_in_path load_paths body ext =
     let body_ext = body ^ ext in
@@ -120,11 +120,11 @@ end = struct
         if Sys.file_exists cmtpath then begin
           Debug.format "Found an alternative %s: %s@." ext cmtpath;
             cmtpath 
-          end else failwith (Printf.sprintf "cmt file not found: %s, neither in %s" body_ext cmtpath)
+          end else failwithf "cmt file not found: %s, neither in %s" body_ext cmtpath
         end else raise Not_found
       with
       | (Failure _ as e) -> raise e
-      | _ -> failwith (Printf.sprintf "cmt file not found: %s" body_ext)
+      | _ -> failwithf "cmt file not found: %s" body_ext
     
 
   let load ~load_paths cmtname : Unit.t =

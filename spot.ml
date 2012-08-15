@@ -1392,6 +1392,9 @@ end
 
 (* Spot info for each compilation unit *)
 module Unit = struct
+
+  module F = File
+
   type t = {
     modname        : string;
     builddir       : string; 
@@ -1407,7 +1410,7 @@ module Unit = struct
     tree           : Tree.t lazy_t
   }
 
-  (* same as File.dump, ignoring new additions in Unit *)
+  (* same as F.dump, ignoring new additions in Unit *)
   let dump file =
     eprintf "@[<v2>{ module= %S;@ path= %S;@ builddir= %S;@ loadpath= [ @[%a@] ];@ argv= [| @[%a@] |];@ ... }@]@."
       file.modname
@@ -1417,7 +1420,7 @@ module Unit = struct
       (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) (Array.to_list file.args)
 
   let to_file { modname; builddir; loadpath; args; path; top ; loc_annots } = 
-    { File.modname;
+    { F.modname;
       builddir;
       loadpath;
       args;
@@ -1426,7 +1429,7 @@ module Unit = struct
       loc_annots;
     }
 
-  let of_file ({ File.loc_annots; } as f) = 
+  let of_file ({ F.loc_annots; } as f) = 
     let rannots = lazy (Hashtbl.fold (fun loc annots st -> 
       { Regioned.region = Region.of_parsing loc;  value = annots } :: st) 
                           loc_annots [])
@@ -1452,13 +1455,13 @@ module Unit = struct
         | Annot.Str sitem -> Some sitem
         | _ -> None) annots @ st) loc_annots [])
     in
-    { modname    = f.File.modname;
-      builddir   = f.File.builddir;
-      loadpath   = f.File.loadpath;
-      args       = f.File.args;
-      path       = f.File.path;
-      top        = f.File.top;
-      loc_annots = f.File.loc_annots;
+    { modname    = f.F.modname;
+      builddir   = f.F.builddir;
+      loadpath   = f.F.loadpath;
+      args       = f.F.args;
+      path       = f.F.path;
+      top        = f.F.top;
+      loc_annots = f.F.loc_annots;
       
       flat; id_def_regions; rannots; tree; 
     }

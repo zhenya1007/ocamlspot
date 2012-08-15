@@ -23,7 +23,6 @@ open Spoteval
 
 module File = Spotfile
 module C = Spotconfig
-
 module SAbs = Spot.Abstraction
 
 module Dump = struct
@@ -139,14 +138,15 @@ module Main = struct
   let query_by_pos file pos = 
     let probe = Region.point pos in
     let treepath = 
-      (* subtree is not used *)
       List.map fst (Tree.find_path_contains probe !!(file.Unit.tree))
     in
     match treepath with
-    | [] -> failwith (Printf.sprintf "nothing at %s" (Position.to_string pos))
-    | { Regioned.region = r; _ } :: _ ->
+    | [] -> failwithf "nothing at %s" (Position.to_string pos)
+    | { Regioned.region = r; _ } :: _ -> (* [r] is innermost region *)
 	
-	(* find annots bound to the region *)
+	(* Find annots bound to the region.
+           CR jfuruse: do we need to scan all the paths?
+        *)
         let annots = 
 	  List.concat_map (fun rannot ->
 	    if Region.compare r rannot.Regioned.region = `Same then 
@@ -155,13 +155,14 @@ module Main = struct
 	    treepath
         in
 
-	(* annots and region improvement by path *)
+	(* annots and region improvement by subpath *)
 	let annots, r = 
 	  match 
 	    (* only the first Use *)
 	    List.find_map_opt (function
 	      | Annot.Use (_, path) -> 
 		  (* Find subpath *)
+                  (* CR jfuruse: subpath does not work for now *)
 		  begin match Pathreparse.get file.Unit.path r pos path with    
 		  | None -> None
 		  | Some (path', r) -> 
@@ -190,6 +191,7 @@ module Main = struct
           (String.concat "." (List.map Ident0.name (List.rev (find_module_path treepath))));
 
         (* print "Val: val name : type" if it is a Str: val *)
+        (* CR jfuruse: only the first entry is used *)
         let print_sig_entry annots =
           let rec find_type = function
             | Annot.Type (typ, _, _) :: _ -> Some typ
@@ -211,6 +213,7 @@ module Main = struct
         print_sig_entry annots;
 
         (* print_type_decl: if one Type is found *)
+        (* CR jfuruse: only the first one is used *)
         if C.type_expand then begin
           match List.filter (function Annot.Type _ -> true | _ -> false) annots with
           (* CR jfuruse: Sometimes more than one Annot.Type are found at the same place... *)

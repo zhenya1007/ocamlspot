@@ -32,6 +32,9 @@ module Make (Ord : OrderedType) : sig
   val add_elem : elem -> t -> t
 
   val find_path_contains : elem -> t -> (elem * t) list
+    (** Returns the path which contains [elem].
+        The result is the elems which contains [elem].
+        Deeper (smaller) elem comes first. *)
 
   val iter_elem : (parent:elem option -> elem -> 'a) -> t -> unit
 end
