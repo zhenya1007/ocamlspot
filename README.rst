@@ -14,9 +14,32 @@ Dependency
 OCamlSpotter strongly depends on OCaml compiler implementation and its compiler-libs library.
 You need use the correct pairs of compiler and OCamlSpotter.
 
-https://camlspotter@bitbucket.org/camlspotter/ocamlspot provides OCamlSpotter branches 
-for each OCaml versions:
+https://bitbucket.org/camlspotter/ocamlspot provides OCamlSpotter branches for each OCaml versions:
 
 * ocaml-version-name : compilable against the given OCaml version
 * default : For the latest OCaml development version or something around. Probably not for you.
 * dev : default + something experimental. Absolutely not for you unless you are explicitly instructed to use this.
+
+To work with OCamlSpotter
+==========================
+
+To browse modules correctly, 
+
+* Compile them with -bin-annot ocaml compiler option.
+* Keep the source code and produced cmt/cmti files.
+* Install cmt/cmti files along with cmi/cma/cmxa files.
+
+Otherwise OCamlSpotter complains that it cannot find required cmt/cmti files.
+
+Normally this requires little modifications to the build script of each library:
+
+* Add -bin-annot to the compiler switch (for example OCAMLCFLAGS += -bin-annot)
+* Copy cmt and cmti files at installation. For example::
+
+     install::
+        cp \*.mli \*.cmi \*.cma \*.cmt \*.cmti \*.cmxa $(INSTALLDIR)
+
+To facilitate this you may want to use SpotInstall( https://bitbucket.org/camlspotter/spotinstall ). SpotInstall provides:
+
+* No need to fix build scripts, since the compiler can produce annot/cmt/cmti files by default, if OCAML_ANNOT env var is non empty
+* Automatic cmt/cmti post installation
