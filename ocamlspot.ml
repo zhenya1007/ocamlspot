@@ -120,14 +120,17 @@ module Main = struct
     try Some (File.find_path_in_flat file (kind, path)) with Not_found -> None
   ;;
 
+  (* CR jfuruse: In the case of a.mll => a.ml => a.cmt,
+     a.ml often does not exist. ocamlspot should warn you when a.ml
+     does not exist and propose creation of a.ml from a.mll. *)
   let print_query_result kind = function
     | None -> printf "Spot: no spot@."
     | Some (pident, res) -> match res with
 	| File.File_itself ->
             printf "Spot: <%s:all>@." pident.PIdent.path
 	| File.Found_at region ->
-            printf "Spot: <%s:%s>@."
-              pident.PIdent.path
+            printf "Spot: <%s>@."
+              (* pident.PIdent.path *)
               (Region.to_string region)
 	| File.Predefined ->
             printf "Spot: %a: predefined %s@."
@@ -135,8 +138,10 @@ module Main = struct
               (Kind.name kind);
   ;;
     
-  let query_by_pos file pos = 
-    let probe = Region.point pos in
+  let query_by_pos file orig_path pos = 
+    (* CR jfuruse: probe should be created outside *)
+    let probe = Region.point orig_path pos in
+    Debug.format "probing by %s@." (Region.to_string probe);
     let treepath = 
       List.map fst (Tree.find_path_contains probe !!(file.Unit.tree))
     in
@@ -174,12 +179,11 @@ module Main = struct
 	  | None -> annots, r
 	  | Some (annots, r) -> annots, r
 	in
-	  
         List.iter (printf "@[<v>%a@]@." Annot.format) annots;
 
 	(* Tree is an older format. XTree is a newer which is the same as one for Spot *)
-        printf "Tree: %s@." (Region.to_string r);
-        printf "XTree: <%s:%s>@." file.Unit.path (Region.to_string r);
+        printf "Tree: %s@." (Region.to_string_no_path r);
+        printf "XTree: <%s>@." (* file.Unit.path *) (Region.to_string r);
 
 	(* Find the innermost module *)
         let find_module_path treepath = List.concat_map (fun { Regioned.value = annots } ->
@@ -228,11 +232,11 @@ module Main = struct
 	annots
   ;;
 
-  let query path spec = 
+  let query orig_path spec = 
     (* CR jfuruse: dup *)
-    Debug.format "ocamlspot %s%s@." path (C.SearchSpec.to_string spec);
+    Debug.format "ocamlspot %s%s@." orig_path (C.SearchSpec.to_string spec);
     Debug.format "cwd: %s@." (Sys.getcwd ());
-    let path = Cmt.of_path path in
+    let path = Cmt.of_path orig_path in
     let file = load path in
 
     let query_kind_path k path = print_query_result k (query_by_kind_path file k path) in
@@ -240,7 +244,7 @@ module Main = struct
     begin match spec with
     | C.SearchSpec.Kind (k,path) -> query_kind_path k path
     | C.SearchSpec.Pos pos -> 
-	let annots = query_by_pos file pos in
+	let annots = query_by_pos file orig_path pos in
         if not C.no_definition_analysis then begin
           List.iter (function
             | Annot.Use (k, path) -> query_kind_path k path
@@ -320,7 +324,7 @@ module Main = struct
 	    | None -> None
 	    end
 	| Annot.Use (kind, path) -> Some (`Use (kind, path))
-	| _ -> None) (query_by_pos file pos)
+	| _ -> None) (query_by_pos file file.Unit.path pos)
       with
       | Some (`Def (k, id))   -> by_kind_path file k (Path.Pident id)
       | Some (`Use (k, path)) -> by_kind_path file k path

@@ -27,6 +27,9 @@ module Load : sig
 end = struct
 
   let check_time_stamp ~cmt source =
+    (* CR jfuruse: aaa.mll creates cmt with aaa.ml as source, but
+       aaa.ml often does not exist.
+    *)
     let stat_cmt = Unix.stat cmt in
     try
       let stat_source = Unix.stat source in

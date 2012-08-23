@@ -316,7 +316,7 @@
   (if (file-exists-p path)
       (find-file-other-window path)
     (ocamlspot-message-add (format "ERROR: source file %s was not found" path))
-    nil))
+    (error (format "ERROR: source file %s was not found" path))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Queries
 
