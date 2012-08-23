@@ -73,7 +73,19 @@ val with_ref : 'a ref -> 'a -> (unit -> 'b) -> 'b
 
 module Unix : sig
   include module type of Unix
+  val kind : string -> file_kind option
+  val is_dir : string -> bool
+  val gen_timed : (unit -> 't) -> ('t -> 't -> 't) -> ('a -> 'b) -> 'a -> 'b * 't
+  val timed : ('a -> 'b) -> 'a -> 'b * float
+  module Process_times : sig
+    type t = process_times
+    val (-) : t -> t -> t
+    val timed : ('a -> 'b) -> 'a -> 'b * t
+  end
+end
 
+module Find : sig
+  open Unix
   type path = 
       { dir : string;
 	base : string;
@@ -84,6 +96,8 @@ module Unix : sig
 
   val prune : unit -> unit
   val find : f:(path -> unit) -> string list -> unit
+  val kind : path -> file_kind option
+  val is_dir : path -> bool
 end
 
 module Hashtbl : sig

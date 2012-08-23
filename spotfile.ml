@@ -27,6 +27,9 @@ module Load : sig
 end = struct
 
   let check_time_stamp ~cmt source =
+    (* CR jfuruse: aaa.mll creates cmt with aaa.ml as source, but
+       aaa.ml often does not exist.
+    *)
     let stat_cmt = Unix.stat cmt in
     try
       let stat_source = Unix.stat source in
@@ -68,7 +71,7 @@ end = struct
     match load_cmt_file path with
     | Some cmt -> 
         Spot.Unit.of_file (Spot.File.of_cmt path cmt)
-    | None -> failwith (sprintf "load_directly failed: %s" path)
+    | None -> failwithf "load_directly failed: %s" path
 
   exception Old_cmt of string (* cmt *) * string (* source *)
 
@@ -92,7 +95,7 @@ end = struct
             file
           with
           | Not_found ->
-              failwith (Printf.sprintf "failed to find cmt file %s" path)
+              failwithf "failed to find cmt file %s" path
 
   let find_in_path load_paths body ext =
     let body_ext = body ^ ext in
@@ -120,11 +123,11 @@ end = struct
         if Sys.file_exists cmtpath then begin
           Debug.format "Found an alternative %s: %s@." ext cmtpath;
             cmtpath 
-          end else failwith (Printf.sprintf "cmt file not found: %s, neither in %s" body_ext cmtpath)
+          end else failwithf "cmt file not found: %s, neither in %s" body_ext cmtpath
         end else raise Not_found
       with
       | (Failure _ as e) -> raise e
-      | _ -> failwith (Printf.sprintf "cmt file not found: %s" body_ext)
+      | _ -> failwithf "cmt file not found: %s" body_ext
     
 
   let load ~load_paths cmtname : Unit.t =
@@ -132,34 +135,72 @@ end = struct
     let path = find_in_path load_paths body ext in
     load_directly_with_cache path
 
+  (* ocamlbuild tweak *)
+  (* for  /.../a/b/c/x.ml
+     if   /.../a/_build exists
+     then look for
+          /.../a/_build/b/c/x.cm*
+  *)
+  (* seek ocamlbuild _build destination directory *)      
+  let ocamlbuild_path_tweak cmtname =
+    if Filename.is_relative cmtname then None
+    else
+      let basename = Filename.basename cmtname in
+      let dirname = Filename.dirname cmtname in
+      let rec loop postfix dir = 
+        let dir_build = dir ^/ "_build" in
+        if Unix.is_dir dir_build then dir_build ^/ postfix
+        else 
+          if dir = "/" then raise Exit
+          else loop (Filename.basename dir ^/ postfix) (Filename.dirname dir)
+      in
+      try 
+        let cmtname = loop "" dirname ^/ basename in
+        Debug.format "Trying ocamlbuild destination %s@." cmtname;
+        Some cmtname
+      with Exit -> None
+
+  (* .ocamlspot file tweak *)        
+  let dot_ocamlspot_tweak cmtname = 
+    if Filename.is_relative cmtname then None
+    else
+      Option.bind (Dotfile.find_and_load (Filename.dirname cmtname)) 
+        (fun (found_dir, dotfile) ->
+          Option.map dotfile.Dotfile.build_dir ~f:(fun build_dir ->
+            let length_found_dir = String.length found_dir in
+            let found_dir' = 
+              String.sub cmtname 0 length_found_dir
+            in
+            let rel_cmtname =
+              String.sub cmtname 
+                (length_found_dir + 1)
+                (String.length cmtname - length_found_dir - 1)
+            in
+            assert (found_dir = found_dir');
+            let dir = 
+              if Filename.is_relative build_dir then found_dir ^/ build_dir
+              else build_dir
+            in
+            let cmtname = dir ^/ rel_cmtname in
+            Debug.format "Trying .ocamlspot destination %s@." cmtname;
+            cmtname
+          ))
+
   let load ~load_paths cmtname : Unit.t =
-    let alternate_cmtname = 
-      if Filename.is_relative cmtname then None
-      else
-        Option.bind (Dotfile.find_and_load (Filename.dirname cmtname)) 
-          (fun (found_dir, dotfile) ->
-            Option.map dotfile.Dotfile.build_dir ~f:(fun build_dir ->
-              let length_found_dir = String.length found_dir in
-              let found_dir' = 
-                String.sub cmtname 0 length_found_dir
-              in
-              let rel_cmtname =
-                String.sub cmtname 
-                  (length_found_dir + 1)
-                  (String.length cmtname - length_found_dir - 1)
-              in
-              assert (found_dir = found_dir');
-              let dir = 
-                if Filename.is_relative build_dir then found_dir ^/ build_dir
-                else build_dir
-              in
-              dir ^/ rel_cmtname))
-    in
     try load ~load_paths cmtname with
     | e -> 
-        match alternate_cmtname with
-        | Some cmtname -> load ~load_paths cmtname
-        | None -> raise e
+        let load_alternative f =
+          match f cmtname with
+          | None -> None
+          | Some cmtname ->
+              try Some (load ~load_paths cmtname) with _ -> None
+        in
+        match load_alternative dot_ocamlspot_tweak with
+        | Some v -> v
+        | None -> 
+            match load_alternative ocamlbuild_path_tweak with
+            | Some v -> v
+            | None -> raise e
 
   let with_cwd cwd f = 
     let d = Sys.getcwd () in

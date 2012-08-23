@@ -39,6 +39,8 @@ inherit2.cmo \
 interface.cmo \
 intermodule.cmo \
 let_open.cmo \
+lex.cmo \
+lex.cmo \
 localvar.cmo \
 module.cmo \
 module_alias.cmo \

@@ -134,6 +134,8 @@ let protect ~f x ~(finally : 'a -> unit) =
   res
 ;;
 
+let catch ~f v = try `Ok (f v) with e -> `Error e;;
+
 let failwithf fmt = Printf.kprintf failwith fmt
 let invalid_argf fmt = Printf.kprintf invalid_arg fmt
 
@@ -144,6 +146,33 @@ let with_ref r v f =
 
 module Unix = struct
   include Unix
+
+  let kind path = try Some (Unix.stat path).st_kind with _ -> None
+
+  let is_dir path = kind path = Some S_DIR
+
+  let gen_timed get minus f v = 
+    let t1 = get () in
+    let res = f v  in
+    let t2 = get () in
+    res, minus t2 t1
+
+  let timed f v = gen_timed Unix.gettimeofday (-.) f v
+
+  module Process_times = struct
+    type t = process_times
+    let (-) pt1 pt2 = {
+      tms_utime = pt1.tms_utime  -. pt2.tms_utime;
+      tms_stime = pt1.tms_stime  -. pt2.tms_stime;
+      tms_cutime = pt1.tms_utime -. pt2.tms_cutime;
+      tms_cstime = pt1.tms_utime -. pt2.tms_cstime;
+    }
+    let timed f v = gen_timed Unix.times (-) f v
+  end
+end
+
+module Find = struct
+  open Unix
 
   (* run [f] on files in [path] *)
   let folddir ~f ~init path =

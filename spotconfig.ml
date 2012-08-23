@@ -149,7 +149,7 @@ module SearchSpec = struct
           (Kind.from_string (String.sub s (at2+1) (at-at2-1)),
            let s = String.sub s (at+1) (String.length s - at - 1) in 
            try Path.parse s with
-           | _ -> failwith ("illegal path in <file>:<kind>:<path> : " ^ s))
+           | _ -> failwithf "illegal path in <file>:<kind>:<path> : %s" s)
       with
       | Invalid_argument _ | Not_found -> 
           String.sub s 0 at,
@@ -158,8 +158,8 @@ module SearchSpec = struct
                      (String.sub s (at+1) (String.length s - at - 1)))
     with
     | Failure s -> failwith s
-    | Position.Parse_failure s -> failwith ("illegal <file>:<pos> : " ^ s)
-    | Not_found -> failwith ("strange search : " ^ s)
+    | Position.Parse_failure s -> failwithf "illegal <file>:<pos> : %s" s
+    | Not_found -> failwithf "strange search : %s" s
 
   let to_string = function
     | Pos pos -> ":" ^ Position.to_string pos

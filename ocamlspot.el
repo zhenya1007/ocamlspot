@@ -316,7 +316,7 @@
   (if (file-exists-p path)
       (find-file-other-window path)
     (ocamlspot-message-add (format "ERROR: source file %s was not found" path))
-    nil))
+    (error (format "ERROR: source file %s was not found" path))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Queries
 
@@ -325,14 +325,13 @@
   (with-current-buffer (get-buffer-create ocamlspot-process-buffer)
     (ocamlspot-process-mode t)
     (erase-buffer)
-    (let ((command (concat ocamlspot-command " " args)))
-      (insert command)
-      (insert "\n")
-      ;; chdir is required
-      (if chdir (cd chdir))
-      (let ((args (if ocamlspot-debug (concat "-debug " args) args)))
-	(call-process shell-file-name nil t nil shell-command-switch
-		      command)))))
+    (insert command)
+    (insert "\n")
+    ;; chdir is required
+    (if chdir (cd chdir))
+    (let ((args (if ocamlspot-debug (cons "--debug" args) args)))
+      (print (append '(call-process ocamlspot-command nil t nil) args))
+      (eval (append '(call-process ocamlspot-command nil t nil) args)))))
 
 ;; Creates the query location string of the point
 (defun ocamlspot-query-string-at-cursor ()
@@ -347,9 +346,8 @@
 (defun ocamlspot-query-at-cursor (pre_extra_args &optional post_extra_args)
   ;; arguments
   (let ((file-name (buffer-file-name))
-	(arg (ocamlspot-query-string-at-cursor))
-	(post_sep (if post_extra_args " " "")))
-    (ocamlspot-run-query (concat pre_extra_args " " arg post_sep post_extra_args) 
+	(arg (ocamlspot-query-string-at-cursor)))
+    (ocamlspot-run-query (append pre_extra_args (list arg) post_extra_args)
 			 (file-name-directory file-name))))
 
 ;; Search ocamlspot-process-buffer from the top and return the first line which matches with ^<pattern>: "
@@ -535,7 +533,7 @@
   (ocamlspot-message-init (buffer-file-name))
   (ocamlspot-type-init)
   (ocamlspot-delete-overlays-now)
-  (ocamlspot-query-at-cursor "-n")  
+  (ocamlspot-query-at-cursor '("-n"))  
   (if (ocamlspot-find-tree)
       (save-current-buffer
         (ocamlspot-find-val-or-type to-kill)))
@@ -550,7 +548,7 @@
   (ocamlspot-message-init (buffer-file-name))
   (ocamlspot-type-init)
   (ocamlspot-delete-overlays-now)
-  (ocamlspot-query-at-cursor "-n")
+  (ocamlspot-query-at-cursor '("-n"))
   (if (ocamlspot-find-tree)
       (save-current-buffer
         (ocamlspot-find-xtype)))
@@ -562,7 +560,7 @@
   (ocamlspot-message-init (buffer-file-name))
   (ocamlspot-type-init)
   (ocamlspot-delete-overlays-now)
-  (ocamlspot-query-at-cursor "-n")
+  (ocamlspot-query-at-cursor '("-n"))
   (if (ocamlspot-find-tree)
       (save-current-buffer
         (ocamlspot-find-use)))
@@ -576,7 +574,7 @@
     (ocamlspot-message-init (buffer-file-name))
     (ocamlspot-type-init)
     (ocamlspot-delete-overlays-now)
-    (ocamlspot-query-at-cursor "use" dir)
+    (ocamlspot-query-at-cursor '("use" dir))
     (if (ocamlspot-find-tree)
 	(progn
 	 (ocamlspot-find-spot)
@@ -589,7 +587,7 @@
   (interactive)
   (ocamlspot-message-init (buffer-file-name))
   (ocamlspot-type-init)
-  (ocamlspot-query-at-cursor "-n --type-expand")
+  (ocamlspot-query-at-cursor '("-n --type-expand"))
   (let ((expansion (ocamlspot-find-query-result "Expand")))
     (if expansion
 	(let ((start-end (ocamlspot-find-tree)))
@@ -676,7 +674,7 @@
 	(if query
 	    (progn
 	      (message query)
-	      (ocamlspot-run-query query)
+	      (ocamlspot-run-query '(query))
 	      (ocamlspot-find-spot)
 	      (ocamlspot-wait))
 	  (message "query empty"))))

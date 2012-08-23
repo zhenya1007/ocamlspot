@@ -1170,32 +1170,52 @@ end
 
 module Region = struct
   type t = { 
+    fname : string;
     start : Position.t;
     end_ : Position.t
   }
 
   let to_string t =
+    Printf.sprintf "%s:%s:%s"
+      t.fname
+      (Position.to_string t.start)
+      (Position.to_string t.end_)
+
+  let to_string_no_path t =
     Printf.sprintf "%s:%s"
       (Position.to_string t.start)
       (Position.to_string t.end_)
 
-  let of_parsing l =
+  let of_parsing builddir l =
+    let fname1 = l.Location.loc_start.Lexing.pos_fname in
+    let fname2 = l.Location.loc_end.Lexing.pos_fname in
+    if fname1 <> fname2 then
+      Format.eprintf "Warning: A location contains strange file names %s and %s@." fname1 fname2;
+    let fname = match fname1 with
+      | "_none_" -> fname1
+      | _ when Filename.is_relative fname1 -> builddir ^/ fname1 
+      | _ -> fname1 
+    in
     let start = Position.of_lexing_position l.Location.loc_start in
     let end_ = Position.of_lexing_position l.Location.loc_end in
     match Position.compare start end_ with
-    | -1 | 0 -> { start = start; end_ = end_ }
-    | _ -> { start = end_; end_ = start }
+    | -1 | 0 -> { fname; start = start; end_ = end_ }
+    | _ -> { fname; start = end_; end_ = start }
 
   let compare l1 l2 = 
-    if Position.compare l1.start l2.start = 0 
-       && Position.compare l2.end_ l1.end_ = 0 then `Same
-    else if Position.compare l1.start l2.start <= 0 
-         && Position.compare l2.end_ l1.end_ <= 0 then `Includes
-    else if Position.compare l2.start l1.start <= 0 
-         && Position.compare l1.end_ l2.end_ <= 0 then `Included
-    else if Position.compare l1.end_ l2.start <= 0 then `Left
-    else if Position.compare l2.end_ l1.start <= 0 then `Right
-    else `Overwrap
+    match compare l1.fname l2.fname with
+    | 1 -> `Left
+    | -1 -> `Right
+    | _ ->
+        if Position.compare l1.start l2.start = 0 
+           && Position.compare l2.end_ l1.end_ = 0 then `Same
+        else if Position.compare l1.start l2.start <= 0 
+                && Position.compare l2.end_ l1.end_ <= 0 then `Includes
+        else if Position.compare l2.start l1.start <= 0 
+                && Position.compare l1.end_ l2.end_ <= 0 then `Included
+        else if Position.compare l1.end_ l2.start <= 0 then `Left
+        else if Position.compare l2.end_ l1.start <= 0 then `Right
+        else `Overwrap
 
 (*
   let position_prev pos = { pos with pos_cnum = pos.pos_cnum - 1 }
@@ -1215,13 +1235,14 @@ module Region = struct
 
   open Position
 
-  let point_by_byte pos =
-    { start = { line_column = None;
+  let point_by_byte fname pos =
+    { fname;
+      start = { line_column = None;
  		bytes = Some pos };
       end_ = { line_column = None;
                bytes = Some (pos + 1)} }
 
-  let point pos = { start = pos; end_ = Position.next pos }
+  let point fname pos = { fname; start = pos; end_ = Position.next pos }
 
   let length_in_bytes t =
     let bytes = function
@@ -1233,8 +1254,10 @@ module Region = struct
   let is_complete t = 
     Position.is_complete t.start && Position.is_complete t.end_
 
+  (* CR jfuruse: fname is overwritten. Strange. *)      
   let complete mlpath t =
-    { start = Position.complete mlpath t.start;
+    { fname = mlpath;
+      start = Position.complete mlpath t.start;
       end_ = Position.complete mlpath t.end_ }
 
   let substring mlpath t =
@@ -1392,6 +1415,9 @@ end
 
 (* Spot info for each compilation unit *)
 module Unit = struct
+
+  module F = File
+
   type t = {
     modname        : string;
     builddir       : string; 
@@ -1407,7 +1433,7 @@ module Unit = struct
     tree           : Tree.t lazy_t
   }
 
-  (* same as File.dump, ignoring new additions in Unit *)
+  (* same as F.dump, ignoring new additions in Unit *)
   let dump file =
     eprintf "@[<v2>{ module= %S;@ path= %S;@ builddir= %S;@ loadpath= [ @[%a@] ];@ argv= [| @[%a@] |];@ ... }@]@."
       file.modname
@@ -1417,7 +1443,7 @@ module Unit = struct
       (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) (Array.to_list file.args)
 
   let to_file { modname; builddir; loadpath; args; path; top ; loc_annots } = 
-    { File.modname;
+    { F.modname;
       builddir;
       loadpath;
       args;
@@ -1426,9 +1452,9 @@ module Unit = struct
       loc_annots;
     }
 
-  let of_file ({ File.loc_annots; } as f) = 
+  let of_file ({ F.loc_annots; } as f) = 
     let rannots = lazy (Hashtbl.fold (fun loc annots st -> 
-      { Regioned.region = Region.of_parsing loc;  value = annots } :: st) 
+      { Regioned.region = Region.of_parsing f.F.builddir loc;  value = annots } :: st) 
                           loc_annots [])
     in
     let id_def_regions = lazy (
@@ -1437,13 +1463,13 @@ module Unit = struct
         List.iter (function
           | Annot.Str sitem ->
               Option.iter (Abstraction.ident_of_structure_item sitem) ~f:(fun (_kind, id) ->
-                Hashtbl.add tbl id (Region.of_parsing loc))
+                Hashtbl.add tbl id (Region.of_parsing f.F.builddir loc))
           | _ -> ()) annots) loc_annots;
       tbl)
     in
     let tree = lazy begin
       Hashtbl.fold (fun loc annots st ->
-        Tree.add st { Regioned.region = Region.of_parsing loc; value = annots })
+        Tree.add st { Regioned.region = Region.of_parsing f.F.builddir loc; value = annots })
         loc_annots Tree.empty 
     end in
     (* CR jfuruse: it is almost the same as id_def_regions_list *)
@@ -1452,13 +1478,13 @@ module Unit = struct
         | Annot.Str sitem -> Some sitem
         | _ -> None) annots @ st) loc_annots [])
     in
-    { modname    = f.File.modname;
-      builddir   = f.File.builddir;
-      loadpath   = f.File.loadpath;
-      args       = f.File.args;
-      path       = f.File.path;
-      top        = f.File.top;
-      loc_annots = f.File.loc_annots;
+    { modname    = f.F.modname;
+      builddir   = f.F.builddir;
+      loadpath   = f.F.loadpath;
+      args       = f.F.args;
+      path       = f.F.path;
+      top        = f.F.top;
+      loc_annots = f.F.loc_annots;
       
       flat; id_def_regions; rannots; tree; 
     }
