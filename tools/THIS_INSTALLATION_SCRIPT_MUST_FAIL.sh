@@ -23,8 +23,10 @@ echo 'Oh, you fail, because you use this script.'
  
 export OCAML_ANNOT=1
 
-# hg clone https://bitbucket.org/camlspotter/mutated_ocaml -b annot
-# (cd mutated_ocaml; mkdir compilerlibs; ./configure; make core coreboot world opt opt.opt install)
+if [ ! -d mutated_ocaml ]; then
+  hg clone https://bitbucket.org/camlspotter/mutated_ocaml -b annot
+fi
+(cd mutated_ocaml; mkdir compilerlibs; ./configure; make core coreboot world opt opt.opt install)
  
 # OCamlSpot
 
