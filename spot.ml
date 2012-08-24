@@ -1168,16 +1168,63 @@ module Position = struct
 
 end
 
-module Region = struct
+module Region : sig
+
+  type t = private { 
+    fname : (string * (int * int) option) option; 
+    (* filename and device/inode. None = "_none_" *)
+    start : Position.t;
+    end_ : Position.t
+  }
+    
+  val compare : t -> t -> [> `Included | `Includes | `Left | `Overwrap | `Right | `Same ]
+
+  val to_string : t -> string
+  val to_string_no_path : t -> string
+  val of_parsing : string -> Location.t -> t
+  val split : t -> by:t -> (t * t) option
+  val point_by_byte : string -> int -> t  
+    (** works only if bytes are available *)
+  val point : string -> Position.t -> t
+  val change_positions : t -> Position.t -> Position.t -> t
+  val length_in_bytes : t -> int
+  val is_complete : t -> bool
+  val complete : string -> t -> t
+  val substring : string -> t -> t * string
+
+end = struct
+
   type t = { 
-    fname : string;
+    fname : (string * (int * int) option) option; 
+    (* filename and device/inode. None = "_none_" *)
     start : Position.t;
     end_ : Position.t
   }
 
+  let cache = Hashtbl.create 1023
+
+  let fname = function
+    | "_none_" -> None
+    | s ->
+        let s =
+          if Filename.is_relative s then 
+            Unix.getcwd () ^/ s
+          else s
+        in
+        Some (try 
+            Hashtbl.find cache s 
+          with
+          | Not_found ->
+              let dev_inode = Unix.dev_inode s in
+              if dev_inode = None then Format.eprintf "%s does not exist@." s;
+              let v = s, dev_inode in
+              Hashtbl.replace cache s v;
+              v
+        )
+
   let to_string t =
     Printf.sprintf "%s:%s:%s"
-      t.fname
+      (match t.fname with Some (fname, _) -> fname | None -> "_none_")
       (Position.to_string t.start)
       (Position.to_string t.end_)
 
@@ -1186,16 +1233,14 @@ module Region = struct
       (Position.to_string t.start)
       (Position.to_string t.end_)
 
+  (* CR jfuruse: we should have path cache *)
+
   let of_parsing builddir l =
     let fname1 = l.Location.loc_start.Lexing.pos_fname in
     let fname2 = l.Location.loc_end.Lexing.pos_fname in
     if fname1 <> fname2 then
       Format.eprintf "Warning: A location contains strange file names %s and %s@." fname1 fname2;
-    let fname = match fname1 with
-      | "_none_" -> fname1
-      | _ when Filename.is_relative fname1 -> builddir ^/ fname1 
-      | _ -> fname1 
-    in
+    let fname = fname (if fname1 = "_none_" then fname1 else builddir ^/ fname1) in
     let start = Position.of_lexing_position l.Location.loc_start in
     let end_ = Position.of_lexing_position l.Location.loc_end in
     match Position.compare start end_ with
@@ -1203,24 +1248,28 @@ module Region = struct
     | _ -> { fname; start = end_; end_ = start }
 
   let compare l1 l2 = 
-    match compare l1.fname l2.fname with
-    | 1 -> `Left
-    | -1 -> `Right
-    | _ ->
-        if Position.compare l1.start l2.start = 0 
-           && Position.compare l2.end_ l1.end_ = 0 then `Same
-        else if Position.compare l1.start l2.start <= 0 
-                && Position.compare l2.end_ l1.end_ <= 0 then `Includes
-        else if Position.compare l2.start l1.start <= 0 
-                && Position.compare l1.end_ l2.end_ <= 0 then `Included
-        else if Position.compare l1.end_ l2.start <= 0 then `Left
-        else if Position.compare l2.end_ l1.start <= 0 then `Right
-        else `Overwrap
-
-(*
-  let position_prev pos = { pos with pos_cnum = pos.pos_cnum - 1 }
-  let position_next pos = { pos with pos_cnum = pos.pos_cnum + 1 }
-*)
+    let same_files l1 l2 = 
+      match l1.fname, l2.fname with
+      | Some (_, Some di1), Some (_, Some di2) -> di1 = di2
+      | Some (f1, _), Some (f2, _) -> f1 = f2 (* weak guess *)
+      | None, None -> true (* ouch *)
+      | _ -> false
+    in
+    if not (same_files l1 l2) then
+      match compare l1.fname l2.fname with 
+      | 1 -> `Left
+      | -1 -> `Right
+      | _ -> assert false
+    else
+      if Position.compare l1.start l2.start = 0 
+         && Position.compare l2.end_ l1.end_ = 0 then `Same
+      else if Position.compare l1.start l2.start <= 0 
+              && Position.compare l2.end_ l1.end_ <= 0 then `Includes
+      else if Position.compare l2.start l1.start <= 0 
+              && Position.compare l1.end_ l2.end_ <= 0 then `Included
+      else if Position.compare l1.end_ l2.start <= 0 then `Left
+      else if Position.compare l2.end_ l1.start <= 0 then `Right
+      else `Overwrap
 
   let split l1 ~by:l2 =
     if compare l1 l2 = `Overwrap then
@@ -1235,14 +1284,19 @@ module Region = struct
 
   open Position
 
-  let point_by_byte fname pos =
+  let point_by_byte fn pos =
+    let fname = fname fn in
     { fname;
       start = { line_column = None;
  		bytes = Some pos };
       end_ = { line_column = None;
                bytes = Some (pos + 1)} }
 
-  let point fname pos = { fname; start = pos; end_ = Position.next pos }
+  let point fn pos = 
+    let fname = fname fn in
+    { fname; start = pos; end_ = Position.next pos }
+
+  let change_positions t p1 p2 = { t with start = p1; end_ = p2 }
 
   let length_in_bytes t =
     let bytes = function
@@ -1256,7 +1310,8 @@ module Region = struct
 
   (* CR jfuruse: fname is overwritten. Strange. *)      
   let complete mlpath t =
-    { fname = mlpath;
+    let fname = fname mlpath in
+    { fname;
       start = Position.complete mlpath t.start;
       end_ = Position.complete mlpath t.end_ }
 

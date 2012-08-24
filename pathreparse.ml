@@ -57,10 +57,9 @@ let get mlpath region pos path =
   	  Option.map pos_start.Position.bytes ~f:(fun bytes ->
   	    bytes + diff.Lexing.pos_cnum ) }
       in
-      let subregion locid =
-        { region with
-          Region.start = position_add region.Region.start locid.lident_loc.Location.loc_start;
-          end_ = position_add region.Region.start locid.lident_loc.Location.loc_end }
+      let subregion locid = Region.change_positions region 
+        (position_add region.Region.start locid.lident_loc.Location.loc_start)
+        (position_add region.Region.start locid.lident_loc.Location.loc_end)
       in
       let search path locid = 
         (* The last id name can be different. For example,

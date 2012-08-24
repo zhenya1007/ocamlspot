@@ -140,7 +140,7 @@ module Main = struct
     
   let query_by_pos file orig_path pos = 
     (* CR jfuruse: probe should be created outside *)
-    let probe = Region.point orig_path pos in
+    let probe = Region.complete orig_path (Region.point orig_path pos) in
     Debug.format "probing by %s@." (Region.to_string probe);
     let treepath = 
       List.map fst (Tree.find_path_contains probe !!(file.Unit.tree))

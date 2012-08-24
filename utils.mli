@@ -77,6 +77,7 @@ module Unix : sig
   val is_dir : string -> bool
   val gen_timed : (unit -> 't) -> ('t -> 't -> 't) -> ('a -> 'b) -> 'a -> 'b * 't
   val timed : ('a -> 'b) -> 'a -> 'b * float
+  val dev_inode : string -> (int * int) option
   module Process_times : sig
     type t = process_times
     val (-) : t -> t -> t
@@ -103,4 +104,22 @@ end
 module Hashtbl : sig
   include module type of Hashtbl with type ('a,'b) t = ('a, 'b) Hashtbl.t
   val of_list : int -> ('a * 'b) list -> ('a, 'b) Hashtbl.t
+end
+
+module Hashset : sig
+  (* poorman's hashset by hashtbl *)
+  
+  type 'a t
+  val create : ?random:bool -> int -> 'a t
+  val add : 'a t -> 'a -> unit
+  val remove : 'a t -> 'a -> unit
+  val mem : 'a t -> 'a -> bool
+  val find : 'a t -> 'a -> 'a (** good for hash consing *)
+  val find_opt : 'a t -> 'a -> 'a option (** good for hash consing *)
+  val iter : ('a -> unit) -> 'a t -> unit
+  val fold : ('a -> 'b -> 'b) -> 'a t -> 'b -> 'b
+  val elements : 'a t -> int
+  val clear : 'a t -> unit
+  val of_list : int -> 'a list -> 'a t
+  val to_list : 'a t -> 'a list
 end
