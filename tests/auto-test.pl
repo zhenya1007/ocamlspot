@@ -102,16 +102,16 @@ sub test {
 	print STDERR "$command\n";
 	open(IN, "$command |");
 
-	$all_tests++;
-
 	while(<IN>){
             my $result;
             if( /^Spot: <(.*):all>/ ){ # whole file
+		$all_tests++;
                 $tested = 1;
                 $message = "$message$&\n";
                 $result = check_file_head($1);
             }
 	    if( /^Spot: <(.*):l[0-9]+c[0-9]+b([0-9]+):l[0-9]+c[0-9]+b([0-9]+)>$/ ){
+		$all_tests++;
 		$tested = 1;
 		$message = "$message$&\n";
 		$result = check_result($1, $2, $3);
