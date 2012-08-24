@@ -28,7 +28,7 @@ for ($i = 0; $i< 100; $i++){
     if( $log =~ /^Error: nothing at .*\nBYE!/ ){
 	next;
     }
-    print STDERR "------\n$cand:b$pos\n";
-    print STDERR $log;
+    print "------\n$cand:b$pos\n";
+    print $log;
 }
 
