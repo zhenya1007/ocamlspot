@@ -394,7 +394,7 @@
   (if (string-match "\.cm[ioxa]$" filename)
       ;; It is not an .ml or .mli. Packed module.
       ;; CR jfuruse: opening a binary file is not good
-      (ocamlspot-message-add "Packed module: %s" filename)
+      (ocamlspot-message-add (format "Packed module: %s" filename))
     (let* ((buffer (ocamlspot-find-file-existing filename))
 	   (start-end (ocamlspot-convert-region buffer position)))
       (if start-end
