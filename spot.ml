@@ -1243,31 +1243,35 @@ end = struct
     | _ -> { fname; start = end_; end_ = start }
 
   let compare l1 l2 = 
-    let same_files l1 l2 = 
-      l1.fname == l2.fname 
-      || match l1.fname, l2.fname with
-         | Some (_, Some di1), Some (_, Some di2) -> di1 = di2
-         | Some (f1, _), Some (f2, _) -> f1 = f2 (* weak guess *)
-         | None, None -> true (* ouch *)
-         | _ -> false
+    let compare_fnames f1 f2 =
+      let same_files =
+        f1 == f2
+        || match f1, f2 with
+          | Some (_, Some di1), Some (_, Some di2) -> di1 = di2
+          | Some (f1, _), Some (f2, _) -> f1 = f2 (* weak guess *)
+          | None, None -> true (* ouch *)
+          | _ -> false
+      in
+      if same_files then 0
+      else match f1, f2 with
+      | Some (f1, _), Some (f2, _) -> compare f1 f2
+      | Some _, None -> 1
+      | None, Some _ -> -1
+      | None, None -> 0
     in
     (* CR jfuruse: this can be merged with same_files as compare *)
-    if not (same_files l1 l2) then
-      match compare l1.fname l2.fname with 
-      | 1 -> `Left
-      | -1 -> `Right
-      | _ -> assert false
-    else
-      (* CR jfuruse: this performs the same tests *)
-      if Position.compare l1.start l2.start = 0 
-         && Position.compare l2.end_ l1.end_ = 0 then `Same
-      else if Position.compare l1.start l2.start <= 0 
-              && Position.compare l2.end_ l1.end_ <= 0 then `Includes
-      else if Position.compare l2.start l1.start <= 0 
-              && Position.compare l1.end_ l2.end_ <= 0 then `Included
-      else if Position.compare l1.end_ l2.start <= 0 then `Left
-      else if Position.compare l2.end_ l1.start <= 0 then `Right
-      else `Overwrap
+    match compare_fnames l1.fname l2.fname with
+    | 1 -> `Left
+    | -1 -> `Right
+    | _ (* 0 *) ->
+        let starts = Position.compare l1.start l2.start in
+        let ends   = Position.compare l1.end_  l2.end_  in
+        if starts = 0 && ends = 0 then `Same
+        else if starts <= 0 && ends >= 0 then `Includes
+        else if starts >= 0 && ends <= 0 then `Included
+        else if Position.compare l1.end_ l2.start <= 0 then `Left
+        else if Position.compare l2.end_ l1.start <= 0 then `Right
+        else `Overwrap
 
   let split l1 ~by:l2 =
     if compare l1 l2 = `Overwrap then
