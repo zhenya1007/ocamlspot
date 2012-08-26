@@ -1158,8 +1158,10 @@ module Position = struct
             close_in ic;
             { line_column = Some (lines, remain); bytes = Some bytes }
           end else begin
-            ignore (input_line ic);
-            iter (lines+1) new_remain
+            if try ignore (input_line ic); true with End_of_file -> false then
+              iter (lines+1) new_remain
+            else
+              { line_column = Some (lines+1, new_remain); bytes = Some bytes }    
           end
         in
         iter 0 bytes
