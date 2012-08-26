@@ -1244,18 +1244,21 @@ end = struct
 
   let compare l1 l2 = 
     let same_files l1 l2 = 
-      match l1.fname, l2.fname with
-      | Some (_, Some di1), Some (_, Some di2) -> di1 = di2
-      | Some (f1, _), Some (f2, _) -> f1 = f2 (* weak guess *)
-      | None, None -> true (* ouch *)
-      | _ -> false
+      l1.fname == l2.fname 
+      || match l1.fname, l2.fname with
+         | Some (_, Some di1), Some (_, Some di2) -> di1 = di2
+         | Some (f1, _), Some (f2, _) -> f1 = f2 (* weak guess *)
+         | None, None -> true (* ouch *)
+         | _ -> false
     in
+    (* CR jfuruse: this can be merged with same_files as compare *)
     if not (same_files l1 l2) then
       match compare l1.fname l2.fname with 
       | 1 -> `Left
       | -1 -> `Right
       | _ -> assert false
     else
+      (* CR jfuruse: this performs the same tests *)
       if Position.compare l1.start l2.start = 0 
          && Position.compare l2.end_ l1.end_ = 0 then `Same
       else if Position.compare l1.start l2.start <= 0 
