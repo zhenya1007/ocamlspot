@@ -1063,12 +1063,13 @@ module Position = struct
       bytes = Some pos.pos_cnum }
 
   let compare p1 p2 = match p1, p2 with
-    | { bytes = Some b1; _ }, { bytes = Some b2; _ } -> compare b1 b2
+    (* line_columns are preferrable, since bytes of mll+mly are of the generated files *)
     | { line_column = Some (l1,c1); _ }, { line_column = Some (l2,c2); _ } ->
 	begin match compare l1 l2 with
 	| 0 -> compare c1 c2
 	| n -> n
 	end
+    | { bytes = Some b1; _ }, { bytes = Some b2; _ } -> compare b1 b2
     | _ -> assert false
 
   let to_string p = match p.line_column, p.bytes with
@@ -1130,25 +1131,18 @@ module Position = struct
     | _ -> assert false
 
   let is_complete = function
-    | { line_column = Some _; bytes = Some _ } -> true
+    | { line_column = Some _ } -> true
     | _ -> false
       
   (* it drops one byte at the end, but who cares? *)        
   let complete mlpath t = match t with
-    | { line_column = Some _; bytes = Some _ } -> 
+    | { line_column = Some _ } -> 
         t (* already complete *)
-    | { line_column = Some (line, column); bytes = None } ->
-        let ic = open_in_bin mlpath in
-        let rec iter cur_line pos =
-          ignore (input_line ic);
-          let cur_line = cur_line + 1 in
-          if cur_line = line then begin
-            close_in ic;
-            { line_column = Some (line, column); bytes = Some (pos + column) }
-          end else iter cur_line (pos_in ic)
-        in
-        iter 0 0
-
+    (* Completing of the byte part from line-column is HARD,
+       for the case of auto-generated source files.
+       line_column : this is of the original file
+       bytes : this is of the GENERATED file
+    *)
     | { line_column = None; bytes = Some bytes } -> 
         let ic = open_in_bin mlpath in
         let rec iter lines remain =
@@ -1213,16 +1207,15 @@ end = struct
             Unix.getcwd () ^/ s
           else s
         in
-        Some (try 
-            Hashtbl.find cache s 
-          with
-          | Not_found ->
-              let dev_inode = Unix.dev_inode s in
-              if dev_inode = None then Format.eprintf "%s does not exist@." s;
-              let v = s, dev_inode in
-              Hashtbl.replace cache s v;
-              v
-        )
+        try 
+          Hashtbl.find cache s 
+        with
+        | Not_found ->
+            let dev_inode = Unix.dev_inode s in
+            if dev_inode = None then Format.eprintf "%s does not exist@." s;
+            let v = Some (s, dev_inode) in
+            Hashtbl.replace cache s v;
+            v
 
   let to_string t =
     Printf.sprintf "%s:%s:%s"
