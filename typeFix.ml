@@ -132,4 +132,3 @@ and signature_item = function
 and modtype_declaration = function
   | Modtype_abstract -> Modtype_abstract
   | Modtype_manifest mty -> Modtype_manifest (module_type mty)
-
