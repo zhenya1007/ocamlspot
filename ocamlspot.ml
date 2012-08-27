@@ -44,7 +44,7 @@ module Dump = struct
     eprintf "@[<2>top =@ @[%a@]@]@." 
       Abstraction.format_structure file.Unit.top;
     let str = 
-      Eval.structure (File.empty_env file) file.Unit.top
+      Eval.structure (File.initial_env file) file.Unit.top
     in
     if C.eager_dump then begin
       let module Enforcer = Value.Enforcer(struct end) in

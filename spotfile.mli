@@ -20,7 +20,7 @@ exception Old_cmt of string * string
 val load : load_paths:string list -> string -> Unit.t
 val load_module : ?spit:bool -> cwd:string -> load_paths:string list -> string -> Unit.t (* CR jfuruse: spit *)
 
-val empty_env   : Unit.t -> Env.t
+val initial_env   : Unit.t -> Env.t
 val invalid_env : Unit.t -> Env.t
 
 type result = File_itself | Found_at of Region.t | Predefined

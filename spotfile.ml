@@ -225,11 +225,11 @@ end
 
 include Load
 
-let empty_env file =
+let initial_env file =
   { Env.path = file.Unit.path;
     cwd = file.Unit.builddir;
     load_paths = file.Unit.loadpath;
-    binding = Binding.empty }
+    binding = Binding.predef }
 
 let invalid_env file =
   { Env.path = file.Unit.path;
@@ -288,14 +288,14 @@ let str_of_global_ident ~cwd ~load_paths id =
   assert (Ident.global id);
   let file = Load.load_module ~spit:Spotconfig.print_interface ~cwd ~load_paths (Ident0.name id) in
   file.Unit.path,
-  Eval.structure (empty_env file) file.Unit.top
+  Eval.structure (initial_env file) file.Unit.top
 
 let _ = Eval.str_of_global_ident := str_of_global_ident
 
 let eval_packed env file =
   let f = Load.load ~load_paths:[""] (Cmt.of_path (env.Env.cwd ^/ file)) in
   Value.Structure ({ PIdent.path = f.Unit.path; ident = None },
-                  Eval.structure (empty_env f) f.Unit.top,
+                  Eval.structure (initial_env f) f.Unit.top,
                   None (* packed has no .mli *))
 
 let _ = Eval.packed := eval_packed

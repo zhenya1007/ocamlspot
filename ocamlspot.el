@@ -439,7 +439,7 @@
 	  ;; (if type (ocamlspot-message-add (format "Type: %s" type)))
 	  ))
     ;; failed to get the normal result
-    ;; CR jfuruse: this is an error message. Should be decolated?
+    ;; This can be: Spot: %a: predefined %s
     (ocamlspot-message-add path-range)))
 
 ;; Show the type information
