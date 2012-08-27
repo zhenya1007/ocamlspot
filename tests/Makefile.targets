@@ -36,6 +36,7 @@ included_value.cmo \
 including.cmo \
 inherit.cmo \
 inherit2.cmo \
+inherit3.cmo \
 interface.cmo \
 intermodule.cmo \
 let_open.cmo \
