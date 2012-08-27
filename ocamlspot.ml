@@ -190,36 +190,31 @@ module Main = struct
         (* print "Val: val name : type" if it is a Str: val *)
         (* CR jfuruse: only the first entry is used *)
         let print_sig_entry annots =
-          let rec find_type = function
-            | Annot.Type (typ, _, _) :: _ -> Some typ
-            | _::xs -> find_type xs
-            | [] -> None
-          in
-          let rec find_str_value = function
-            | Annot.Str (Abstraction.AStr_value id) :: _ -> Some id
-            | _::xs -> find_str_value xs
-            | [] -> None
-          in
-          match find_type annots, find_str_value annots with
-          | Some typ, Some id ->
-              printf "Val: val %s : @[%a@]@."
-                (Ident0.name id)
-                (Printtyp.type_scheme ~with_pos:false) typ
-          | _ -> ()
+          List.iter (function 
+            | Annot.Type (typ, _, `Expr None) 
+            | Annot.Type (typ, _, `Pattern None) -> 
+                printf "Type: @[%a@]@."(Printtyp.type_scheme ~with_pos:false) typ
+            | Annot.Type (typ, _, `Expr (Some path)) -> 
+                printf "Val: val %s : @[%a@]@."
+                  (Path0.name path)
+                  (Printtyp.type_scheme ~with_pos:false) typ
+            | Annot.Type (typ, _, `Pattern (Some id)) -> 
+                printf "Val: val %s : @[%a@]@."
+                  (Ident0.name id)
+                  (Printtyp.type_scheme ~with_pos:false) typ
+            | _ -> ()) annots;
         in
         print_sig_entry annots;
 
         (* print_type_decl: if one Type is found *)
-        (* CR jfuruse: only the first one is used *)
+        (* CR jfuruse: what happens if there are more than one expand candidate? *)
         if C.type_expand then begin
-          match List.filter (function Annot.Type _ -> true | _ -> false) annots with
-          (* CR jfuruse: Sometimes more than one Annot.Type are found at the same place... *)
-          | Annot.Type (typ, env, `Expr) :: _ -> 
-              printf "Expand: @[%a@]@." Typeexpand.format_as_expr (Typeexpand.expand file.Unit.loadpath env typ)
-          | Annot.Type (typ, env, `Pattern) :: _ -> 
-              printf "Expand: @[%a@]@." Typeexpand.format_as_pattern (Typeexpand.expand file.Unit.loadpath env typ)
-          | Annot.Type (_typ, _env, `Val) :: _ -> ()
-          | _ -> ()
+          List.iter (function
+            | Annot.Type (typ, env, `Expr _) -> 
+                printf "Expand: @[%a@]@." Typeexpand.format_as_expr (Typeexpand.expand file.Unit.loadpath env typ)
+            | Annot.Type (typ, env, `Pattern _) -> 
+                printf "Expand: @[%a@]@." Typeexpand.format_as_pattern (Typeexpand.expand file.Unit.loadpath env typ)
+            | _ -> ()) annots;
         end;
 
 	annots

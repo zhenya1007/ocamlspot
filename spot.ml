@@ -411,7 +411,7 @@ let protect' name f v = try f v with e ->
 module Annot = struct
   type t =
     | Use               of Kind.t * Path.t
-    | Type              of Types.type_expr * Env.t * [`Expr | `Pattern | `Val]
+    | Type              of Types.type_expr * Env.t * [`Expr of Path.t option | `Pattern of Ident.t option ]
     | Mod_type          of Types.module_type
     | Str               of Abstraction.structure_item  (* CRjfuruse: Should be Sitem *)
     | Module            of Abstraction.module_expr
@@ -503,7 +503,13 @@ module Annot = struct
       inherit Ttfold.fold as super
 
       method! pattern p = 
-        record p.pat_loc (Type (p.pat_type, p.pat_env, `Pattern));
+        let ident_opt = match p.pat_desc with
+          | Tpat_var (id, _) -> Some id
+          | Tpat_alias (_, id, _) -> Some id
+          (* | Tpat_construct (path, {loc}, cdesc, _, _) ->  *)
+          | _ -> None
+        in
+        record p.pat_loc (Type (p.pat_type, p.pat_env, `Pattern ident_opt));
         begin match p.pat_desc with
         | Tpat_record _ -> record_record tbl p.pat_loc p.pat_type
         | _ -> ()
@@ -531,7 +537,14 @@ module Annot = struct
         super#pattern_desc pd
       
       method! expression e = 
-        record e.exp_loc (Type (e.exp_type, e.exp_env, `Expr));
+        let path_opt = match e.exp_desc with
+          | Texp_ident (path, _, _) -> Some path
+          (* | Texp_construct (path, {loc}, cdesc, _, _) -> *)
+          | Texp_instvar (_path, path, _) 
+          | Texp_setinstvar (_path, path, _, _) -> Some path
+          | _ -> None
+        in
+        record e.exp_loc (Type (e.exp_type, e.exp_env, `Expr path_opt));
         begin match e.exp_desc with
         | Texp_record _ -> record_record tbl e.exp_loc e.exp_type
         | _ -> ()
@@ -999,9 +1012,8 @@ and class_type_declaration =
       ()
 
   let string_of_at = function
-    | `Expr -> "Expr"
-    | `Pattern -> "Pattern"
-    | `Val -> "Val"
+    | `Expr _ -> "Expr"
+    | `Pattern _ -> "Pattern"
 
   let format ppf = function
     | Type (typ, _env, at) -> 
