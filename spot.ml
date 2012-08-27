@@ -510,7 +510,7 @@ module Annot = struct
         end;
         super#pattern p
 
-    (* CR jfuruse: pat_extra *)
+      (* CR jfuruse: pat_extra *)
           
       method! pattern_desc pd = 
         begin match pd with 
