@@ -31,13 +31,7 @@ module Dump = struct
   let file = Spot.File.dump
   let unit = Spot.Unit.dump
 
-  let rannots_full unit = 
-    eprintf "@[<2>rannots =@ [ @[<v>%a@]@] ]@."
-      (Format.list ";@ " (Regioned.format (Format.list ";@ " Annot.format)))
-      !!(unit.Unit.rannots)
-  ;;
-  
-  let rannots_summary unit = 
+  let rannots unit = 
     eprintf "@[<2>rannots =@ [ @[<v>%a@]@] ]@."
       (Format.list ";@ " (Regioned.format (Format.list ";@ " Annot.summary)))
       !!(unit.Unit.rannots)
@@ -86,12 +80,11 @@ module Main = struct
 
     let file = File.load ~load_paths: ["."] path in
     
-    if C.dump_file then Dump.unit file; (* CR jfuruse: to be fixed *)
-    if C.dump_tree then Dump.tree file;
-    if C.dump_top  then Dump.top  file;
-    if C.dump_flat then Dump.flat file;
-    if C.dump_rannots = `Full    then Dump.rannots_full    file;
-    if C.dump_rannots = `Summary then Dump.rannots_summary file;
+    if C.dump_file    then Dump.unit    file; (* CR jfuruse: to be fixed *)
+    if C.dump_tree    then Dump.tree    file;
+    if C.dump_top     then Dump.top     file;
+    if C.dump_flat    then Dump.flat    file;
+    if C.dump_rannots then Dump.rannots file;
 
     file
   ;;

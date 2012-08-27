@@ -20,7 +20,7 @@ module type S = sig
   val print_version          : unit -> unit
   
   val dump_file              : bool
-  val dump_rannots           : [ `None | `Full | `Summary ]
+  val dump_rannots           : bool
   val dump_tree              : bool
   val dump_top               : bool
   val dump_flat              : bool

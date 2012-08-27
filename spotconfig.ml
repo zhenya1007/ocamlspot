@@ -29,7 +29,7 @@ let print_version () =
     
 let rev_anonargs           = ref []
 let dump_file              = ref false
-let dump_rannots           = ref `None
+let dump_rannots           = ref false
 let dump_tree              = ref false
 let dump_top               = ref false
 let dump_flat              = ref false
@@ -68,10 +68,7 @@ let _ =
       Arg.Set dump_file, " : dump spot file"; 
 
       "--dump-rannots", 
-      Arg.Unit (fun () -> dump_rannots    := `Full), " : dump loc-annots";
-
-      "--dump-rannots-summary", 
-      Arg.Unit (fun () -> dump_rannots    := `Summary), " : dump loc-annots";
+      Arg.Set dump_rannots, " : dump loc-annots";
 
       "--dump-tree", 
       Arg.Set dump_tree, " : dump annot tree";
@@ -132,7 +129,7 @@ let type_expand            = !type_expand
 let use_spot               = !use_spot
 
 let dump_any = 
-  dump_file || dump_rannots <> `None || dump_tree || dump_top || dump_flat
+  dump_file || dump_rannots || dump_tree || dump_top || dump_flat
 
 module SearchSpec = struct
   type t = 
