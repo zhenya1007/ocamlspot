@@ -522,10 +522,10 @@ module Annot = struct
         end;
         super#pattern p
 
-    (* CR jfuruse: pat_extra *)
-
-      method! pattern_desc pd =
-        begin match pd with
+      (* CR jfuruse: pat_extra *)
+          
+      method! pattern_desc pd = 
+        begin match pd with 
         | Tpat_var (id, {loc})
         | Tpat_alias (_, id, {loc}) -> record_def loc (AStr_value id)
         | Tpat_construct _ -> () (* done in #pattern *)
