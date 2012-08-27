@@ -39,6 +39,8 @@ inherit2.cmo \
 interface.cmo \
 intermodule.cmo \
 let_open.cmo \
+lex.cmo \
+lex.cmo \
 localvar.cmo \
 module.cmo \
 module_alias.cmo \
@@ -58,6 +60,7 @@ packed.cmo \
 packed_alias.cmo \
 pathname.cmo \
 perv.cmo \
+predef.cmo \
 primitive.cmo \
 recmodule.cmo \
 record.cmo \

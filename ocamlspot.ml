@@ -23,7 +23,6 @@ open Spoteval
 
 module File = Spotfile
 module C = Spotconfig
-
 module SAbs = Spot.Abstraction
 
 module Dump = struct
@@ -32,13 +31,7 @@ module Dump = struct
   let file = Spot.File.dump
   let unit = Spot.Unit.dump
 
-  let rannots_full unit = 
-    eprintf "@[<2>rannots =@ [ @[<v>%a@]@] ]@."
-      (Format.list ";@ " (Regioned.format (Format.list ";@ " Annot.format)))
-      !!(unit.Unit.rannots)
-  ;;
-  
-  let rannots_summary unit = 
+  let rannots unit = 
     eprintf "@[<2>rannots =@ [ @[<v>%a@]@] ]@."
       (Format.list ";@ " (Regioned.format (Format.list ";@ " Annot.summary)))
       !!(unit.Unit.rannots)
@@ -51,7 +44,7 @@ module Dump = struct
     eprintf "@[<2>top =@ @[%a@]@]@." 
       Abstraction.format_structure file.Unit.top;
     let str = 
-      Eval.structure (File.empty_env file) file.Unit.top
+      Eval.structure (File.initial_env file) file.Unit.top
     in
     if C.eager_dump then begin
       let module Enforcer = Value.Enforcer(struct end) in
@@ -87,12 +80,11 @@ module Main = struct
 
     let file = File.load ~load_paths: ["."] path in
     
-    if C.dump_file then Dump.unit file; (* CR jfuruse: to be fixed *)
-    if C.dump_rannots = `Full then Dump.rannots_full file;
-    if C.dump_rannots = `Summary then Dump.rannots_summary file;
-    if C.dump_tree then Dump.tree file;
-    if C.dump_top then Dump.top file;
-    if C.dump_flat then Dump.flat file;
+    if C.dump_file    then Dump.unit    file; (* CR jfuruse: to be fixed *)
+    if C.dump_tree    then Dump.tree    file;
+    if C.dump_top     then Dump.top     file;
+    if C.dump_flat    then Dump.flat    file;
+    if C.dump_rannots then Dump.rannots file;
 
     file
   ;;
@@ -113,20 +105,25 @@ module Main = struct
       | body, (".cmi" | ".mli" | ".cmti") -> body ^ ".spit"
       | body, _ -> body ^ ".spot"
     in
+    Debug.format "Writing %s@." spot;
+    (* CR jfuruse: BUG in ocamlbuild _build setting, the output file is written into the source dir, not the dest dir *)
     Spot.File.save spot (Spot.Unit.to_file file)
 
   let query_by_kind_path file kind path = 
     try Some (File.find_path_in_flat file (kind, path)) with Not_found -> None
   ;;
 
+  (* CR jfuruse: In the case of a.mll => a.ml => a.cmt,
+     a.ml often does not exist. ocamlspot should warn you when a.ml
+     does not exist and propose creation of a.ml from a.mll. *)
   let print_query_result kind = function
     | None -> printf "Spot: no spot@."
     | Some (pident, res) -> match res with
 	| File.File_itself ->
             printf "Spot: <%s:all>@." pident.PIdent.path
 	| File.Found_at region ->
-            printf "Spot: <%s:%s>@."
-              pident.PIdent.path
+            printf "Spot: <%s>@."
+              (* pident.PIdent.path *)
               (Region.to_string region)
 	| File.Predefined ->
             printf "Spot: %a: predefined %s@."
@@ -134,17 +131,20 @@ module Main = struct
               (Kind.name kind);
   ;;
     
-  let query_by_pos file pos = 
-    let probe = Region.point pos in
+  let query_by_pos file orig_path pos = 
+    (* CR jfuruse: probe should be created outside *)
+    let probe = Region.complete orig_path (Region.point orig_path pos) in
+    Debug.format "probing by %s@." (Region.to_string probe);
     let treepath = 
-      (* subtree is not used *)
       List.map fst (Tree.find_path_contains probe !!(file.Unit.tree))
     in
     match treepath with
-    | [] -> failwith (Printf.sprintf "nothing at %s" (Position.to_string pos))
-    | { Regioned.region = r; _ } :: _ ->
+    | [] -> failwithf "nothing at %s" (Position.to_string pos)
+    | { Regioned.region = r; _ } :: _ -> (* [r] is innermost region *)
 	
-	(* find annots bound to the region *)
+	(* Find annots bound to the region.
+           CR jfuruse: do we need to scan all the paths?
+        *)
         let annots = 
 	  List.concat_map (fun rannot ->
 	    if Region.compare r rannot.Regioned.region = `Same then 
@@ -153,13 +153,14 @@ module Main = struct
 	    treepath
         in
 
-	(* annots and region improvement by path *)
+	(* annots and region improvement by subpath *)
 	let annots, r = 
 	  match 
 	    (* only the first Use *)
 	    List.find_map_opt (function
 	      | Annot.Use (_, path) -> 
 		  (* Find subpath *)
+                  (* CR jfuruse: subpath does not work for now *)
 		  begin match Pathreparse.get file.Unit.path r pos path with    
 		  | None -> None
 		  | Some (path', r) -> 
@@ -171,12 +172,11 @@ module Main = struct
 	  | None -> annots, r
 	  | Some (annots, r) -> annots, r
 	in
-	  
         List.iter (printf "@[<v>%a@]@." Annot.format) annots;
 
 	(* Tree is an older format. XTree is a newer which is the same as one for Spot *)
-        printf "Tree: %s@." (Region.to_string r);
-        printf "XTree: <%s:%s>@." file.Unit.path (Region.to_string r);
+        printf "Tree: %s@." (Region.to_string_no_path r);
+        printf "XTree: <%s>@." (* file.Unit.path *) (Region.to_string r);
 
 	(* Find the innermost module *)
         let find_module_path treepath = List.concat_map (fun { Regioned.value = annots } ->
@@ -188,6 +188,7 @@ module Main = struct
           (String.concat "." (List.map Ident0.name (List.rev (find_module_path treepath))));
 
         (* print "Val: val name : type" if it is a Str: val *)
+        (* CR jfuruse: only the first entry is used *)
         let print_sig_entry annots =
           let rec find_type = function
             | Annot.Type (typ, _, _) :: _ -> Some typ
@@ -209,6 +210,7 @@ module Main = struct
         print_sig_entry annots;
 
         (* print_type_decl: if one Type is found *)
+        (* CR jfuruse: only the first one is used *)
         if C.type_expand then begin
           match List.filter (function Annot.Type _ -> true | _ -> false) annots with
           (* CR jfuruse: Sometimes more than one Annot.Type are found at the same place... *)
@@ -223,11 +225,11 @@ module Main = struct
 	annots
   ;;
 
-  let query path spec = 
+  let query orig_path spec = 
     (* CR jfuruse: dup *)
-    Debug.format "ocamlspot %s%s@." path (C.SearchSpec.to_string spec);
+    Debug.format "ocamlspot %s%s@." orig_path (C.SearchSpec.to_string spec);
     Debug.format "cwd: %s@." (Sys.getcwd ());
-    let path = Cmt.of_path path in
+    let path = Cmt.of_path orig_path in
     let file = load path in
 
     let query_kind_path k path = print_query_result k (query_by_kind_path file k path) in
@@ -235,7 +237,7 @@ module Main = struct
     begin match spec with
     | C.SearchSpec.Kind (k,path) -> query_kind_path k path
     | C.SearchSpec.Pos pos -> 
-	let annots = query_by_pos file pos in
+	let annots = query_by_pos file orig_path pos in
         if not C.no_definition_analysis then begin
           List.iter (function
             | Annot.Use (k, path) -> query_kind_path k path
@@ -266,11 +268,11 @@ module Main = struct
     let file = load path in
 
     let find_by_kind_path k path found =
-      Unix.find targets ~f:(fun pathname ->
-	match Filename.split_extension pathname.Unix.base with
+      Find.find targets ~f:(fun pathname ->
+	match Filename.split_extension pathname.Find.base with
 	| _body, (".cmti" | ".cmt") ->
-	  let file = load pathname.Unix.path in
-	  Debug.format "Searching %s@." pathname.Unix.path;
+	  let file = load pathname.Find.path in
+	  Debug.format "Searching %s@." pathname.Find.path;
 	  let base_ident = function
 	    | Path.Pident id -> Ident0.name id
 	    | Path.Pdot (_, name, _) -> name
@@ -315,7 +317,7 @@ module Main = struct
 	    | None -> None
 	    end
 	| Annot.Use (kind, path) -> Some (`Use (kind, path))
-	| _ -> None) (query_by_pos file pos)
+	| _ -> None) (query_by_pos file file.Unit.path pos)
       with
       | Some (`Def (k, id))   -> by_kind_path file k (Path.Pident id)
       | Some (`Use (k, path)) -> by_kind_path file k path

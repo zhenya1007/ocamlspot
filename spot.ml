@@ -1063,12 +1063,13 @@ module Position = struct
       bytes = Some pos.pos_cnum }
 
   let compare p1 p2 = match p1, p2 with
-    | { bytes = Some b1; _ }, { bytes = Some b2; _ } -> compare b1 b2
+    (* line_columns are preferrable, since bytes of mll+mly are of the generated files *)
     | { line_column = Some (l1,c1); _ }, { line_column = Some (l2,c2); _ } ->
 	begin match compare l1 l2 with
 	| 0 -> compare c1 c2
 	| n -> n
 	end
+    | { bytes = Some b1; _ }, { bytes = Some b2; _ } -> compare b1 b2
     | _ -> assert false
 
   let to_string p = match p.line_column, p.bytes with
@@ -1130,25 +1131,18 @@ module Position = struct
     | _ -> assert false
 
   let is_complete = function
-    | { line_column = Some _; bytes = Some _ } -> true
+    | { line_column = Some _ } -> true
     | _ -> false
       
   (* it drops one byte at the end, but who cares? *)        
   let complete mlpath t = match t with
-    | { line_column = Some _; bytes = Some _ } -> 
+    | { line_column = Some _ } -> 
         t (* already complete *)
-    | { line_column = Some (line, column); bytes = None } ->
-        let ic = open_in_bin mlpath in
-        let rec iter cur_line pos =
-          ignore (input_line ic);
-          let cur_line = cur_line + 1 in
-          if cur_line = line then begin
-            close_in ic;
-            { line_column = Some (line, column); bytes = Some (pos + column) }
-          end else iter cur_line (pos_in ic)
-        in
-        iter 0 0
-
+    (* Completing of the byte part from line-column is HARD,
+       for the case of auto-generated source files.
+       line_column : this is of the original file
+       bytes : this is of the GENERATED file
+    *)
     | { line_column = None; bytes = Some bytes } -> 
         let ic = open_in_bin mlpath in
         let rec iter lines remain =
@@ -1158,8 +1152,10 @@ module Position = struct
             close_in ic;
             { line_column = Some (lines, remain); bytes = Some bytes }
           end else begin
-            ignore (input_line ic);
-            iter (lines+1) new_remain
+            if try ignore (input_line ic); true with End_of_file -> false then
+              iter (lines+1) new_remain
+            else
+              { line_column = Some (lines+1, new_remain); bytes = Some bytes }    
           end
         in
         iter 0 bytes
@@ -1168,39 +1164,114 @@ module Position = struct
 
 end
 
-module Region = struct
+module Region : sig
+
+  type t = private { 
+    fname : (string * (int * int) option) option; 
+    (* filename and device/inode. None = "_none_" *)
+    start : Position.t;
+    end_ : Position.t
+  }
+    
+  val compare : t -> t -> [> `Included | `Includes | `Left | `Overwrap | `Right | `Same ]
+
+  val to_string : t -> string
+  val to_string_no_path : t -> string
+  val of_parsing : string -> Location.t -> t
+  val split : t -> by:t -> (t * t) option
+  val point_by_byte : string -> int -> t  
+    (** works only if bytes are available *)
+  val point : string -> Position.t -> t
+  val change_positions : t -> Position.t -> Position.t -> t
+  val length_in_bytes : t -> int
+  val is_complete : t -> bool
+  val complete : string -> t -> t
+  val substring : string -> t -> t * string
+
+end = struct
+
   type t = { 
+    fname : (string * (int * int) option) option; 
+    (* filename and device/inode. None = "_none_" *)
     start : Position.t;
     end_ : Position.t
   }
 
+  let cache = Hashtbl.create 1023
+
+  let fname = function
+    | "_none_" -> None
+    | s ->
+        let s =
+          if Filename.is_relative s then 
+            Unix.getcwd () ^/ s
+          else s
+        in
+        try 
+          Hashtbl.find cache s 
+        with
+        | Not_found ->
+            let dev_inode = Unix.dev_inode s in
+            if dev_inode = None then Format.eprintf "%s does not exist@." s;
+            let v = Some (s, dev_inode) in
+            Hashtbl.replace cache s v;
+            v
+
   let to_string t =
+    Printf.sprintf "%s:%s:%s"
+      (match t.fname with Some (fname, _) -> fname | None -> "_none_")
+      (Position.to_string t.start)
+      (Position.to_string t.end_)
+
+  let to_string_no_path t =
     Printf.sprintf "%s:%s"
       (Position.to_string t.start)
       (Position.to_string t.end_)
 
-  let of_parsing l =
+  (* CR jfuruse: we should have path cache *)
+
+  let of_parsing builddir l =
+    let fname1 = l.Location.loc_start.Lexing.pos_fname in
+    let fname2 = l.Location.loc_end.Lexing.pos_fname in
+    if fname1 <> fname2 then
+      Format.eprintf "Warning: A location contains strange file names %s and %s@." fname1 fname2;
+    let fname = fname (if fname1 = "_none_" then fname1 else builddir ^/ fname1) in
     let start = Position.of_lexing_position l.Location.loc_start in
     let end_ = Position.of_lexing_position l.Location.loc_end in
     match Position.compare start end_ with
-    | -1 | 0 -> { start = start; end_ = end_ }
-    | _ -> { start = end_; end_ = start }
+    | -1 | 0 -> { fname; start = start; end_ = end_ }
+    | _ -> { fname; start = end_; end_ = start }
 
   let compare l1 l2 = 
-    if Position.compare l1.start l2.start = 0 
-       && Position.compare l2.end_ l1.end_ = 0 then `Same
-    else if Position.compare l1.start l2.start <= 0 
-         && Position.compare l2.end_ l1.end_ <= 0 then `Includes
-    else if Position.compare l2.start l1.start <= 0 
-         && Position.compare l1.end_ l2.end_ <= 0 then `Included
-    else if Position.compare l1.end_ l2.start <= 0 then `Left
-    else if Position.compare l2.end_ l1.start <= 0 then `Right
-    else `Overwrap
-
-(*
-  let position_prev pos = { pos with pos_cnum = pos.pos_cnum - 1 }
-  let position_next pos = { pos with pos_cnum = pos.pos_cnum + 1 }
-*)
+    let compare_fnames f1 f2 =
+      let same_files =
+        f1 == f2
+        || match f1, f2 with
+          | Some (_, Some di1), Some (_, Some di2) -> di1 = di2
+          | Some (f1, _), Some (f2, _) -> f1 = f2 (* weak guess *)
+          | None, None -> true (* ouch *)
+          | _ -> false
+      in
+      if same_files then 0
+      else match f1, f2 with
+      | Some (f1, _), Some (f2, _) -> compare f1 f2
+      | Some _, None -> 1
+      | None, Some _ -> -1
+      | None, None -> 0
+    in
+    (* CR jfuruse: this can be merged with same_files as compare *)
+    match compare_fnames l1.fname l2.fname with
+    | 1 -> `Left
+    | -1 -> `Right
+    | _ (* 0 *) ->
+        let starts = Position.compare l1.start l2.start in
+        let ends   = Position.compare l1.end_  l2.end_  in
+        if starts = 0 && ends = 0 then `Same
+        else if starts <= 0 && ends >= 0 then `Includes
+        else if starts >= 0 && ends <= 0 then `Included
+        else if Position.compare l1.end_ l2.start <= 0 then `Left
+        else if Position.compare l2.end_ l1.start <= 0 then `Right
+        else `Overwrap
 
   let split l1 ~by:l2 =
     if compare l1 l2 = `Overwrap then
@@ -1215,13 +1286,19 @@ module Region = struct
 
   open Position
 
-  let point_by_byte pos =
-    { start = { line_column = None;
+  let point_by_byte fn pos =
+    let fname = fname fn in
+    { fname;
+      start = { line_column = None;
  		bytes = Some pos };
       end_ = { line_column = None;
                bytes = Some (pos + 1)} }
 
-  let point pos = { start = pos; end_ = Position.next pos }
+  let point fn pos = 
+    let fname = fname fn in
+    { fname; start = pos; end_ = Position.next pos }
+
+  let change_positions t p1 p2 = { t with start = p1; end_ = p2 }
 
   let length_in_bytes t =
     let bytes = function
@@ -1233,8 +1310,11 @@ module Region = struct
   let is_complete t = 
     Position.is_complete t.start && Position.is_complete t.end_
 
+  (* CR jfuruse: fname is overwritten. Strange. *)      
   let complete mlpath t =
-    { start = Position.complete mlpath t.start;
+    let fname = fname mlpath in
+    { fname;
+      start = Position.complete mlpath t.start;
       end_ = Position.complete mlpath t.end_ }
 
   let substring mlpath t =
@@ -1392,6 +1472,9 @@ end
 
 (* Spot info for each compilation unit *)
 module Unit = struct
+
+  module F = File
+
   type t = {
     modname        : string;
     builddir       : string; 
@@ -1407,7 +1490,7 @@ module Unit = struct
     tree           : Tree.t lazy_t
   }
 
-  (* same as File.dump, ignoring new additions in Unit *)
+  (* same as F.dump, ignoring new additions in Unit *)
   let dump file =
     eprintf "@[<v2>{ module= %S;@ path= %S;@ builddir= %S;@ loadpath= [ @[%a@] ];@ argv= [| @[%a@] |];@ ... }@]@."
       file.modname
@@ -1417,7 +1500,7 @@ module Unit = struct
       (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) (Array.to_list file.args)
 
   let to_file { modname; builddir; loadpath; args; path; top ; loc_annots } = 
-    { File.modname;
+    { F.modname;
       builddir;
       loadpath;
       args;
@@ -1426,9 +1509,9 @@ module Unit = struct
       loc_annots;
     }
 
-  let of_file ({ File.loc_annots; } as f) = 
+  let of_file ({ F.loc_annots; } as f) = 
     let rannots = lazy (Hashtbl.fold (fun loc annots st -> 
-      { Regioned.region = Region.of_parsing loc;  value = annots } :: st) 
+      { Regioned.region = Region.of_parsing f.F.builddir loc;  value = annots } :: st) 
                           loc_annots [])
     in
     let id_def_regions = lazy (
@@ -1437,13 +1520,13 @@ module Unit = struct
         List.iter (function
           | Annot.Str sitem ->
               Option.iter (Abstraction.ident_of_structure_item sitem) ~f:(fun (_kind, id) ->
-                Hashtbl.add tbl id (Region.of_parsing loc))
+                Hashtbl.add tbl id (Region.of_parsing f.F.builddir loc))
           | _ -> ()) annots) loc_annots;
       tbl)
     in
     let tree = lazy begin
       Hashtbl.fold (fun loc annots st ->
-        Tree.add st { Regioned.region = Region.of_parsing loc; value = annots })
+        Tree.add st { Regioned.region = Region.of_parsing f.F.builddir loc; value = annots })
         loc_annots Tree.empty 
     end in
     (* CR jfuruse: it is almost the same as id_def_regions_list *)
@@ -1452,13 +1535,13 @@ module Unit = struct
         | Annot.Str sitem -> Some sitem
         | _ -> None) annots @ st) loc_annots [])
     in
-    { modname    = f.File.modname;
-      builddir   = f.File.builddir;
-      loadpath   = f.File.loadpath;
-      args       = f.File.args;
-      path       = f.File.path;
-      top        = f.File.top;
-      loc_annots = f.File.loc_annots;
+    { modname    = f.F.modname;
+      builddir   = f.F.builddir;
+      loadpath   = f.F.loadpath;
+      args       = f.F.args;
+      path       = f.F.path;
+      top        = f.F.top;
+      loc_annots = f.F.loc_annots;
       
       flat; id_def_regions; rannots; tree; 
     }

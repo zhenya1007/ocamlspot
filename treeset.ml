@@ -38,7 +38,7 @@ module Make(Ord : OrderedType) = struct
   include NodeSet
 
   let rec add_node (Node (elem, t0) as node) t = 
-    match find node t with 
+    match unsafe_find node t with 
     | None -> add node t
     | Some (Node (elem', t') as node') ->
 	match Ord.compare elem elem' with
@@ -57,7 +57,7 @@ module Make(Ord : OrderedType) = struct
   let add_elem elem t = add_node (Node (elem, empty)) t  
 
   let rec find_path_contains_aux path node t =
-    match find node t with
+    match unsafe_find node t with
     | None -> path
     | Some (Node (elem', t')) ->
 	find_path_contains_aux ((elem', t') :: path) node t' 

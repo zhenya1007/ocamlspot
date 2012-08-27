@@ -125,8 +125,7 @@ end = struct
   module Binding = struct
     type t = binding
     let error () = failwith "Binding: premature"
-    let with_check f t = 
-      match !t with
+    let with_check f t = match !t with
       | None -> error ()
       | Some str -> f str
     let domain = with_check (List.map fst) 
@@ -145,7 +144,13 @@ end = struct
           :: !items
       in
       Predef.build_initial_env 
-        (fun id _ _ -> add_predefined Kind.Type id)
+        (fun id decl _ -> 
+          add_predefined Kind.Type id;
+          match decl.Types.type_kind with
+          | Types.Type_abstract -> ()
+          | Types.Type_record (l, _) -> List.iter (fun (id, _, _) -> add_predefined Kind.Type id) l
+          | Types.Type_variant l     -> List.iter (fun (id, _, _) -> add_predefined Kind.Type id) l
+        )
         (fun id _ _ -> add_predefined Kind.Exception id) 
         ();
       List.iter (fun (_, id) -> add_predefined Kind.Value id) Predef.builtin_values;

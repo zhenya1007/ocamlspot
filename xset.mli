@@ -18,8 +18,10 @@ module type OrderedType = Set.OrderedType
 module type S = sig
   include Set.S
 
-  val middle : t -> elt option
-  val find : elt -> t -> elt option
+  (* They use Obj.magic, so unsafe! *)
+  val unsafe_binary : t -> (t * elt * t) option
+  val unsafe_middle : t -> elt option
+  val unsafe_find : elt -> t -> elt option
 end
 
 module Make(Ord : OrderedType) : S 

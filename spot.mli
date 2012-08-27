@@ -114,16 +114,21 @@ end
 
 module Region : sig
 
-  type t = { start : Position.t; end_ : Position.t; }
+  type t = private { fname : (string * (int * int) option) option; 
+                     (* filename and device/inode. None = "_none_" *)
+                     start : Position.t; 
+                     end_ : Position.t; }
   
   val compare : t -> t -> [> `Included | `Includes | `Left | `Overwrap | `Right | `Same ]
 
   val to_string : t -> string
-  val of_parsing : Location.t -> t
+  val to_string_no_path : t -> string
+  val of_parsing : string -> Location.t -> t
   val split : t -> by:t -> (t * t) option
-  val point_by_byte : int -> t  
+  val point_by_byte : string -> int -> t  
     (** works only if bytes are available *)
-  val point : Position.t -> t
+  val point : string -> Position.t -> t
+  val change_positions : t -> Position.t -> Position.t -> t
   val length_in_bytes : t -> int
   val is_complete : t -> bool
   val complete : string -> t -> t

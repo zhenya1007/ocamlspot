@@ -29,7 +29,7 @@ let print_version () =
     
 let rev_anonargs           = ref []
 let dump_file              = ref false
-let dump_rannots           = ref `None
+let dump_rannots           = ref false
 let dump_tree              = ref false
 let dump_top               = ref false
 let dump_flat              = ref false
@@ -68,10 +68,7 @@ let _ =
       Arg.Set dump_file, " : dump spot file"; 
 
       "--dump-rannots", 
-      Arg.Unit (fun () -> dump_rannots    := `Full), " : dump loc-annots";
-
-      "--dump-rannots-summary", 
-      Arg.Unit (fun () -> dump_rannots    := `Summary), " : dump loc-annots";
+      Arg.Set dump_rannots, " : dump loc-annots";
 
       "--dump-tree", 
       Arg.Set dump_tree, " : dump annot tree";
@@ -132,7 +129,7 @@ let type_expand            = !type_expand
 let use_spot               = !use_spot
 
 let dump_any = 
-  dump_file || dump_rannots <> `None || dump_tree || dump_top || dump_flat
+  dump_file || dump_rannots || dump_tree || dump_top || dump_flat
 
 module SearchSpec = struct
   type t = 
@@ -149,7 +146,7 @@ module SearchSpec = struct
           (Kind.from_string (String.sub s (at2+1) (at-at2-1)),
            let s = String.sub s (at+1) (String.length s - at - 1) in 
            try Path.parse s with
-           | _ -> failwith ("illegal path in <file>:<kind>:<path> : " ^ s))
+           | _ -> failwithf "illegal path in <file>:<kind>:<path> : %s" s)
       with
       | Invalid_argument _ | Not_found -> 
           String.sub s 0 at,
@@ -158,8 +155,8 @@ module SearchSpec = struct
                      (String.sub s (at+1) (String.length s - at - 1)))
     with
     | Failure s -> failwith s
-    | Position.Parse_failure s -> failwith ("illegal <file>:<pos> : " ^ s)
-    | Not_found -> failwith ("strange search : " ^ s)
+    | Position.Parse_failure s -> failwithf "illegal <file>:<pos> : %s" s
+    | Not_found -> failwithf "strange search : %s" s
 
   let to_string = function
     | Pos pos -> ":" ^ Position.to_string pos

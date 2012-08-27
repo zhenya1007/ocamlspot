@@ -81,9 +81,9 @@ beforedepend::
 depend: beforedepend
 	$(OCAMLDEP) $(INCLUDES) -I dir1 -I dir2 *.mli *.ml */*.mli */*.ml > .depend
 
-Makefile.targets: *.ml *.mli */*.ml
+Makefile.targets: *.ml *.mll *.mli */*.ml
 	echo TARGETS= \\ > $@
-	ls *.ml *.mli | sed -e 's/mli$$/cmi/' -e 's/ml$$/cmo/' -e 's/$$/ \\/'	 >> $@
+	ls *.ml *.mli *.mll | sed -e 's/mli$$/cmi/' -e 's/ml$$/cmo/' -e 's/mll$$/cmo/' -e 's/$$/ \\/'	 >> $@
 
 .PHONY: clean install installopt beforedepend depend
 
