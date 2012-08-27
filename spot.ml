@@ -1063,12 +1063,13 @@ module Position = struct
       bytes = Some pos.pos_cnum }
 
   let compare p1 p2 = match p1, p2 with
-    | { bytes = Some b1; _ }, { bytes = Some b2; _ } -> compare b1 b2
+    (* line_columns are preferrable, since bytes of mll+mly are of the generated files *)
     | { line_column = Some (l1,c1); _ }, { line_column = Some (l2,c2); _ } ->
 	begin match compare l1 l2 with
 	| 0 -> compare c1 c2
 	| n -> n
 	end
+    | { bytes = Some b1; _ }, { bytes = Some b2; _ } -> compare b1 b2
     | _ -> assert false
 
   let to_string p = match p.line_column, p.bytes with
@@ -1130,25 +1131,18 @@ module Position = struct
     | _ -> assert false
 
   let is_complete = function
-    | { line_column = Some _; bytes = Some _ } -> true
+    | { line_column = Some _ } -> true
     | _ -> false
       
   (* it drops one byte at the end, but who cares? *)        
   let complete mlpath t = match t with
-    | { line_column = Some _; bytes = Some _ } -> 
+    | { line_column = Some _ } -> 
         t (* already complete *)
-    | { line_column = Some (line, column); bytes = None } ->
-        let ic = open_in_bin mlpath in
-        let rec iter cur_line pos =
-          ignore (input_line ic);
-          let cur_line = cur_line + 1 in
-          if cur_line = line then begin
-            close_in ic;
-            { line_column = Some (line, column); bytes = Some (pos + column) }
-          end else iter cur_line (pos_in ic)
-        in
-        iter 0 0
-
+    (* Completing of the byte part from line-column is HARD,
+       for the case of auto-generated source files.
+       line_column : this is of the original file
+       bytes : this is of the GENERATED file
+    *)
     | { line_column = None; bytes = Some bytes } -> 
         let ic = open_in_bin mlpath in
         let rec iter lines remain =
@@ -1213,16 +1207,15 @@ end = struct
             Unix.getcwd () ^/ s
           else s
         in
-        Some (try 
-            Hashtbl.find cache s 
-          with
-          | Not_found ->
-              let dev_inode = Unix.dev_inode s in
-              if dev_inode = None then Format.eprintf "%s does not exist@." s;
-              let v = s, dev_inode in
-              Hashtbl.replace cache s v;
-              v
-        )
+        try 
+          Hashtbl.find cache s 
+        with
+        | Not_found ->
+            let dev_inode = Unix.dev_inode s in
+            if dev_inode = None then Format.eprintf "%s does not exist@." s;
+            let v = Some (s, dev_inode) in
+            Hashtbl.replace cache s v;
+            v
 
   let to_string t =
     Printf.sprintf "%s:%s:%s"
@@ -1250,28 +1243,35 @@ end = struct
     | _ -> { fname; start = end_; end_ = start }
 
   let compare l1 l2 = 
-    let same_files l1 l2 = 
-      match l1.fname, l2.fname with
-      | Some (_, Some di1), Some (_, Some di2) -> di1 = di2
-      | Some (f1, _), Some (f2, _) -> f1 = f2 (* weak guess *)
-      | None, None -> true (* ouch *)
-      | _ -> false
+    let compare_fnames f1 f2 =
+      let same_files =
+        f1 == f2
+        || match f1, f2 with
+          | Some (_, Some di1), Some (_, Some di2) -> di1 = di2
+          | Some (f1, _), Some (f2, _) -> f1 = f2 (* weak guess *)
+          | None, None -> true (* ouch *)
+          | _ -> false
+      in
+      if same_files then 0
+      else match f1, f2 with
+      | Some (f1, _), Some (f2, _) -> compare f1 f2
+      | Some _, None -> 1
+      | None, Some _ -> -1
+      | None, None -> 0
     in
-    if not (same_files l1 l2) then
-      match compare l1.fname l2.fname with 
-      | 1 -> `Left
-      | -1 -> `Right
-      | _ -> assert false
-    else
-      if Position.compare l1.start l2.start = 0 
-         && Position.compare l2.end_ l1.end_ = 0 then `Same
-      else if Position.compare l1.start l2.start <= 0 
-              && Position.compare l2.end_ l1.end_ <= 0 then `Includes
-      else if Position.compare l2.start l1.start <= 0 
-              && Position.compare l1.end_ l2.end_ <= 0 then `Included
-      else if Position.compare l1.end_ l2.start <= 0 then `Left
-      else if Position.compare l2.end_ l1.start <= 0 then `Right
-      else `Overwrap
+    (* CR jfuruse: this can be merged with same_files as compare *)
+    match compare_fnames l1.fname l2.fname with
+    | 1 -> `Left
+    | -1 -> `Right
+    | _ (* 0 *) ->
+        let starts = Position.compare l1.start l2.start in
+        let ends   = Position.compare l1.end_  l2.end_  in
+        if starts = 0 && ends = 0 then `Same
+        else if starts <= 0 && ends >= 0 then `Includes
+        else if starts >= 0 && ends <= 0 then `Included
+        else if Position.compare l1.end_ l2.start <= 0 then `Left
+        else if Position.compare l2.end_ l1.start <= 0 then `Right
+        else `Overwrap
 
   let split l1 ~by:l2 =
     if compare l1 l2 = `Overwrap then
