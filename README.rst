@@ -31,13 +31,21 @@ To browse modules correctly,
 
 Otherwise OCamlSpotter complains that it cannot find required cmt/cmti files.
 
-Normally this requires little modifications to the build script of each library:
+How to do it?
+---------------------------
+
+Normally this requires little modifications to the build script (Makefile/OMakefile/...) of each library.
+Basically, you need:
 
 * Add -bin-annot to the compiler switch (for example OCAMLCFLAGS += -bin-annot)
 * Copy cmt and cmti files at installation. For example::
 
      install::
         cp \*.mli \*.cmi \*.cma \*.cmt \*.cmti \*.cmxa $(INSTALLDIR)
+
+
+Some automation
+--------------------------
 
 To facilitate this you may want to use SpotInstall( https://bitbucket.org/camlspotter/spotinstall ). SpotInstall provides:
 
