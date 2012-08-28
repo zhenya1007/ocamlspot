@@ -613,7 +613,7 @@ and meth =
 
       method! class_expr_desc ced =
         begin match ced with
-        | Tcl_ident (path, {loc}, _) -> record_use loc K.Value path
+        | Tcl_ident (path, {loc}, _) -> record_use loc K.Class path
         | Tcl_structure _ -> ()
         | Tcl_fun (_, _, lst , _, _)
         | Tcl_let (_, _, lst, _) ->
@@ -648,6 +648,7 @@ and class_field_kind =
       method! class_field_desc cfd =
         begin match cfd with
         | Tcf_inher (_, ce, _, ivars, cmethods) ->
+            (* ce itself is processed by #class_expr *)
             (* try to have better location *)
             let rec find ce = match ce.cl_desc with
               | Tcl_ident _
