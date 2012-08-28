@@ -45,6 +45,7 @@ Basically, you need:
      install::
         cp \*.mli \*.cmi \*.cma \*.cmt \*.cmti \*.cmxa $(INSTALLDIR)
 
+If you want to browse values of OCaml's standard library (stdlib and otherlibs), you must also recompile those modules with -bin-annot option to create cmt/cmti files.
 
 Some automation
 --------------------------

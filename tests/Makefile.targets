@@ -61,7 +61,6 @@ packed.cmo \
 packed_alias.cmo \
 pathname.cmo \
 perv.cmo \
-predef.cmo \
 primitive.cmo \
 recmodule.cmo \
 record.cmo \
