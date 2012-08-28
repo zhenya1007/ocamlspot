@@ -325,7 +325,7 @@
   (with-current-buffer (get-buffer-create ocamlspot-process-buffer)
     (ocamlspot-process-mode t)
     (erase-buffer)
-    (insert (prin1-to-string (cons ocamlspot-command args)))
+    (insert (mapconcat 'identity (cons ocamlspot-command args) " "))
     (insert "\n")
     ;; chdir is required
     (if chdir (cd chdir))
