@@ -16,7 +16,10 @@ You need use the correct pairs of compiler and OCamlSpotter.
 
 https://bitbucket.org/camlspotter/ocamlspot provides OCamlSpotter branches for each OCaml versions:
 
-* ocaml-version-name : compilable against the given OCaml version
+* ocaml-<version-name> : compilable against the given OCaml version
+    * ocaml-4.00.0 : the latest "stable" version
+    * ocaml-4.00.0-rc1 : no longer maintained
+    * ocaml-4.00.0-beta2 : no longer maintained
 * default : For the latest OCaml development version or something around. Probably not for you.
 * dev : default + something experimental. Absolutely not for you unless you are explicitly instructed to use this.
 
