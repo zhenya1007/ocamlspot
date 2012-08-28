@@ -451,7 +451,7 @@
 	  (ocamlspot-message-add (format "Type: %s" type))
 	  (ocamlspot-type-add (format "Type: %s" type))
 	  type)
-      (ocamlspot-message-add "no type found here")
+      (ocamlspot-message-add "No type found")
       nil)))
 
 ;; same as type-in-buffer but for XType
@@ -464,7 +464,7 @@
 	  (ocamlspot-type-add (format "(* %s *)\n" ocamlspot-message-file-name))
 	  (ocamlspot-type-add (format "%s" type))
 	  type)
-      (ocamlspot-message-add "no type found here")
+      (ocamlspot-message-add "No type found")
       nil)))
 
 ;; If [to-kill], the output is copied to the kill-buffer.
