@@ -84,6 +84,18 @@ module Annot : sig
     | Functor_parameter of Ident.t
     | Non_expansive of bool
 
+  module Record : sig
+    class fold : object 
+      inherit Ttfold.fold
+      method table : (Location.t, t list) Hashtbl.t 
+      method size : int
+      method report : unit
+    end
+  end
+
+  val structure : Record.fold -> Typedtree.structure -> unit
+  val signature : Record.fold -> Typedtree.signature -> unit
+
   val record_structure : Typedtree.structure -> (Location.t, t list) Hashtbl.t
   val record_signature : Typedtree.signature -> (Location.t, t list) Hashtbl.t
 
