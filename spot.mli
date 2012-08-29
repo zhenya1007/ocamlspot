@@ -85,7 +85,7 @@ module Annot : sig
     | Non_expansive of bool
 
   module Record : sig
-    class fold : object 
+    class fold : (Location.t, t list) Hashtbl.t -> object 
       inherit Ttfold.fold
       method table : (Location.t, t list) Hashtbl.t 
       method size : int

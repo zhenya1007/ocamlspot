@@ -495,8 +495,7 @@ module Annot = struct
       | Tconstr (path, _, _) -> record tbl loc (Use (K.Type, path))
       | _ -> (* strange.. *) ()
 
-    class fold =
-      let tbl = Hashtbl.create 1023 in
+    class fold tbl =
       let record = record tbl in
       let record_def loc sitem = record loc (Str sitem)
       and record_use loc kind path = record loc (Use (kind, path)) in
@@ -1014,14 +1013,16 @@ and class_type_declaration =
 
   let record_structure str =
     protect' "Spot.Annot.record_structure" (fun () ->
-      let o = new Record.fold in
+      let tbl = Hashtbl.create 1023 in
+      let o = new Record.fold tbl in
       structure o str;
       o#table)
       ()
 
   let record_signature sg =
     protect' "Spot.Annot.record_signature" (fun () ->
-      let o = new Record.fold in
+      let tbl = Hashtbl.create 1023 in
+      let o = new Record.fold tbl in
       signature o sg;
       o#table)
       ()
@@ -1471,7 +1472,9 @@ module File = struct
                                    Abstraction.AMod_packed fullpath)) files),
         Hashtbl.create 1 (* empty *)
     | Partial_implementation parts | Partial_interface parts -> 
-        let o = new Annot.Record.fold in
+        prerr_endline "PARTSPARTS!@!!!!";
+        let tbl = Hashtbl.create 1023 in
+        let o = new Annot.Record.fold tbl in
         let part = function
           | Partial_structure str -> o#structure str
           | Partial_structure_item sitem -> o#structure_item sitem
