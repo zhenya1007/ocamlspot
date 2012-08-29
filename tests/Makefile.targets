@@ -71,6 +71,7 @@ siginclude2.cmi \
 signature.cmo \
 signature2.cmi \
 subpath.cmo \
+super.cmo \
 target.cmo \
 target_e.cmo \
 test.cmo \
