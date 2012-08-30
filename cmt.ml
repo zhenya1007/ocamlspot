@@ -57,8 +57,8 @@ module Envaux = struct (* copied from debugger/envaux.ml *)
   
   let env_cache =
     (Hashtbl.create 59 : ((Env.summary * Subst.t), Env.t) Hashtbl.t)
-  
-  let cntr = ref 0
+
+  let cntr = ref 0 (* a counter to measure the cache efficiency *)
 
   let reset_cache () =
     Hashtbl.clear env_cache;
