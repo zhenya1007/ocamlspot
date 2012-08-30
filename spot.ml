@@ -502,6 +502,14 @@ module Annot = struct
     object
       inherit Ttfold.fold as super
 
+      method table = tbl
+      method size = Hashtbl.length tbl
+      val mutable last_report = 0
+      method report =
+        let size = Hashtbl.length tbl in
+        Debug.format "signature recorded: %d records@." (size - last_report);
+        last_report <- size
+
       method! pattern p =
         let ident_opt = match p.pat_desc with
           | Tpat_var (id, _) -> Some id
@@ -996,22 +1004,28 @@ and class_type_declaration =
     end
   end
 
+  let structure o str =
+    ignore (o#structure str);
+    o#report
+
+  let signature o sg =
+    ignore (o#signature sg);
+    o#report
+
   let record_structure str =
     protect' "Spot.Annot.record_structure" (fun () ->
       let tbl = Hashtbl.create 1023 in
       let o = new Record.fold tbl in
-      ignore (o#structure str);
-      Debug.format "structure recorded: %d records@." (Hashtbl.length tbl);
-      tbl)
+      structure o str;
+      o#table)
       ()
 
   let record_signature sg =
     protect' "Spot.Annot.record_signature" (fun () ->
       let tbl = Hashtbl.create 1023 in
       let o = new Record.fold tbl in
-      ignore (o#signature sg);
-      Debug.format "signature recorded: %d records@." (Hashtbl.length tbl);
-      tbl)
+      signature o sg;
+      o#table)
       ()
 
   let string_of_at = function
@@ -1457,8 +1471,26 @@ module File = struct
           in
           Abstraction.AStr_module (Ident.create modname (* stamp is bogus *),
                                    Abstraction.AMod_packed fullpath)) files),
-        (Hashtbl.create 1 (* empty *))
-    | Partial_implementation _parts | Partial_interface _parts -> assert false
+        Hashtbl.create 1 (* empty *)
+    | Partial_implementation parts | Partial_interface parts -> 
+        prerr_endline "PARTSPARTS!@!!!!";
+        let tbl = Hashtbl.create 1023 in
+        let o = new Annot.Record.fold tbl in
+        let part = function
+          | Partial_structure str -> o#structure str
+          | Partial_structure_item sitem -> o#structure_item sitem
+          | Partial_expression e -> o#expression e
+          | Partial_pattern p -> o#pattern p
+          | Partial_class_expr cexp -> o#class_expr cexp
+          | Partial_signature sg -> o#signature sg
+          | Partial_signature_item sgitem -> o#signature_item sgitem
+          | Partial_module_type mty -> o#module_type mty
+        in
+        Array.iter (fun x -> ignore (part x)) parts;
+        o#report;
+        [],
+        o#table
+
 
   let abstraction cmt =
     let load_path = List.map (fun p ->
