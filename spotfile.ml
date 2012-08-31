@@ -28,7 +28,7 @@ end = struct
 
   let check_time_stamp ~cmt source =
     (* CR jfuruse: aaa.mll creates cmt with aaa.ml as source, but
-       aaa.ml often does not exist.
+       aaa.ml is often removed by the build system.
     *)
     let stat_cmt = Unix.stat cmt in
     try
@@ -226,16 +226,16 @@ end
 include Load
 
 let initial_env file =
-  { Env.path = file.Unit.path;
-    cwd = file.Unit.builddir;
+  { Env.path   = file.Unit.path;
+    cwd        = file.Unit.builddir;
     load_paths = file.Unit.loadpath;
-    binding = Binding.predef }
+    binding    = Binding.predef }
 
 let invalid_env file =
-  { Env.path = file.Unit.path;
-    cwd = file.Unit.builddir;
+  { Env.path   = file.Unit.path;
+    cwd        = file.Unit.builddir;
     load_paths = file.Unit.loadpath;
-    binding = Binding.invalid }
+    binding    = Binding.invalid }
     
 type result =
     | File_itself
@@ -271,16 +271,17 @@ let find_path_in_flat file path : PIdent.t * result =
   
   let eval_and_find path =
     (* we need evaluate the path *)
+    let module V = Value in
     let v = !!(Eval.find_path env path) in
-    Debug.format "Value=%a@." Value.Format.t v;
+    Debug.format "Value=%a@." V.Format.t v;
     match v with
-    | Value.Ident id -> id, find_loc id
-    | Value.Parameter id -> id, find_loc id
-    | Value.Structure (id, _, _)  -> id, find_loc id
-    | Value.Closure (id, _, _, _, _) -> id, find_loc id
-    | Value.Error (Failure _ as e) -> raise e
-    | Value.Error (Load.Old_cmt _ as exn) -> raise exn
-    | Value.Error exn -> raise exn
+    | V.Ident id                      -> id, find_loc id
+    | V.Parameter id                  -> id, find_loc id
+    | V.Structure (id, _, _)          -> id, find_loc id
+    | V.Closure (id, _, _, _, _)      -> id, find_loc id
+    | V.Error (Failure _ as e)        -> raise e
+    | V.Error (Load.Old_cmt _ as exn) -> raise exn
+    | V.Error exn                     -> raise exn
   in
   eval_and_find path
 
@@ -299,24 +300,3 @@ let eval_packed env file =
                   None (* packed has no .mli *))
 
 let _ = Eval.packed := eval_packed
-
-(*
-  let dump_elem = function
-    | Source_path (Some s) -> eprintf "Source_path: %s@." s
-    | Source_path None -> eprintf "Source_path: None@." 
-    | Cwd s -> eprintf "Cwd: %s@." s 
-    | Load_paths ds -> 
-        eprintf "Load_paths: @[%a@]@."
-          (Format.list "; " (fun ppf s -> fprintf ppf "%S" s)) ds
-    | Argv argv ->
-        eprintf "Argv: @[%a@]@."
-          (Format.list "; " (fun ppf s -> fprintf ppf "%S" s)) 
-            (Array.to_list argv)
-    | Top None -> eprintf "Top None@."
-    | Top (Some str) -> 
-        eprintf "@[<2>Top@ %a@]@."
-          format_structure str
-    | Annots _ -> eprintf "Annots [...]@."
-
-  let dump_elems elems = List.iter dump_elem elems
-*)
