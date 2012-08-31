@@ -1473,7 +1473,6 @@ module File = struct
                                    Abstraction.AMod_packed fullpath)) files),
         Hashtbl.create 1 (* empty *)
     | Partial_implementation parts | Partial_interface parts -> 
-        prerr_endline "PARTSPARTS!@!!!!";
         let tbl = Hashtbl.create 1023 in
         let o = new Annot.Record.fold tbl in
         let part = function
