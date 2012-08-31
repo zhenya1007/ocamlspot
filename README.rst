@@ -43,19 +43,21 @@ How to do it?
 Normally this requires little modifications to the build script (Makefile/OMakefile/...) of each library.
 Basically, you need:
 
-* Add -bin-annot to the compiler switch (for example OCAMLCFLAGS += -bin-annot)
+* Add -bin-annot to the compiler switch. For example OCAMLCFLAGS += -bin-annot
 * Copy cmt and cmti files at installation. For example::
 
      install::
         cp \*.mli \*.cmi \*.cma \*.cmt \*.cmti \*.cmxa $(INSTALLDIR)
 
-If you want to browse values of OCaml's standard library (stdlib and otherlibs), 
+This means that you need to recompile all the OCaml libraries you use with -bin-annot.
+
+If you want to browse OCaml's standard library (stdlib and otherlibs), 
 you must also recompile those modules with -bin-annot option to create cmt/cmti files.
 
 Some automation
 --------------------------
 
-To facilitate this you may want to use SpotInstall( https://bitbucket.org/camlspotter/spotinstall ). SpotInstall provides:
+To facilitate these you may want to use SpotInstall( https://bitbucket.org/camlspotter/spotinstall ). SpotInstall provides:
 
-* No need to fix build scripts, since the compiler can produce annot/cmt/cmti files by default, if OCAML_ANNOT env var is non empty
-* Automatic cmt/cmti post installation
+* A small OCaml compiler patch to automatically enable -bin-annot by the existence of OCAML_ANNOT environment variable; no need to fix build scripts.
+* An automatic cmt/cmti post installation command, spotinstall.
