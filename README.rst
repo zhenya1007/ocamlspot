@@ -2,7 +2,11 @@
 OCamlSpotter - OCaml source browsing
 ==========================================
 
-OCamlSpotter is a tool for OCaml source code browsing. You can search the type and definitions of values, expressions and modules.
+OCamlSpotter is a tool for OCaml source code browsing. 
+
+* You can search the definitions of names of values, functions, data types and modules.
+* Emacs and Vim helpers help your browsing via editors.
+* Definition search traverses module aliases and functor applications: if module M = N, OCamlSpotter automatically seeks the definition of M.x in N. Very helpful in the modern OCaml programming with lots of modules.
 
 OCamlSpotter 2.x uses \*.cmt and \*.cmti files created by OCaml compiler 4.00.0 or newer with -bin-annot option.
 
@@ -45,7 +49,8 @@ Basically, you need:
      install::
         cp \*.mli \*.cmi \*.cma \*.cmt \*.cmti \*.cmxa $(INSTALLDIR)
 
-If you want to browse values of OCaml's standard library (stdlib and otherlibs), you must also recompile those modules with -bin-annot option to create cmt/cmti files.
+If you want to browse values of OCaml's standard library (stdlib and otherlibs), 
+you must also recompile those modules with -bin-annot option to create cmt/cmti files.
 
 Some automation
 --------------------------
