@@ -45,31 +45,32 @@ let is_opt cmt =
     | (_, ".cmx") -> true 
     | _ -> false) (Array.to_list cmt.cmt_args)
 
-let recover_env env =
+module Envaux = struct (* copied from debugger/envaux.ml *)
+  open Misc
+  open Types
+  open Env
 
-  let module Envaux = struct (* copied from debugger/envaux.ml *)
-    open Misc
-    open Types
-    open Env
+  type error =
+      Module_not_found of Path.t
   
-    type error =
-        Module_not_found of Path.t
-    
-    exception Error of error
-    
-    let env_cache =
-      (Hashtbl.create 59 : ((Env.summary * Subst.t), Env.t) Hashtbl.t)
-    
-    let reset_cache () =
-      Hashtbl.clear env_cache;
-      Env.reset_cache()
-    
-    let extract_sig env mty =
-      match Mtype.scrape env mty with
-        Mty_signature sg -> sg
-      | _ -> fatal_error "Envaux.extract_sig"
-    
-    let rec env_from_summary sum subst =
+  exception Error of error
+  
+  let env_cache =
+    (Hashtbl.create 59 : ((Env.summary * Subst.t), Env.t) Hashtbl.t)
+
+  let cntr = ref 0 (* a counter to measure the cache efficiency *)
+
+  let reset_cache () =
+    Hashtbl.clear env_cache;
+    cntr := 0;
+    Env.reset_cache()
+  
+  let extract_sig env mty =
+    match Mtype.scrape env mty with
+      Mty_signature sg -> sg
+    | _ -> fatal_error "Envaux.extract_sig"
+  
+  let rec env_from_summary sum subst =
     try
       Hashtbl.find env_cache (sum, subst)
     with Not_found ->
@@ -102,9 +103,10 @@ let recover_env env =
             in
             Env.open_signature path' (extract_sig env mty) env
       in
-        Hashtbl.add env_cache (sum, subst) env;
-        env
-  end in
-  Envaux.reset_cache ();
-  Envaux.env_from_summary (Env.summary env) Subst.identity
-  
+      Hashtbl.add env_cache (sum, subst) env;
+      env
+end 
+
+let reset_env_cache () = Envaux.reset_cache ()
+
+let recover_env env = Envaux.env_from_summary (Env.summary env) Subst.identity
