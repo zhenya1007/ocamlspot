@@ -26,6 +26,14 @@ https://bitbucket.org/camlspotter/ocamlspot provides OCamlSpotter branches for e
     * ocaml-4.00.0-beta2 : no longer maintained
 * default : Development version. Probably not for you.
 
+Versions
+================
+
+OCamlSpotter is always under development and there is no clear release versions.
+If you want to use the latest stable version of OCamlSpotter, choose the tip of the branch 
+with the name of your OCaml compiler version. 
+When you report bugs, please note the revision hash with your issue description please.
+
 To work with OCamlSpotter
 ==========================
 
