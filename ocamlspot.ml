@@ -93,7 +93,7 @@ module Main = struct
     let file = load (Cmt.of_path path) in
     printf "Compile: %s@."
       (String.concat " " 
-         (List.map Command.escaped_for_shell 
+         (List.map Command.escape_for_shell 
             (Array.to_list file.Unit.args)));
     printf "@[<v2>Included_dirs:@ %a@]@."
       (Format.list "" pp_print_string)
@@ -341,7 +341,7 @@ module Main = struct
     
       printf "Compile: %s@."
         (String.concat " " 
-          (List.map Command.escaped_for_shell 
+          (List.map Command.escape_for_shell 
             (Array.to_list file.Unit.argv)));
       let command = 
 	Sys.argv.(0) :: List.tl (Array.to_list file.Unit.argv) 

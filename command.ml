@@ -23,7 +23,7 @@
 *)
 
 (* general escape *)
-let escaped pred s =
+let escape pred s =
   let b = Buffer.create (String.length s) in
   String.iter (fun c ->
     if pred c then Buffer.add_char b '\\';
@@ -31,8 +31,8 @@ let escaped pred s =
   Buffer.contents b
 ;;
 
-let escaped_for_shell =
-  escaped (function
+let escape_for_shell =
+  escape (function
     | '|' | '&' | ';' | '(' | ')' | '<' | '>' | ' ' | '\t'
     | '!'
     | '\\' | '\'' | '"' -> true
@@ -40,7 +40,7 @@ let escaped_for_shell =
 ;;
 
 let shell args = 
-  Sys.command (String.concat " " (List.map escaped_for_shell args))
+  Sys.command (String.concat " " (List.map escape_for_shell args))
 ;;
 
    

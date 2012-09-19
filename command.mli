@@ -11,6 +11,11 @@
 (*                                                                     *)
 (***********************************************************************)
 
-val escaped : (char -> bool) -> string -> string
-val escaped_for_shell : string -> string
+val escape : (char -> bool) -> string -> string
+(** escapes each char in the string which matches the predicate by a backslash *)
+
+val escape_for_shell : string -> string
+(** escapes shell special chars *)
+
 val shell : string list -> int
+(** execute shell command by [Sys.command] *)
