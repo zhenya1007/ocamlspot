@@ -145,12 +145,24 @@ simple-install:
 	  cd $(EMACSDIR); $(EMACS) --batch --eval '$(COMPILECMD)'; \
 	fi
 
+simple-install:
+	@echo "Installing in $(EMACSDIR)..."
+	if test -d $(EMACSDIR); then : ; else mkdir -p $(EMACSDIR); fi
+	cp $(ELISPS) $(EMACSDIR)
+	if [ -z "$(NOCOMPILE)" ]; then \
+	  cd $(EMACSDIR); $(EMACS) --batch --eval '$(COMPILECMD)'; \
+	fi
+
 install installopt::
 	cp ocamlspot $(BINDIR)/ocamlspot$(EXE)
 	if test -f ocamlspot.opt; \
 	  then cp ocamlspot.opt $(BINDIR)/ocamlspot.opt$(EXE); else :; fi
 	# The following is optional
 	# $(MAKE) install-emacs-lisp
+
+uninstall::
+	rm -f $(BINDIR)/ocamlspot$(EXE)
+	rm -f $(BINDIR)/ocamlspot.opt$(EXE)
 
 test: ocamlspot ocamlspot.cmo
 	tests/auto-test.pl ocamlspot.ml treeset.ml xset.ml 

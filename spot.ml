@@ -22,7 +22,7 @@ open Format
 
 let magic_number = "OCamlSpot"
 let ocaml_version = "4.00.0"
-let version = "2.0.0"
+let version = "2.0.1"
 
 module Kind = struct
   type t =
