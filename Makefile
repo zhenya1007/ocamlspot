@@ -152,6 +152,10 @@ install installopt::
 	# The following is optional
 	# $(MAKE) install-emacs-lisp
 
+uninstall::
+	rm -f $(BINDIR)/ocamlspot$(EXE)
+	rm -f $(BINDIR)/ocamlspot.opt$(EXE)
+
 test: ocamlspot ocamlspot.cmo
 	tests/auto-test.pl ocamlspot.ml treeset.ml xset.ml 
 
