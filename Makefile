@@ -145,14 +145,6 @@ simple-install:
 	  cd $(EMACSDIR); $(EMACS) --batch --eval '$(COMPILECMD)'; \
 	fi
 
-simple-install:
-	@echo "Installing in $(EMACSDIR)..."
-	if test -d $(EMACSDIR); then : ; else mkdir -p $(EMACSDIR); fi
-	cp $(ELISPS) $(EMACSDIR)
-	if [ -z "$(NOCOMPILE)" ]; then \
-	  cd $(EMACSDIR); $(EMACS) --batch --eval '$(COMPILECMD)'; \
-	fi
-
 install installopt::
 	cp ocamlspot $(BINDIR)/ocamlspot$(EXE)
 	if test -f ocamlspot.opt; \
