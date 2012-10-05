@@ -8,4 +8,5 @@ remove: [
   ["rm" "-rf" "%{lib}%/ocamlspot"]
 ]
 depends: ["compiler-libs"]
-ocaml-version: [= "4.00.0"]
+(* It is known to work with 4.00.1+dev3 too *)
+ocaml-version: [>= "4.00.0"]
