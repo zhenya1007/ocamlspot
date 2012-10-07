@@ -237,7 +237,7 @@ module Abstraction = struct
 
   let aliases_of_include' no_value_is_not_in_ids sg ids =
     (* We cannot use kind directly since it does not distinguish normal values and primitives *)
-    Debug.format "@[<2>DEBUG alias: ids=[ @[%a@] ]@ + sg=[ @[%a@] ]@]@."
+    Debug.format "@[<2>DEBUG alias_of_include': ids=[ @[%a@] ]@ + sg=[ @[%a@] ]@]@."
       (Format.list ";@ " Ident.format) ids
       (Format.list ";@ " (fun ppf (k, id) -> Format.fprintf ppf "%s:%a" (Kind.name k) Ident.format id)) (List.map T.kident_of_sigitem sg);
     let must_be_empty, res = List.fold_left (fun (ids, res) sitem ->
