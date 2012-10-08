@@ -1,5 +1,5 @@
 module A = struct
-  type t = T
+  type t = (* T => *) T (* <= T *)
 end
 
 module F(X: sig end) = struct
