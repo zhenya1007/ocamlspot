@@ -75,7 +75,7 @@
   "OCamlSpotter: find the definition and type of variables."
   :group 'languages)
 
-(defcustom ocamlspot-command "OCAML-SOURCE-TREE/ocamlspot/ocamlspot"
+(defcustom ocamlspot-command "ocamlspot"
   "*The command which invokes ocamlspot."
   :type 'string :group 'ocamlspot)
 
