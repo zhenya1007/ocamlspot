@@ -513,7 +513,7 @@
   (ocamlspot-message-display may-pop)
   (ocamlspot-delete-overlays))
 
-(defun ocamlspot-query (&optional args)
+(defun ocamlspot-query (&rest args)
   (interactive)
   (let ((sel-window (selected-window)))
   (save-selected-window
