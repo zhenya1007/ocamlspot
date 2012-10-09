@@ -83,6 +83,10 @@
   "*Turn on ocamlspot debug output."
   :type 'boolean :group 'ocamlspot)
 
+(defcustom ocamlspot-samewindow t
+  "Use current window to show the spot."
+  :type 'boolean :group 'ocamlspot)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Constants
 
 ;; Buffer names
@@ -314,7 +318,9 @@
 ;; Open the file, if exists
 (defun ocamlspot-find-file-existing (path)
   (if (file-exists-p path)
-      (find-file-other-window path)
+      (if ocamlspot-samewindow
+          (find-file path)
+        (find-file-other-window path))
     (ocamlspot-message-add (format "ERROR: source file %s was not found" path))
     (error (format "ERROR: source file %s was not found" path))))
 
