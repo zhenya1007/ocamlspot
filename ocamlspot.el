@@ -580,7 +580,7 @@
     (ocamlspot-message-init (buffer-file-name))
     (ocamlspot-type-init)
     (ocamlspot-delete-overlays-now)
-    (ocamlspot-query-at-cursor '("use" dir))
+    (ocamlspot-query-at-cursor (list "use" dir))
     (if (ocamlspot-find-tree)
 	(progn
 	 (ocamlspot-find-spot)
