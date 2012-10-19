@@ -12,7 +12,7 @@
 #######################################################################
 
 
-OCAMLDIR=$(PREFIX)/lib/ocaml/
+OCAMLDIR=$(shell ocamlc -where)
 include $(OCAMLDIR)/Makefile.config
 
 # Various commands and dir
