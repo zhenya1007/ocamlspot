@@ -24,6 +24,7 @@ let magic_number = "OCamlSpot"
 let ocaml_version = "4.00.0"
 let version = "2.0.1"
 
+(** Kind of ``object`` *)
 module Kind = struct
   type t =
     | Value | Type | Exception
@@ -61,11 +62,10 @@ module Kind = struct
     | _ -> raise Not_found
 end
 
-(* CR jfuruse: ultimately we do not need this *)
+(** module definition abstraction *)
 module Abstraction = struct
-  (* module definition abstraction *)
 
-  (* CR jfuruse: types may be incompatible between compiler versions *)
+  (* Types may be incompatible between compiler versions *)
   type module_expr =
     | AMod_ident      of Path.t (* module M = N *)
     | AMod_packed     of string (* full path *)
@@ -78,11 +78,7 @@ module Abstraction = struct
     | AMod_abstract (* used for Tmodtype_abstract *)
     | AMod_functor_parameter
 
-  (* structure abstraction : name - defloc asoc list *)
   and structure = structure_item list
-
-  (* modtype must be identified from module, since they can have the
-     same name *)
 
   and structure_item =
     | AStr_value      of Ident.t
@@ -95,8 +91,8 @@ module Abstraction = struct
     | AStr_included   of Ident.t * module_expr * Kind.t * Ident.t
 
   let rec format_module_expr ppf = function
-    | AMod_ident p -> fprintf ppf "%s" (Path.name p)
-    | AMod_packed s -> fprintf ppf "packed(%s)" s
+    | AMod_ident p       -> fprintf ppf "%s" (Path.name p)
+    | AMod_packed s      -> fprintf ppf "packed(%s)" s
     | AMod_structure str -> format_structure ppf str
     | AMod_functor (id, mty, mexp) ->
         fprintf ppf "@[<4>\\(%s : %a) ->@ %a@]"
@@ -111,7 +107,7 @@ module Abstraction = struct
         fprintf ppf "@[%a@ :@ @[%a@]@]"
           format_module_expr mexp
           (Printtyp.modtype ~with_pos:true) mty
-    | AMod_abstract -> fprintf ppf "<abst>"
+    | AMod_abstract          -> fprintf ppf "<abst>"
     | AMod_functor_parameter -> fprintf ppf "<functor_parameter>"
     | AMod_unpack mty ->
         fprintf ppf "@[unpack@ : @[%a@]@]"
@@ -122,8 +118,8 @@ module Abstraction = struct
       (list ";@," format_structure_item) items
 
   and format_structure_item ppf = function
-    | AStr_value id -> fprintf ppf "val %s" (Ident.name id)
-    | AStr_type id -> fprintf ppf "type %s" (Ident.name id) (* CR jfuruse: todo *)
+    | AStr_value id     -> fprintf ppf "val %s" (Ident.name id)
+    | AStr_type id      -> fprintf ppf "type %s" (Ident.name id) (* CR jfuruse: todo *)
     | AStr_exception id -> fprintf ppf "exception %s" (Ident.name id)
     | AStr_module (id, mexp) ->
         fprintf ppf "@[<v4>module %s =@ %a@]"
@@ -133,7 +129,7 @@ module Abstraction = struct
         fprintf ppf "@[<v4>module type %s =@ %a@]"
           (Ident.name id)
           format_module_expr mexp
-    | AStr_class id -> fprintf ppf "class %s" (Ident.name id)
+    | AStr_class id      -> fprintf ppf "class %s" (Ident.name id)
     | AStr_class_type id -> fprintf ppf "class type %s" (Ident.name id)
     | AStr_included (id, mexp, kind, id') ->
         fprintf ppf "@[<v4>included %s %a = %a@ { @[<v>%a@] }@]"
@@ -142,15 +138,15 @@ module Abstraction = struct
           Ident.format id'
           format_module_expr mexp
 
-  let ident_of_structure_item : structure_item -> (Kind.t * Ident.t) option = function
-    | AStr_value id        -> Some (Kind.Value, id)
-    | AStr_type id         -> Some (Kind.Type, id)
-    | AStr_exception id    -> Some (Kind.Exception, id)
-    | AStr_module (id, _)  -> Some (Kind.Module, id)
-    | AStr_modtype (id, _) -> Some (Kind.Module_type, id)
-    | AStr_class id        -> Some (Kind.Class, id)
-    | AStr_class_type id   -> Some (Kind.Class_type, id)
-    | AStr_included (id, _, kind, _) -> Some (kind, id)
+  let ident_of_structure_item : structure_item -> (Kind.t * Ident.t) = function
+    | AStr_value id                  -> (Kind.Value, id)
+    | AStr_type id                   -> (Kind.Type, id)
+    | AStr_exception id              -> (Kind.Exception, id)
+    | AStr_module (id, _)            -> (Kind.Module, id)
+    | AStr_modtype (id, _)           -> (Kind.Module_type, id)
+    | AStr_class id                  -> (Kind.Class, id)
+    | AStr_class_type id             -> (Kind.Class_type, id)
+    | AStr_included (id, _, kind, _) -> (kind, id)
 
   module Module_expr = struct
     (* cache key is Typedtree.module_expr *)
@@ -206,23 +202,23 @@ module Abstraction = struct
 
   module T = struct
     let kident_of_sigitem = function
-      | Sig_value (id, _)         -> Kind.Value, id
-      | Sig_exception (id, _)     -> Kind.Exception, id
-      | Sig_module (id, _, _)     -> Kind.Module, id
-      | Sig_type (id, _, _)       -> Kind.Type, id
-      | Sig_modtype (id, _)       -> Kind.Module_type, id
-      | Sig_class (id, _, _)      -> Kind.Class, id
-      | Sig_class_type (id, _, _) -> Kind.Class_type, id
+      | Sig_value (id, _)         -> Kind.Value       , id
+      | Sig_exception (id, _)     -> Kind.Exception   , id
+      | Sig_module (id, _, _)     -> Kind.Module      , id
+      | Sig_type (id, _, _)       -> Kind.Type        , id
+      | Sig_modtype (id, _)       -> Kind.Module_type , id
+      | Sig_class (id, _, _)      -> Kind.Class       , id
+      | Sig_class_type (id, _, _) -> Kind.Class_type  , id
 
     let rec signature sg = AMod_structure (List.map signature_item sg)
 
     and signature_item = function
-      | Sig_value (id, _) -> AStr_value id
-      | Sig_type (id, _, _) -> AStr_type id
-      | Sig_exception (id, _) -> AStr_exception id
-      | Sig_module (id, mty, _) -> AStr_module (id, module_type mty)
-      | Sig_modtype (id, mdtd) -> AStr_modtype (id, modtype_declaration mdtd)
-      | Sig_class (id, _, _) -> AStr_class id
+      | Sig_value (id, _)         -> AStr_value id
+      | Sig_type (id, _, _)       -> AStr_type id
+      | Sig_exception (id, _)     -> AStr_exception id
+      | Sig_module (id, mty, _)   -> AStr_module (id, module_type mty)
+      | Sig_modtype (id, mdtd)    -> AStr_modtype (id, modtype_declaration mdtd)
+      | Sig_class (id, _, _)      -> AStr_class id
       | Sig_class_type (id, _, _) -> AStr_class_type id
 
     and module_type = function
@@ -355,7 +351,7 @@ module Abstraction = struct
         List.map (fun (id, (k, id')) -> AStr_included (id, m, k, id')) id_kid_list
 
 
-  (* CR jfuruse: caching like module_expr_sub *)
+  (* CR jfuruse: TODO: caching like module_expr_sub *)
   and module_type mty = module_type_desc mty.mty_desc
 
   and module_type_desc = function
@@ -440,39 +436,37 @@ module Annot = struct
           | Mod_type _) -> false
 
   module Record = struct
-    open Asttypes
     open Typedtree
     open Abstraction
     module K = Kind
 
+    open Location
+
     (* CR jfuruse: A Location.t contains a filename, though it is always
        unique. Waste of 4xn bytes. *)
-  (*
+    (*
     let recorded = (Hashtbl.create 1023 : (Location.t, (int * t list)) Hashtbl.t)
-
     let clear () = Hashtbl.clear recorded
-  *)
+    *)
 
     type location_property = Wellformed | Flipped | Over_files | Illformed
 
     let check_location loc =
-      if loc.Location.loc_start == Lexing.dummy_pos || loc.Location.loc_end == Lexing.dummy_pos then Illformed
-      else if loc.Location.loc_start = Lexing.dummy_pos || loc.Location.loc_end = Lexing.dummy_pos then Illformed
+      if loc.loc_start == Lexing.dummy_pos || loc.loc_end == Lexing.dummy_pos then Illformed
+      else if loc.loc_start = Lexing.dummy_pos || loc.loc_end = Lexing.dummy_pos then Illformed
       else
         (* If the file name is different between the start and the end, we cannot tell the wellformedness. *)
-        if loc.Location.loc_start.Lexing.pos_fname <> loc.Location.loc_end.Lexing.pos_fname then Over_files
+        if loc.loc_start.Lexing.pos_fname <> loc.loc_end.Lexing.pos_fname then Over_files
         else
           (* P4 creates some flipped locations where loc_start > loc_end *)
-          match compare loc.Location.loc_start.Lexing.pos_cnum loc.Location.loc_end.Lexing.pos_cnum
+          match compare loc.loc_start.Lexing.pos_cnum loc.loc_end.Lexing.pos_cnum
           with
           | -1 | 0 -> Wellformed
           | _ -> Flipped
 
     let record tbl loc t =
       let really_record () =
-        let records =
-          try Hashtbl.find tbl loc with Not_found -> []
-        in
+        let records = try Hashtbl.find tbl loc with Not_found -> [] in
 (*
         (* CR jfuruse: I am not really sure the below is correct now,
            but I remember the huge compilation slow down... *)
@@ -490,10 +484,10 @@ module Annot = struct
       match check_location loc with
       | Wellformed -> really_record ()
       | Flipped ->
-          if not loc.Location.loc_ghost then Format.eprintf "%aWarning: Flipped location.@." Location.print loc;
+          if not loc.loc_ghost then Format.eprintf "%aWarning: Flipped location.@." Location.print loc;
           really_record ()
       | Illformed ->
-          if not loc.Location.loc_ghost then Format.eprintf "%aWarning: Ill-formed location.@." Location.print loc
+          if not loc.loc_ghost then Format.eprintf "%aWarning: Ill-formed location.@." Location.print loc
       | Over_files -> ()
 
     let record_record tbl loc typ =
@@ -1573,8 +1567,8 @@ module Unit = struct
       Hashtbl.iter (fun loc annots ->
         List.iter (function
           | Annot.Str sitem ->
-              Option.iter (Abstraction.ident_of_structure_item sitem) ~f:(fun (_kind, id) ->
-                Hashtbl.add tbl id (Region.of_parsing f.F.builddir loc))
+              let _kind,id = Abstraction.ident_of_structure_item sitem in
+              Hashtbl.add tbl id (Region.of_parsing f.F.builddir loc)
           | _ -> ()) annots) loc_annots;
       tbl)
     in

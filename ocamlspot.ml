@@ -307,10 +307,7 @@ module Main = struct
 	(Position.to_string pos);
       match List.find_map_opt (function 
 	| Annot.Str str_item -> 
-	    begin match Abstraction.ident_of_structure_item str_item with
-	    | Some v -> Some (`Def v)
-	    | None -> None
-	    end
+	    Some (`Def (Abstraction.ident_of_structure_item str_item))
 	| Annot.Use (kind, path) -> Some (`Use (kind, path))
 	| _ -> None) (query_by_pos file file.Unit.path pos)
       with

@@ -61,7 +61,7 @@ module Abstraction : sig
     | AStr_class_type of Ident.t
     | AStr_included   of Ident.t * module_expr * Kind.t * Ident.t
 
-  val ident_of_structure_item : structure_item -> (Kind.t * Ident.t) option
+  val ident_of_structure_item : structure_item -> (Kind.t * Ident.t)
 
   val top_structure : Typedtree.structure -> module_expr
   val top_signature : Typedtree.signature -> module_expr
