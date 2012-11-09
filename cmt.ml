@@ -50,7 +50,7 @@ module Envaux = struct (* copied from debugger/envaux.ml *)
   open Misc
   open Types
   open Env
-
+  
   type error =
       Module_not_found of Path.t
   
@@ -58,12 +58,9 @@ module Envaux = struct (* copied from debugger/envaux.ml *)
   
   let env_cache =
     (Hashtbl.create 59 : ((Env.summary * Subst.t), Env.t) Hashtbl.t)
-
-  let cntr = ref 0 (* a counter to measure the cache efficiency *)
-
+  
   let reset_cache () =
     Hashtbl.clear env_cache;
-    cntr := 0;
     Env.reset_cache()
   
   let extract_sig env mty =
@@ -104,10 +101,12 @@ module Envaux = struct (* copied from debugger/envaux.ml *)
             in
             Env.open_signature path' (extract_sig env mty) env
       in
-      Hashtbl.add env_cache (sum, subst) env;
-      env
+        Hashtbl.add env_cache (sum, subst) env;
+        env
 end 
 
 let reset_env_cache () = Envaux.reset_cache ()
 
-let recover_env env = Envaux.env_from_summary (Env.summary env) Subst.identity
+let recover_env env = 
+  Envaux.reset_cache (); (* reset required for machines with small memory... *)
+  Envaux.env_from_summary (Env.summary env) Subst.identity
