@@ -269,7 +269,15 @@ module Abstraction = struct
     res
 
   let aliases_of_include mexp ids =
-    let sg = try match Mtype.scrape (Cmt.recover_env mexp.mod_env) mexp.mod_type with Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
+    let env' = try Cmt.recover_env mexp.mod_env with e -> 
+      Format.eprintf "recover_env: %s@." (Printexc.to_string e);
+      assert false 
+    in 
+    let sg = try match Mtype.scrape env' mexp.mod_type with 
+      | Mty_signature sg -> sg 
+      | _ -> prerr_endline "strange!";assert false 
+      with _ -> assert false 
+    in
     aliases_of_include' true sg ids
 
   let rec module_expr mexp =

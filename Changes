@@ -1,3 +1,15 @@
+2.0.2
+--------------
+
+- ocamlspot-samewindow: default is now nil. (The author prefers nil!)
+- Cmt.recover_env used too much memory sometimes.
+
+2.0.1
+--------------
+
+- Several elisp bug fixes
+- ocamlspot-samewindow custom elisp var not to split windows at spotting
+
 2.0.0
 --------------
 

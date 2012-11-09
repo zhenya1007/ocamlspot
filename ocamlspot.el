@@ -83,7 +83,7 @@
   "*Turn on ocamlspot debug output."
   :type 'boolean :group 'ocamlspot)
 
-(defcustom ocamlspot-samewindow t
+(defcustom ocamlspot-samewindow nil
   "Use current window to show the spot."
   :type 'boolean :group 'ocamlspot)
 

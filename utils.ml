@@ -284,11 +284,21 @@ end
 
 module Hashtbl = struct
   include Hashtbl
+
   let of_list size kvs =
     let tbl = Hashtbl.create size in
     List.iter (fun (k,v) ->
       Hashtbl.replace tbl k v) kvs;
     tbl
+
+  let memoize tbl f k =
+    try 
+      Hashtbl.find tbl k 
+    with
+    | Not_found ->
+        let v = f k in
+        Hashtbl.replace tbl k v;
+        v
 end
 
 module Hashset = struct
