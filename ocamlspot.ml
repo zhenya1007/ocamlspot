@@ -181,7 +181,7 @@ module Main = struct
 	(* Find the innermost module *)
         let find_module_path treepath = List.concat_map (fun { Regioned.value = annots } ->
           List.filter_map (function 
-            | Annot.Str (Abstraction.AStr_module (id, _)) -> Some id
+            | Annot.Str_item (Abstraction.AStr_module (id, _)) -> Some id
             | _ -> None) annots) treepath
         in
         printf "In_module: %s@."
@@ -306,7 +306,7 @@ module Main = struct
 	file.Unit.path 
 	(Position.to_string pos);
       match List.find_map_opt (function 
-	| Annot.Str str_item -> 
+	| Annot.Str_item str_item -> 
 	    Some (`Def (Abstraction.ident_of_structure_item str_item))
 	| Annot.Use (kind, path) -> Some (`Use (kind, path))
 	| _ -> None) (query_by_pos file file.Unit.path pos)

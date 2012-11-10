@@ -79,7 +79,7 @@ module Annot : sig
     | Use of Kind.t * Path.t
     | Type of Types.type_expr * Env.t * [`Expr of Path.t option | `Pattern of Ident.t option ]
     | Mod_type of Types.module_type
-    | Str of Abstraction.structure_item 
+    | Str_item of Abstraction.structure_item 
     | Module of Abstraction.module_expr
     | Functor_parameter of Ident.t
     | Non_expansive of bool
