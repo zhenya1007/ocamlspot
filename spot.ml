@@ -1198,7 +1198,7 @@ end
 module Region : sig
 
   type t = private {
-    fname : (string * (int * int) option) option;
+    fname : string option;
     (* filename and device/inode. None = "_none_" *)
     start : Position.t;
     end_ : Position.t
@@ -1221,8 +1221,9 @@ module Region : sig
 
 end = struct
 
+  (* CR jfuruse: I heard that inode is not a good idea; mingw has no inode *)
   type t = {
-    fname : (string * (int * int) option) option;
+    fname : string option;
     (* filename and device/inode. None = "_none_" *)
     start : Position.t;
     end_ : Position.t
@@ -1233,24 +1234,16 @@ end = struct
   let fname = function
     | "_none_" -> None
     | s ->
+        (* We need hash-cons-ing to prevent string dupes *)
         let s =
-          if Filename.is_relative s then
-            Unix.getcwd () ^/ s
+          if Filename.is_relative s then Unix.getcwd () ^/ s
           else s
         in
-        try
-          Hashtbl.find cache s
-        with
-        | Not_found ->
-            let dev_inode = Unix.dev_inode s in
-            if dev_inode = None then Format.eprintf "%s does not exist@." s;
-            let v = Some (s, dev_inode) in
-            Hashtbl.replace cache s v;
-            v
+        Hashtbl.memoize cache (fun s -> Some s) s
 
   let to_string t =
     Printf.sprintf "%s:%s:%s"
-      (match t.fname with Some (fname, _) -> fname | None -> "_none_")
+      (match t.fname with Some fname -> fname | None -> "_none_")
       (Position.to_string t.start)
       (Position.to_string t.end_)
 
@@ -1274,22 +1267,7 @@ end = struct
     | _ -> { fname; start = end_; end_ = start }
 
   let compare l1 l2 =
-    let compare_fnames f1 f2 =
-      let same_files =
-        f1 == f2
-        || match f1, f2 with
-          | Some (_, Some di1), Some (_, Some di2) -> di1 = di2
-          | Some (f1, _), Some (f2, _) -> f1 = f2 (* weak guess *)
-          | None, None -> true (* ouch *)
-          | _ -> false
-      in
-      if same_files then 0
-      else match f1, f2 with
-      | Some (f1, _), Some (f2, _) -> compare f1 f2
-      | Some _, None -> 1
-      | None, Some _ -> -1
-      | None, None -> 0
-    in
+    let compare_fnames f1 f2 = if f1 == f2 then 0 else compare f1 f2 in
     (* CR jfuruse: this can be merged with same_files as compare *)
     match compare_fnames l1.fname l2.fname with
     | 1 -> `Left
