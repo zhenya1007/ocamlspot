@@ -417,7 +417,7 @@ module Annot = struct
     | Use               of Kind.t * Path.t
     | Type              of Types.type_expr * Env.t * [`Expr of Path.t option | `Pattern of Ident.t option ]
     | Mod_type          of Types.module_type
-    | Str               of Abstraction.structure_item  (* CRjfuruse: Should be Sitem *)
+    | Str_item          of Abstraction.structure_item
     | Module            of Abstraction.module_expr
     | Functor_parameter of Ident.t
     | Non_expansive     of bool
@@ -425,14 +425,14 @@ module Annot = struct
   let equal t1 t2 = match t1, t2 with
     | Type (t1, _, _), Type (t2, _, _) -> t1 == t2
     | Mod_type mty1, Mod_type mty2 -> mty1 == mty2
-    | Str sitem1, Str sitem2 -> Abstraction.Structure_item.equal sitem1 sitem2
+    | Str_item sitem1, Str_item sitem2 -> Abstraction.Structure_item.equal sitem1 sitem2
     | Module mexp1, Module mexp2 -> mexp1 == mexp2
     | Use (k1,p1), Use (k2,p2) -> k1 = k2 && p1 = p2
     | Non_expansive b1, Non_expansive b2 -> b1 = b2
     | Functor_parameter id1, Functor_parameter id2 -> id1 = id2
-    | (Type _ | Str _ | Module _ | Functor_parameter _ | Use _ | Non_expansive _
+    | (Type _ | Str_item _ | Module _ | Functor_parameter _ | Use _ | Non_expansive _
           | Mod_type _),
-      (Type _ | Str _ | Module _ | Functor_parameter _ | Use _ | Non_expansive _
+      (Type _ | Str_item _ | Module _ | Functor_parameter _ | Use _ | Non_expansive _
           | Mod_type _) -> false
 
   module Record = struct
@@ -499,7 +499,7 @@ module Annot = struct
 
     class fold tbl =
       let record = record tbl in
-      let record_def loc sitem = record loc (Str sitem)
+      let record_def loc sitem = record loc (Str_item sitem)
       and record_use loc kind path = record loc (Use (kind, path)) in
     object
       inherit Ttfold.fold as super
@@ -1045,8 +1045,8 @@ and class_type_declaration =
     | Mod_type mty ->
 	fprintf ppf "Type: %a@ " (Printtyp.modtype ~with_pos:false) mty;
 	fprintf ppf "XType: %a" (Printtyp.modtype ~with_pos:true) mty
-    | Str str ->
-	fprintf ppf "Str: %a"
+    | Str_item str ->
+	fprintf ppf "Str_item: %a"
 	  Abstraction.format_structure_item str
     | Use (use, path) ->
 	fprintf ppf "Use: %s, %s"
@@ -1068,8 +1068,8 @@ and class_type_declaration =
     | Mod_type _mty ->
 	fprintf ppf "Type: ...@ ";
 	fprintf ppf "XType: ..."
-    | Str _str ->
-	fprintf ppf "Str: ..."
+    | Str_item _str ->
+	fprintf ppf "Str_item: ..."
     | Use (use, path) ->
 	fprintf ppf "Use: %s, %s"
 	  (String.capitalize (Kind.name use)) (Path.name path)
@@ -1198,7 +1198,7 @@ end
 module Region : sig
 
   type t = private {
-    fname : (string * (int * int) option) option;
+    fname : string option;
     (* filename and device/inode. None = "_none_" *)
     start : Position.t;
     end_ : Position.t
@@ -1221,8 +1221,9 @@ module Region : sig
 
 end = struct
 
+  (* CR jfuruse: I heard that inode is not a good idea; mingw has no inode *)
   type t = {
-    fname : (string * (int * int) option) option;
+    fname : string option;
     (* filename and device/inode. None = "_none_" *)
     start : Position.t;
     end_ : Position.t
@@ -1233,24 +1234,16 @@ end = struct
   let fname = function
     | "_none_" -> None
     | s ->
+        (* We need hash-cons-ing to prevent string dupes *)
         let s =
-          if Filename.is_relative s then
-            Unix.getcwd () ^/ s
+          if Filename.is_relative s then Unix.getcwd () ^/ s
           else s
         in
-        try
-          Hashtbl.find cache s
-        with
-        | Not_found ->
-            let dev_inode = Unix.dev_inode s in
-            if dev_inode = None then Format.eprintf "%s does not exist@." s;
-            let v = Some (s, dev_inode) in
-            Hashtbl.replace cache s v;
-            v
+        Hashtbl.memoize cache (fun s -> Some s) s
 
   let to_string t =
     Printf.sprintf "%s:%s:%s"
-      (match t.fname with Some (fname, _) -> fname | None -> "_none_")
+      (match t.fname with Some fname -> fname | None -> "_none_")
       (Position.to_string t.start)
       (Position.to_string t.end_)
 
@@ -1274,22 +1267,7 @@ end = struct
     | _ -> { fname; start = end_; end_ = start }
 
   let compare l1 l2 =
-    let compare_fnames f1 f2 =
-      let same_files =
-        f1 == f2
-        || match f1, f2 with
-          | Some (_, Some di1), Some (_, Some di2) -> di1 = di2
-          | Some (f1, _), Some (f2, _) -> f1 = f2 (* weak guess *)
-          | None, None -> true (* ouch *)
-          | _ -> false
-      in
-      if same_files then 0
-      else match f1, f2 with
-      | Some (f1, _), Some (f2, _) -> compare f1 f2
-      | Some _, None -> 1
-      | None, Some _ -> -1
-      | None, None -> 0
-    in
+    let compare_fnames f1 f2 = if f1 == f2 then 0 else compare f1 f2 in
     (* CR jfuruse: this can be merged with same_files as compare *)
     match compare_fnames l1.fname l2.fname with
     | 1 -> `Left
@@ -1566,7 +1544,7 @@ module Unit = struct
       let tbl = Hashtbl.create 1023 in
       Hashtbl.iter (fun loc annots ->
         List.iter (function
-          | Annot.Str sitem ->
+          | Annot.Str_item sitem ->
               let _kind,id = Abstraction.ident_of_structure_item sitem in
               Hashtbl.add tbl id (Region.of_parsing f.F.builddir loc)
           | _ -> ()) annots) loc_annots;
@@ -1580,7 +1558,7 @@ module Unit = struct
     (* CR jfuruse: it is almost the same as id_def_regions_list *)
     let flat = lazy (Hashtbl.fold (fun _loc annots st ->
       List.filter_map (function
-        | Annot.Str sitem -> Some sitem
+        | Annot.Str_item sitem -> Some sitem
         | _ -> None) annots @ st) loc_annots [])
     in
     { modname    = f.F.modname;
