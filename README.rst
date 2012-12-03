@@ -22,9 +22,8 @@ https://bitbucket.org/camlspotter/ocamlspot provides OCamlSpotter branches for e
 
 * ocaml-<version-name> : compilable against the given OCaml version
     * ocaml-4.00.0 : the latest "stable" version
-    * ocaml-4.00.0-rc1 : no longer maintained
-    * ocaml-4.00.0-beta2 : no longer maintained
-* default : Development version. Probably not for you.
+    * ocaml-4.00.1 : the latest "stable" version
+* default : Development version. Sometimes not compilable. Not for you.
 
 Versions
 ================
