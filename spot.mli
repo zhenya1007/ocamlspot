@@ -126,8 +126,7 @@ end
 
 module Region : sig
 
-  type t = private { fname : (string * (int * int) option) option; 
-                     (* filename and device/inode. None = "_none_" *)
+  type t = private { fname : (string * Fileident.t option) option; 
                      start : Position.t; 
                      end_ : Position.t; }
   

@@ -21,7 +21,7 @@ open Ext
 open Format
 
 let magic_number = "OCamlSpot"
-let ocaml_version = "4.00.0"
+let ocaml_version = "4.00.0" (* 4.00.1 also works *)
 let version = "2.0.1"
 
 (** Kind of ``object`` *)
@@ -1198,8 +1198,7 @@ end
 module Region : sig
 
   type t = private {
-    fname : string option;
-    (* filename and device/inode. None = "_none_" *)
+    fname : (string * Fileident.t option) option;
     start : Position.t;
     end_ : Position.t
   }
@@ -1223,8 +1222,7 @@ end = struct
 
   (* CR jfuruse: I heard that inode is not a good idea; mingw has no inode *)
   type t = {
-    fname : string option;
-    (* filename and device/inode. None = "_none_" *)
+    fname : (string * Fileident.t option) option;
     start : Position.t;
     end_ : Position.t
   }
@@ -1234,16 +1232,15 @@ end = struct
   let fname = function
     | "_none_" -> None
     | s ->
-        (* We need hash-cons-ing to prevent string dupes *)
         let s =
           if Filename.is_relative s then Unix.getcwd () ^/ s
           else s
         in
-        Hashtbl.memoize cache (fun s -> Some s) s
+        Some (Fileident.get s)
 
   let to_string t =
     Printf.sprintf "%s:%s:%s"
-      (match t.fname with Some fname -> fname | None -> "_none_")
+      (match t.fname with Some fname -> fst fname | None -> "_none_")
       (Position.to_string t.start)
       (Position.to_string t.end_)
 
