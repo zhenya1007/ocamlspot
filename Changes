@@ -3,6 +3,7 @@
 
 - ocamlspot-samewindow: default is now nil. (The author prefers nil!)
 - Cmt.recover_env used too much memory sometimes.
+- File identification in Mingw now uses md5sum instead of useless dev+inode
 
 2.0.1
 --------------

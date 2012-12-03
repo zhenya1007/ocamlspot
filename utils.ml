@@ -75,6 +75,8 @@ module Filename = struct
     with
     | Invalid_argument _ -> s, ""
 
+  let concats xs = String.concat dir_sep xs
+
   module Open = struct
     let (^/) p1 p2 =
       if Filename.is_relative p2 then Filename.concat p1 p2 else p2

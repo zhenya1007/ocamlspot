@@ -11,23 +11,19 @@
 (*                                                                     *)
 (***********************************************************************)
 
-(* module for .ocamlspot file 
+(* File path normalization *)
 
-   build_dir: dirname
+type t
 
-      Work around for ocamlbuild. If .ocamlspot is placed in a directory $DIR,
-      then spot files of source files under $DIR ex. $DIR/subdir/source.ml
-      is searched in $DIR/dirname/subdir/.
-*)
+val compare : t -> t -> int
+val equal : t -> t -> bool
 
-type t = {
-  build_dir : string option;
-}
-
-val load : string -> t
-
-val find_and_load : string -> (string * t) option
-  (** [find_and_load abspath] searches .ocamlspot file 
-      and returns its location (directory) and its contents.
-      The search starts from directory [abspath] and if not found
-      it checks the parent directory recursively till the root. *)
+val of_string : string -> t
+val to_string : t -> string
+val is_absolute : t -> bool
+val is_relative : t -> bool
+val root : t
+val is_root : t -> bool
+val dirbase : t -> t * string option
+val (^/) : t -> string -> t
+val parent : t -> t
