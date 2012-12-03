@@ -30,6 +30,8 @@ include_override.cmo \
 include_sig.cmi \
 included.cmo \
 included_and_flat.cmo \
+included_const.cmo \
+included_const2.cmo \
 included_sig.cmi \
 included_sig2.cmo \
 included_value.cmo \
@@ -59,8 +61,10 @@ open_pack.cmo \
 override_x.cmo \
 packed.cmo \
 packed_alias.cmo \
+partial.cmo \
 pathname.cmo \
 perv.cmo \
+predef.cmo \
 primitive.cmo \
 recmodule.cmo \
 record.cmo \
