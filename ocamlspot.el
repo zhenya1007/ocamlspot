@@ -75,12 +75,16 @@
   "OCamlSpotter: find the definition and type of variables."
   :group 'languages)
 
-(defcustom ocamlspot-command "OCAML-SOURCE-TREE/ocamlspot/ocamlspot"
+(defcustom ocamlspot-command "ocamlspot"
   "*The command which invokes ocamlspot."
   :type 'string :group 'ocamlspot)
 
 (defcustom ocamlspot-debug nil
   "*Turn on ocamlspot debug output."
+  :type 'boolean :group 'ocamlspot)
+
+(defcustom ocamlspot-samewindow t
+  "Use current window to show the spot."
   :type 'boolean :group 'ocamlspot)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Constants
@@ -314,7 +318,9 @@
 ;; Open the file, if exists
 (defun ocamlspot-find-file-existing (path)
   (if (file-exists-p path)
-      (find-file-other-window path)
+      (if ocamlspot-samewindow
+          (find-file path)
+        (find-file-other-window path))
     (ocamlspot-message-add (format "ERROR: source file %s was not found" path))
     (error (format "ERROR: source file %s was not found" path))))
 
@@ -507,7 +513,7 @@
   (ocamlspot-message-display may-pop)
   (ocamlspot-delete-overlays))
 
-(defun ocamlspot-query (&optional args)
+(defun ocamlspot-query (&rest args)
   (interactive)
   (let ((sel-window (selected-window)))
   (save-selected-window
@@ -574,7 +580,7 @@
     (ocamlspot-message-init (buffer-file-name))
     (ocamlspot-type-init)
     (ocamlspot-delete-overlays-now)
-    (ocamlspot-query-at-cursor '("use" dir))
+    (ocamlspot-query-at-cursor (list "use" dir))
     (if (ocamlspot-find-tree)
 	(progn
 	 (ocamlspot-find-spot)
