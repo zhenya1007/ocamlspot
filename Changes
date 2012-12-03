@@ -4,6 +4,8 @@
 - ocamlspot-samewindow: default is now nil. (The author prefers nil!)
 - Cmt.recover_env used too much memory sometimes.
 - File identification in Mingw now uses md5sum instead of useless dev+inode
+- .ocamlspot tweak is now dropped, since it is not working.
+- ocamlbuild's _build dir tweak is introduced and now working correctly.
 
 2.0.1
 --------------
