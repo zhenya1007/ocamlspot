@@ -10,22 +10,15 @@
 (*   described in file LICENSE.                                        *)
 (*                                                                     *)
 (***********************************************************************)
-(* cmt file conventions *)
 
-open Cmt_format
+(** File identity by device+inode or md5sum of contents 
 
-val source_path : cmt_infos -> string option
-(** returns the full path of the source file *)
-
-val of_path : string -> string
-(** get the corresponding cmt/cmti path name of the given file name:
-    of_path "dir/x.cmi" = "dir/x.cmti"
-    of_path "dir/x.ml"  = "dir/x.cmt"
+   In Mingw, inode does not work. We use md5sum of the contents instead.
 *)
 
-val is_opt : cmt_infos -> bool
-(** Guess the cmt is created by opt(native code) compilation *)
+type t = 
+  | Dev_inode of int * int 
+  | Md5sum of Digest.t
 
-val recover_env : Env.t -> Env.t
-(** Type environments in cmt are simplified and just have env summaries.
-    If we want the real environment, we need to recover it from the summary. *)
+val get : string -> string * t option
+(** [get path] returns its file identification with cons-hashed path *)

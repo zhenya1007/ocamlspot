@@ -30,7 +30,7 @@ end = struct
     (* CR jfuruse: aaa.mll creates cmt with aaa.ml as source, but
        aaa.ml is often removed by the build system.
     *)
-    let stat_cmt = Unix.stat cmt in
+    let stat_cmt = try Unix.stat cmt with _ -> assert false in
     try
       let stat_source = Unix.stat source in
         (* Needs = : for packed modules, .cmt and the source .cmo are written 
@@ -46,8 +46,7 @@ end = struct
         true
 
   let find_alternative_source ~cmt source =
-      (* if [source] is not found, we try finding files with the same basename
-         in
+      (* if [source] is not found, we try finding files with the same basename in
          - the directory of [cmt]
          - the directory of [cmt] points to (if [cmt] is symlink)
        *)
@@ -55,22 +54,21 @@ end = struct
     let source_dirs =
         Filename.dirname cmt ::
         begin 
-          let stat_cmt = Unix.lstat cmt in
+          let stat_cmt = try Unix.lstat cmt with _ -> assert false in
           if stat_cmt.Unix.st_kind = Unix.S_LNK then
-            [ Filename.dirname (Unix.readlink cmt) ]
+            [ Filename.dirname (try Unix.readlink cmt with _ -> assert false) ]
           else []
         end
-      in
-      List.find Sys.file_exists 
-        (List.map (fun d -> d ^/ source_base) source_dirs)
+    in
+    List.find Sys.file_exists 
+      (List.map (fun d -> d ^/ source_base) source_dirs)
 
   let load_cmt_file file = snd (Cmt_format.read file)
 
   let load_directly path : Unit.t =
     Debug.format "cmt loading from %s@." path;
     match load_cmt_file path with
-    | Some cmt -> 
-        Spot.Unit.of_file (Spot.File.of_cmt path cmt)
+    | Some cmt -> Spot.Unit.of_file (Spot.File.of_cmt path cmt)
     | None -> failwithf "load_directly failed: %s" path
 
   exception Old_cmt of string (* cmt *) * string (* source *)
@@ -78,29 +76,23 @@ end = struct
   (* CR jfuruse: exception *)
   (* CRv2 jfuruse: add and check cache time stamp *)
   let load_directly_with_cache : string -> Unit.t = 
-    let cache = Hashtbl.create 17 in
-    fun path ->
-      try 
-        Hashtbl.find cache path
+    Hashtbl.memoize (Hashtbl.create 17 ) (fun path ->
+      try
+        let file = load_directly path in
+        if not (check_time_stamp ~cmt:path file.Unit.path) then 
+          if Spotconfig.strict_time_stamp then 
+            raise (Old_cmt (path, file.Unit.path))
+          else
+            eprintf "Warning: source %s is newer than the cmt@." file.Unit.path;
+        file
       with
       | Not_found ->
-          try
-            let file = load_directly path in
-            if not (check_time_stamp ~cmt:path file.Unit.path) then 
-              if Spotconfig.strict_time_stamp then 
-                raise (Old_cmt (path, file.Unit.path))
-              else
-                eprintf "Warning: source %s is newer than the cmt@." file.Unit.path;
-            Hashtbl.replace cache path file;
-            file
-          with
-          | Not_found ->
-              failwithf "failed to find cmt file %s" path
+          failwithf "failed to find cmt file %s" path)
 
   let find_in_path load_paths body ext =
     let body_ext = body ^ ext in
     let find_in_path load_paths name = 
-      Debug.format "@[<2>searching %s in@ pwd=%s@ paths=[@[%a@]]@]@." 
+      Debug.format "@[<2>find_in_path: searching %s in@ pwd=%s@ paths=[@[%a@]]@]@." 
         name
         (Sys.getcwd ())
         (Format.list "; " (fun ppf x -> fprintf ppf "%S" x)) 

@@ -61,7 +61,7 @@ module Abstraction : sig
     | AStr_class_type of Ident.t
     | AStr_included   of Ident.t * module_expr * Kind.t * Ident.t
 
-  val ident_of_structure_item : structure_item -> (Kind.t * Ident.t) option
+  val ident_of_structure_item : structure_item -> (Kind.t * Ident.t)
 
   val top_structure : Typedtree.structure -> module_expr
   val top_signature : Typedtree.signature -> module_expr
@@ -79,7 +79,7 @@ module Annot : sig
     | Use of Kind.t * Path.t
     | Type of Types.type_expr * Env.t * [`Expr of Path.t option | `Pattern of Ident.t option ]
     | Mod_type of Types.module_type
-    | Str of Abstraction.structure_item 
+    | Str_item of Abstraction.structure_item 
     | Module of Abstraction.module_expr
     | Functor_parameter of Ident.t
     | Non_expansive of bool
@@ -126,8 +126,7 @@ end
 
 module Region : sig
 
-  type t = private { fname : (string * (int * int) option) option; 
-                     (* filename and device/inode. None = "_none_" *)
+  type t = private { fname : (string * Fileident.t option) option; 
                      start : Position.t; 
                      end_ : Position.t; }
   
