@@ -28,7 +28,7 @@ let comp_dir fp0 =
       else None
     in
     match diropt with
-    | Some dir -> Some (FP.(^/) fp (Filename.concats (dir :: List.rev rev_bases)))
+    | Some _ -> Some (FP.(^/) fp (Filename.concats ("_build" :: List.rev rev_bases)))
     | None ->
         if FP.is_root fp then Some fp0
         else match FP.dirbase fp with

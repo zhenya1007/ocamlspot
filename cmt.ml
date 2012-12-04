@@ -20,22 +20,30 @@ let source_path file =
 (* xxx.{ml,cmo,cmx,spot} => xxx.cmt
    xxx.{mli,cmi,spit}    => xxx.cmti *)
 let of_path path =
-  let dirname, filename =
-    try
-      let slash = String.rindex path '/' in
-      Some (String.sub path 0 slash),
-      String.sub path (slash + 1) (String.length path - slash - 1)
-    with
-    | Not_found -> None, path
-  in
-  let filename =
-    match Filename.split_extension filename with
-    | body, (".cmi" | ".mli" | ".cmti" | ".spit") -> body ^ ".cmti"
-    | body, _ -> body ^ ".cmt"
-  in
-  match dirname with
-  | None -> filename
-  | Some d -> d ^/ filename
+  let module FP = Filepath in
+  (* CR jfuruse: we should create a function for this *)
+  let path = if Filename.is_relative path then Unix.getcwd () ^/ path else path in
+  let fp = FP.of_string path in
+  match FP.dirbase fp with
+  | _, None -> failwithf "Error: %s is not a normal file path" path
+  | dir, Some base ->
+      let rec find = function
+        | [] -> assert false
+        | [fp] -> FP.to_string fp
+        | fp::fps -> 
+            let path = FP.to_string fp in
+            if Sys.file_exists path then  path
+            else find fps
+      in
+      find (match Filename.split_extension base with
+      | body, (".cmi" | ".cmti" | ".spit") -> [ FP.(^/) dir (body ^ ".cmti") ]
+      | body, (".cmo" | ".cmx" | ".cmt" | ".spot") -> [ FP.(^/) dir (body ^ ".cmt") ]
+      | body, ".mli" -> 
+          [ FP.(^/) (Compdir.comp_dir dir ) (body ^ ".cmti");
+            FP.(^/) dir (body ^ ".cmti"); ]
+      | body, _ (* .ml, mll, mly *) -> 
+          [ FP.(^/) (Compdir.comp_dir dir ) (body ^ ".cmt");
+            FP.(^/) dir (body ^ ".cmt") ])
 
 (* CR jfuruse: this is a dirty workaround. It should be nice if we could know cmt is created by opt or byte *)          
 let is_opt cmt = 

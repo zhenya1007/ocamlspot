@@ -78,7 +78,8 @@ module Main = struct
 
   let load path =
 
-    let file = File.load ~load_paths: ["."] path in
+    prerr_endline ("load " ^ path);
+    let file = File.load_directly_with_cache path in
     
     if C.dump_file    then Dump.unit    file; (* CR jfuruse: to be fixed *)
     if C.dump_tree    then Dump.tree    file;
@@ -251,7 +252,7 @@ module Main = struct
         eprintf "Error: source %s is newer than the spot@." source;
         bye 1
     | e ->
-        eprintf "uncaught exception: %s@." (Printexc.to_string e);
+        eprintf "Uncaught exception: %s@.%s@." (Printexc.to_string e) (Printexc.get_backtrace ());
         bye 1
 
   let use path spec targets =

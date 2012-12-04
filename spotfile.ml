@@ -24,6 +24,7 @@ module Load : sig
   exception Old_cmt of string (* cmt *) * string (* source *)
   val load : load_paths:string list -> string -> Unit.t
   val load_module : ?spit:bool -> cwd:string -> load_paths:string list -> string -> Unit.t
+  val load_directly_with_cache : string -> Unit.t
 end = struct
 
   let check_time_stamp ~cmt source =

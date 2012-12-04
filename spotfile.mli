@@ -19,6 +19,7 @@ open Spoteval
 exception Old_cmt of string * string
 val load : load_paths:string list -> string -> Unit.t
 val load_module : ?spit:bool -> cwd:string -> load_paths:string list -> string -> Unit.t (* CR jfuruse: spit *)
+val load_directly_with_cache : string -> Unit.t
 
 val initial_env   : Unit.t -> Env.t
 val invalid_env : Unit.t -> Env.t

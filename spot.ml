@@ -1232,9 +1232,17 @@ end = struct
   let fname = function
     | "_none_" -> None
     | s ->
-        let s =
+        let module FP = Filepath in
+        let s = (* CR jfuruse: we must make it a function *)
           if Filename.is_relative s then Unix.getcwd () ^/ s
           else s
+        in
+        let fp = FP.of_string s in
+        let s = 
+          match FP.dirbase fp with
+          | _, None -> failwithf "Error: %s is not a normal file path" s
+          | dir, Some base -> 
+              FP.to_string (FP.(^/) (Compdir.src_dir dir) base)
         in
         Some (Fileident.get s)
 
