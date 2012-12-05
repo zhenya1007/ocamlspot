@@ -1039,12 +1039,12 @@ and class_type_declaration =
 	Printtyp.reset ();
 	Printtyp.mark_loops typ;
         (* CR jfuruse: not fancy having @. *)
-	fprintf ppf "Type: %a@ " (Printtyp.type_scheme ~with_pos:false) typ;
-	fprintf ppf "XType: %a@ " (Printtyp.type_scheme ~with_pos:true) typ;
-        fprintf ppf "At: %s" (string_of_at at)
+	fprintf ppf "Type: %a;@ " (Printtyp.type_scheme ~with_pos:false) typ;
+	fprintf ppf "XType: %a;@ " (Printtyp.type_scheme ~with_pos:true) typ;
+        fprintf ppf "At: %s;" (string_of_at at)
     | Mod_type mty ->
-	fprintf ppf "Type: %a@ " (Printtyp.modtype ~with_pos:false) mty;
-	fprintf ppf "XType: %a" (Printtyp.modtype ~with_pos:true) mty
+	fprintf ppf "Type: %a;@ " (Printtyp.modtype ~with_pos:false) mty;
+	fprintf ppf "XType: %a;" (Printtyp.modtype ~with_pos:true) mty
     | Str_item str ->
 	fprintf ppf "Str_item: %a"
 	  Abstraction.format_structure_item str
@@ -1227,8 +1227,6 @@ end = struct
     end_ : Position.t
   }
 
-  let cache = Hashtbl.create 1023
-
   let fname = function
     | "_none_" -> None
     | s ->
@@ -1387,6 +1385,25 @@ module Tree = struct
 	eprintf "@[<2>@[%a@] =>@ @[%a@]@]@."
 	  format_parent parent
 	  RAnnot.format rrspot) t
+
+  let dump2 t =
+    let open Format in
+    let nodes = Hashtbl.create 1023 in
+    iter_elem (fun ~parent rrspot -> 
+      Hashtbl.multi_add nodes (Option.map ~f:(fun x -> x.region) parent) rrspot) t;
+    let rec loop ppf rrspot =
+      fprintf ppf "=> @[<v>%a%a@]" 
+        RAnnot.format rrspot
+        loop_region (Some rrspot.region);
+    and loop_region ppf regopt =
+      let subnodes = Hashtbl.find_default [] nodes regopt in
+      if subnodes = [] then ()
+      else begin
+        fprintf ppf "@,  @[<v>%a@]"
+          (list "@," loop) subnodes
+      end;
+    in
+    Format.eprintf "@[<v>Root%a@]@." loop_region None;
 end
 
 (* Minimum data for spotting, which are saved into spot files *)
@@ -1399,7 +1416,7 @@ module File = struct
     path           : string; (** source path. If packed, the .cmo itself *)
     top            : Abstraction.structure;
     loc_annots     : (Location.t, Annot.t list) Hashtbl.t
-  }
+ } 
 
   let dump file =
     eprintf "@[<v2>{ module= %S;@ path= %S;@ builddir= %S;@ loadpath= [ @[%a@] ];@ argv= [| @[%a@] |];@ ... }@]@."

@@ -37,7 +37,7 @@ module Dump = struct
       !!(unit.Unit.rannots)
   ;;
   
-  let tree unit = Tree.dump !!(unit.Unit.tree)
+  let tree unit = Tree.dump2 !!(unit.Unit.tree)
   ;;
 
   let top file = 

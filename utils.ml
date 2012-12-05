@@ -301,6 +301,12 @@ module Hashtbl = struct
         let v = f k in
         Hashtbl.replace tbl k v;
         v
+
+  let find_default def tbl k = try find tbl k with Not_found -> def
+
+  let multi_add tbl k v =
+    let vs = v :: find_default [] tbl k in
+    replace tbl k vs
 end
 
 module Hashset = struct

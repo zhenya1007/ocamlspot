@@ -174,6 +174,7 @@ module Tree : sig
     (** Region splitted Annot may be itered more than once. *)
 
   val dump : t -> unit
+  val dump2 : t -> unit
 end
 
 module File : sig

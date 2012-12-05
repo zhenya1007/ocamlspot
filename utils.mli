@@ -106,6 +106,8 @@ module Hashtbl : sig
   include module type of Hashtbl with type ('a,'b) t = ('a, 'b) Hashtbl.t
   val of_list : int -> ('a * 'b) list -> ('a, 'b) Hashtbl.t
   val memoize : ('a, 'b) Hashtbl.t -> ('a -> 'b) -> 'a -> 'b
+  val find_default : 'b -> ('a, 'b) Hashtbl.t -> 'a -> 'b
+  val multi_add : ('a, 'b list) Hashtbl.t -> 'a -> 'b -> unit
 end
 
 module Hashset : sig
