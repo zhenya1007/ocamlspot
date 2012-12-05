@@ -1257,8 +1257,6 @@ end = struct
       (Position.to_string t.start)
       (Position.to_string t.end_)
 
-  (* CR jfuruse: we should have path cache *)
-
   let of_parsing builddir l =
     let fname1 = l.Location.loc_start.Lexing.pos_fname in
     let fname2 = l.Location.loc_end.Lexing.pos_fname in
@@ -1272,9 +1270,7 @@ end = struct
     | _ -> { fname; start = end_; end_ = start }
 
   let compare l1 l2 =
-    let compare_fnames f1 f2 = if f1 == f2 then 0 else compare f1 f2 in
-    (* CR jfuruse: this can be merged with same_files as compare *)
-    match compare_fnames l1.fname l2.fname with
+    match compare l1.fname l2.fname with
     | 1 -> `Left
     | -1 -> `Right
     | _ (* 0 *) ->
