@@ -77,7 +77,7 @@ end = struct
   (* CR jfuruse: exception *)
   (* CRv2 jfuruse: add and check cache time stamp *)
   let load_directly_with_cache : string -> Unit.t = 
-    Hashtbl.memoize (Hashtbl.create 17 ) (fun path ->
+    Hashtbl.memoize (Hashtbl.create 17) (fun path ->
       try
         let file = load_directly path in
         if not (check_time_stamp ~cmt:path file.Unit.path) then 
