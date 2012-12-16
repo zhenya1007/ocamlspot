@@ -135,7 +135,7 @@ install-elisp:
 
 # install the .el files, but do not compile them.
 install-el:
-	$(MAKE) NOCOMPILE=true install
+	$(MAKE) NOCOMPILE=true install-elisp
 
 simple-install:
 	@echo "Installing in $(EMACSDIR)..."
@@ -150,7 +150,7 @@ install installopt::
 	if test -f ocamlspot.opt; \
 	  then cp ocamlspot.opt $(BINDIR)/ocamlspot.opt$(EXE); else :; fi
 	# The following is optional
-	# $(MAKE) install-emacs-lisp
+	# $(MAKE) install-elisp
 
 uninstall::
 	rm -f $(BINDIR)/ocamlspot$(EXE)
