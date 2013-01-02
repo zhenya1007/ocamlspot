@@ -2,6 +2,7 @@ TARGETS= \
 applied_sig.cmo \
 bigmodtest.cmi \
 bug_private_row.cmo \
+camlp4_path.cmo \
 capital_idents.cmo \
 capital_idents_include.cmo \
 class.cmo \
