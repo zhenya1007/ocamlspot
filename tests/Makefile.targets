@@ -57,6 +57,7 @@ module_use.cmo \
 multiple_definition.cmo \
 object.cmo \
 ocaml312.cmo \
+ocamlc_path.cmo \
 open.cmo \
 open_in_mli.cmi \
 open_pack.cmo \
