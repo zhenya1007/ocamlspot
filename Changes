@@ -1,3 +1,12 @@
+2.1.0
+--------------
+
+- OCamlBuild _build dir support
+- Fixed OPAM installation of elisp file (Issue #20)
+- Fixed too much open files issue of cm* files (Issue #12)
+- Fixed strange Camlp4 path location issue (Issue #22)
+- Fixed memory cache bug (Issue #18)
+
 2.0.2
 --------------
 
