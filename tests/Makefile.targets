@@ -2,6 +2,7 @@ TARGETS= \
 applied_sig.cmo \
 bigmodtest.cmi \
 bug_private_row.cmo \
+camlp4_path.cmo \
 capital_idents.cmo \
 capital_idents_include.cmo \
 class.cmo \
@@ -56,6 +57,7 @@ module_use.cmo \
 multiple_definition.cmo \
 object.cmo \
 ocaml312.cmo \
+ocamlc_path.cmo \
 open.cmo \
 open_in_mli.cmi \
 open_pack.cmo \

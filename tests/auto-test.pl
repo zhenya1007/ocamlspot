@@ -71,6 +71,12 @@ my $all_succeeds = 0;
 
 sub test {
     my $file = $_[0];
+
+    if( -f $file . "l" ){
+	print STDERR $file . "l exists. Skip the test\n";
+	return;
+    }
+
     my $content = load_file($file);
     print STDER "$file loaded\n";
     my $pos = 0;
@@ -102,16 +108,15 @@ sub test {
 	print STDERR "$command\n";
 	open(IN, "$command |");
 
+	$all_tests++;
 	while(<IN>){
             my $result;
             if( /^Spot: <(.*):all>/ ){ # whole file
-		$all_tests++;
                 $tested = 1;
                 $message = "$message$&\n";
                 $result = check_file_head($1);
             }
 	    if( /^Spot: <(.*):l[0-9]+c[0-9]+b([0-9]+):l[0-9]+c[0-9]+b([0-9]+)>$/ ){
-		$all_tests++;
 		$tested = 1;
 		$message = "$message$&\n";
 		$result = check_result($1, $2, $3);
@@ -134,7 +139,7 @@ sub test {
 		print STDERR "$file:$test_pos:$test_name:\tnot found, but a known issue\n";
 		$all_succeeds ++;
 	    } else {
-		print STDERR "$file:$test_pos:$test_name:\tNOT FOUND!\n";
+		print STDERR "$file:$test_pos:$test_name:\tFAILED! NOT FOUND!\n";
 	    }
 	}
     }

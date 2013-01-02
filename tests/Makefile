@@ -50,6 +50,9 @@ test5.cmo: test5.ml
 dir2/test6.cmo: dir2/test6.ml
 	$(OCAMLC) -c -I dir2 -o $@ $<
 
+camlp4_path.cmo: camlp4_path.ml
+	$(OCAMLC) -c -pp camlp4o -o $@ $<
+
 clean:
 	rm -f *.cm* *.o *.annot *.sp*t  */*.cm* */*.annot */*.sp*t
 

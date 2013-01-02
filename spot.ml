@@ -549,13 +549,22 @@ module Annot = struct
 
       method! expression e =
         let path_opt = match e.exp_desc with
-          | Texp_ident (path, _, _) -> Some path
+          | Texp_ident (path, _, _) -> 
+              Some path
           (* | Texp_construct (path, {loc}, cdesc, _, _) -> *)
           | Texp_instvar (_path, path, _)
           | Texp_setinstvar (_path, path, _, _) -> Some path
           | _ -> None
         in
         record e.exp_loc (Type (e.exp_type, e.exp_env, `Expr path_opt));
+
+        (* Workaround of strange ident position by Camlp4 *)
+        begin match e.exp_desc with
+        | Texp_ident (path, {loc=_i_am_strange}, _) -> 
+            record_use e.exp_loc K.Value path 
+        | _ -> ()
+        end;
+
         begin match e.exp_desc with
         | Texp_construct (path, _, cdesc, _, _) ->
             let kind = match cdesc.Types.cstr_tag with
@@ -579,8 +588,13 @@ module Annot = struct
 
       method !expression_desc ed =
         begin match ed with
-        | Texp_ident (path, {loc}, _) ->
-            record_use loc K.Value path
+        | Texp_ident (_path, {loc=_loc}, _) ->
+            (* CR jfuruse: P4 has a bug and loc is only x of X.x, which is BAD. 
+               We do not record the use of path here, but in [expression],
+               with e.exp_loc.
+            *)
+            (* record_use loc K.Value path *)
+            ()
         | Texp_construct _ -> () (* done in #expression *)
         | Texp_record (lst, _) ->
             List.iter (fun (path, {loc}, _, _) ->
