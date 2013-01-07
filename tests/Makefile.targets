@@ -42,6 +42,8 @@ inherit2.cmo \
 inherit3.cmo \
 interface.cmo \
 intermodule.cmo \
+issue15.cmo \
+issue15_2.cmo \
 issue19.cmo \
 let_open.cmo \
 lex.cmo \

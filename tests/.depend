@@ -12,6 +12,8 @@ applied_sig.cmo :
 applied_sig.cmx :
 bug_private_row.cmo :
 bug_private_row.cmx :
+camlp4_path.cmo :
+camlp4_path.cmx :
 capital_idents.cmo :
 capital_idents.cmx :
 capital_idents_include.cmo : capital_idents.cmo
@@ -62,6 +64,10 @@ included.cmo :
 included.cmx :
 included_and_flat.cmo :
 included_and_flat.cmx :
+included_const.cmo :
+included_const.cmx :
+included_const2.cmo : included_const.cmo
+included_const2.cmx : included_const.cmx
 included_sig2.cmo :
 included_sig2.cmx :
 included_value.cmo :
@@ -72,12 +78,22 @@ inherit.cmo :
 inherit.cmx :
 inherit2.cmo :
 inherit2.cmx :
+inherit3.cmo : inherit.cmo
+inherit3.cmx : inherit.cmx
 interface.cmo :
 interface.cmx :
 intermodule.cmo :
 intermodule.cmx :
+issue15.cmo : issue15_2.cmo
+issue15.cmx : issue15_2.cmx
+issue15_2.cmo :
+issue15_2.cmx :
+issue19.cmo :
+issue19.cmx :
 let_open.cmo :
 let_open.cmx :
+lex.cmo :
+lex.cmx :
 localvar.cmo :
 localvar.cmx :
 module.cmo :
@@ -100,6 +116,8 @@ object.cmo :
 object.cmx :
 ocaml312.cmo :
 ocaml312.cmx :
+ocamlc_path.cmo :
+ocamlc_path.cmx :
 open.cmo : target.cmo
 open.cmx : target.cmx
 open_pack.cmo : packed.cmo
@@ -110,10 +128,14 @@ packed.cmo :
 packed.cmx :
 packed_alias.cmo :
 packed_alias.cmx :
+partial.cmo :
+partial.cmx :
 pathname.cmo :
 pathname.cmx :
 perv.cmo :
 perv.cmx :
+predef.cmo :
+predef.cmx :
 primitive.cmo :
 primitive.cmx :
 recmodule.cmo :
@@ -128,6 +150,8 @@ signature.cmo :
 signature.cmx :
 subpath.cmo :
 subpath.cmx :
+super.cmo :
+super.cmx :
 target.cmo :
 target.cmx :
 target_e.cmo : target.cmo
@@ -190,3 +214,5 @@ dir1/test4.cmo : test.cmo
 dir1/test4.cmx : test.cmx
 dir2/test6.cmo : test5.cmo
 dir2/test6.cmx : test5.cmx
+ocamlbuild/hello.cmo :
+ocamlbuild/hello.cmx :

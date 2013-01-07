@@ -210,17 +210,28 @@ module Abstraction = struct
       | Sig_class (id, _, _)      -> Kind.Class       , id
       | Sig_class_type (id, _, _) -> Kind.Class_type  , id
 
-    let rec signature sg = AMod_structure (List.map signature_item sg)
+    let rec signature sg = AMod_structure (List.flatten (List.map signature_item sg))
 
     and signature_item = function
-      | Sig_value (id, _)         -> AStr_value id
-      | Sig_type (id, _, _)       -> AStr_type id
-      | Sig_exception (id, _)     -> AStr_exception id
-      | Sig_module (id, mty, _)   -> AStr_module (id, module_type mty)
-      | Sig_modtype (id, mdtd)    -> AStr_modtype (id, modtype_declaration mdtd)
-      | Sig_class (id, _, _)      -> AStr_class id
-      | Sig_class_type (id, _, _) -> AStr_class_type id
+      | Sig_value (id, _)          -> [AStr_value id]
+      | Sig_exception (id, _)      -> [AStr_exception id]
+      | Sig_type (id, td, _)       -> AStr_type id :: type_declaration td
+      | Sig_module (id, mty, _)    -> [AStr_module (id, module_type mty)]
+      | Sig_modtype (id, mty_decl) -> [AStr_modtype (id, modtype_declaration mty_decl)]
+      | Sig_class (id, _, _)       -> 
+          (* CR jfuruse: Need to check what happens in includsion of class *)
+          [AStr_class id; AStr_class_type id;  AStr_type id;]
+      | Sig_class_type (id, _, _)  -> [ AStr_class_type id ]
 
+    and type_declaration td = match td.type_kind with
+      | Type_abstract -> []
+      | Type_variant lst -> 
+          (* We add constructor names as types. *)
+          List.map (fun (id, _, _) -> AStr_type id) lst
+      | Type_record (lst, _) -> 
+          (* We add record label names as types. *)
+          List.map (fun (id, _, _) -> AStr_type id) lst
+      
     and module_type = function
       | Mty_ident p -> AMod_ident p
       | Mty_signature sg -> signature sg
@@ -232,19 +243,33 @@ module Abstraction = struct
   end
 
   let aliases_of_include' no_value_is_not_in_ids sg ids =
+    let sgstr = List.flatten (List.map T.signature_item sg) in
+    let sgkidents = List.map ident_of_structure_item sgstr in
     (* We cannot use kind directly since it does not distinguish normal values and primitives *)
     Debug.format "@[<2>DEBUG alias_of_include': ids=[ @[%a@] ]@ + sg=[ @[%a@] ]@]@."
       (Format.list ";@ " Ident.format) ids
-      (Format.list ";@ " (fun ppf (k, id) -> Format.fprintf ppf "%s:%a" (Kind.name k) Ident.format id)) (List.map T.kident_of_sigitem sg);
+      (Format.list ";@ " (fun ppf (k, id) -> Format.fprintf ppf "%s:%a" (Kind.name k) Ident.format id)) sgkidents;
+    (* Here, we are going to make a map of [(Ident.t * (Kind.t Ident.t)) list],
+       from sgkidents, but it is not very easy. If [no_value_is_not_in_ids = false],
+       the main ident of [Sig_*(<main_id>, ...)] must be listed in [ids] of the function
+       argument, which is the list of included.  The other, non-main idents are from
+       variant names and record fields. They are also kept in the final result.
+
+       CR jfuruse: we need a big rewrite here. So strange.
+    *)
     let must_be_empty, res = List.fold_left (fun (ids, res) sitem ->
-      let (k,_) = T.kident_of_sigitem sitem in
+      let addition sitem =
+        List.map (fun (k,id) ->
+          Ident.unsafe_create_with_stamp (Ident0.name id) (-1), (k,id))
+          (List.map ident_of_structure_item (T.signature_item sitem))
+      in
       match sitem with
-      | Sig_value (id, { Types.val_kind = Types.Val_prim _ })
-      | Sig_type (id, _, _)
-      | Sig_modtype (id, _)
-      | Sig_class_type (id, _, _) when no_value_is_not_in_ids ->
+      | Sig_value (_id, { Types.val_kind = Types.Val_prim _ })
+      | Sig_type (_id, _, _)
+      | Sig_modtype (_id, _)
+      | Sig_class_type (_id, _, _) when no_value_is_not_in_ids ->
           (* They have no value, so id is not listed in [ids] *)
-          (ids, (Ident.unsafe_create_with_stamp (Ident0.name id) (-1), (k, id)) :: res)
+          (ids, addition sitem @ res)
       | Sig_value (id, _)
       | Sig_exception (id, _)
       | Sig_module (id, _, _)
@@ -257,7 +282,10 @@ module Abstraction = struct
           | [] -> assert false
           | id'::ids ->
               assert (Ident0.name id = Ident0.name id');
-              (ids, (id', (k,id)) :: res)
+              (ids,
+               List.map (fun (id0, (k,id_extracted)) ->
+                 if id = id_extracted then id', (k, id_extracted)
+                 else id0, (k, id_extracted)) (addition sitem) @ res)
           end)
       (ids, []) sg
     in
@@ -402,8 +430,12 @@ module Abstraction = struct
 
   and type_declaration td = match td.typ_kind with
     | Ttype_abstract -> []
-    | Ttype_variant lst -> List.map (fun (id, {loc=_loc}, _, _) -> AStr_type id) lst
-    | Ttype_record lst -> List.map (fun (id, {loc=_loc}, _, _, _) -> AStr_type id) lst
+    | Ttype_variant lst -> 
+        (* We add constructor names as types. *)
+        List.map (fun (id, {loc=_loc}, _, _) -> AStr_type id) lst
+    | Ttype_record lst -> 
+        (* We add record label names as types. *)
+        List.map (fun (id, {loc=_loc}, _, _, _) -> AStr_type id) lst
 
   let top_structure str = clear_cache (); structure str
   let top_signature sg =  clear_cache (); signature sg
