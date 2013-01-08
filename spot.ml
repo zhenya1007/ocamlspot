@@ -1517,6 +1517,7 @@ module File = struct
                                    Abstraction.AMod_packed fullpath)) files),
         Hashtbl.create 1 (* empty *)
     | Partial_implementation parts | Partial_interface parts -> 
+        Format.eprintf "Warning: this file is made from compilation with errors@.";
         let tbl = Hashtbl.create 1023 in
         let o = new Annot.Record.fold tbl in
         let part = function
@@ -1530,10 +1531,27 @@ module File = struct
           | Partial_module_type mty -> o#module_type mty
         in
         Array.iter (fun x -> ignore (part x)) parts;
+        (* fake top structure *)
+        Abstraction.clear_cache ();
+        let abst_strs = List.fold_right (fun pstr st -> 
+          let get_items = function
+            | Abstraction.AMod_structure items -> items
+            | _ -> []
+          in
+          let items = match pstr with
+            | Partial_structure str -> 
+                get_items (Abstraction.structure str)
+            | Partial_structure_item sitem -> 
+                Abstraction.structure_item sitem
+            | Partial_signature sg -> get_items (Abstraction.signature sg)
+            | Partial_signature_item sgitem -> Abstraction.signature_item sgitem
+            | _ -> []
+          in
+          items @ st) (Array.to_list parts) []
+        in
         o#report;
-        [],
+        abst_strs,
         o#table
-
 
   let abstraction cmt =
     let load_path = List.map (fun p ->
