@@ -1,5 +1,6 @@
 .*\.(cm.*|annot|o|opt|orig)$
 .*~$
 ocamlspot$
+tests/ocamlbuild/_build
 
 

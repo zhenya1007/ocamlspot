@@ -1,5 +1,5 @@
 hello.native: hello.ml
-	ocamlbuild hello.native
+	ocamlbuild -I dir/dir2 hello.native
 
 clean:
 	ocamlbuild -clean

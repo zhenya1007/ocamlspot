@@ -12,7 +12,6 @@ class_tmp_let.cmo \
 exception.cmo \
 exception_alias.cmo \
 exception_module.cmo \
-exn.cmo \
 external.cmo \
 external_include.cmo \
 fstclassmodule.cmo \
@@ -60,6 +59,7 @@ module_use.cmo \
 multiple_definition.cmo \
 object.cmo \
 ocaml312.cmo \
+ocamlc_path.cmo \
 open.cmo \
 open_in_mli.cmi \
 open_pack.cmo \

@@ -1,0 +1,2 @@
+let bye = "Bye."
+
