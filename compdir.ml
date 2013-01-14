@@ -42,13 +42,17 @@ let comp_dir = Hashtbl.memoize (Hashtbl.create 107) comp_dir
 let src_dir fp0 =
   assert (FP.is_absolute fp0);
 
-  let rec f rev fp = 
+  Debug.format "Compdir.src_dir: %s@." (FP.to_string fp0);
+
+  let rec f dirs fp = 
     match FP.dirbase fp with
-    | dir, Some "_build" -> FP.(^/) dir (Filename.concats (List.rev rev))
+    | dir, Some "_build" -> FP.(^/) dir (Filename.concats dirs)
     | _, None -> fp0
-    | dir, Some x -> f (x::rev) dir
+    | dir, Some x -> f (x::dirs) dir
   in
   
-  f [] fp0
+  let res = f [] fp0 in
+  Debug.format "Compdir.src_dir => %s@." (FP.to_string res); 
+  res
 
 let src_dir = Hashtbl.memoize (Hashtbl.create 107) src_dir
