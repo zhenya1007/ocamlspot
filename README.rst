@@ -33,12 +33,35 @@ If you want to use the latest stable version of OCamlSpotter, choose the tip of 
 with the name of your OCaml compiler version. 
 When you report bugs, please note the revision hash with your issue description please.
 
+Installation and Usage
+============================
+
+To compile OCamlSpotter, just type ``make`` and ``make install``.
+ 
+If you are Emacs user, see ``ocamlspot.el``. It explains how to set up
+and use it:
+
+* Set ``load-path``.
+* Tell Emacs where it can find ``ocamlspot`` binary.
+* Add caml or tuareg mode hook.
+
+If you have done properly, move your cursor to OCaml identifier and
+press ``C-c ;``. Emacs should display the definition of the identifier.
+Otherwise... you made mistake or a bug of OCamlSpotter. Yes, it has bugs.
+
+I have also written Vim script ``ocamlspot.vim``, but it is not tested at all.
+Sorry but I do not use Vim.
+
+
 To work with OCamlSpotter
 ==========================
 
 To browse modules correctly, 
 
-* Compile them with -bin-annot ocaml compiler option.
+* Use the correct ``ocamlspot`` matching with your OCaml compiler version.
+* Set your ``ocamlspot`` binary in your emacs setting (``M-x customize-group => ocamlspot``)
+* See the buffer ``*ocamlspot-process*`` if you thing something goes wrong.
+* Compile OCaml modules with ``-bin-annot`` ocaml compiler option.
 * Keep the source code and produced cmt/cmti files.
 * Install cmt/cmti files along with cmi/cma/cmxa files.
 
