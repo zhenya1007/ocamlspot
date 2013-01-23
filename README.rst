@@ -42,8 +42,9 @@ If you are Emacs user, see ``ocamlspot.el``. It explains how to set up
 and use it:
 
 * Set ``load-path``.
-* Tell Emacs where it can find ``ocamlspot`` binary.
+* Set your ``ocamlspot`` binary in your emacs setting (``M-x customize-group => ocamlspot``)
 * Add caml or tuareg mode hook.
+* See the buffer ``*ocamlspot-process*`` if you thing something goes wrong.
 
 If you have done properly, move your cursor to OCaml identifier and
 press ``C-c ;``. Emacs should display the definition of the identifier.
@@ -53,24 +54,29 @@ I have also written Vim script ``ocamlspot.vim``, but it is not tested at all.
 Sorry but I do not use Vim.
 
 
-To work with OCamlSpotter
-==========================
+If something goes wrong...
+--------------------------------
 
 To browse modules correctly, 
 
 * Use the correct ``ocamlspot`` matching with your OCaml compiler version.
-* Set your ``ocamlspot`` binary in your emacs setting (``M-x customize-group => ocamlspot``)
-* See the buffer ``*ocamlspot-process*`` if you thing something goes wrong.
 * Compile OCaml modules with ``-bin-annot`` ocaml compiler option.
 * Keep the source code and produced cmt/cmti files.
 * Install cmt/cmti files along with cmi/cma/cmxa files.
 
 Otherwise OCamlSpotter complains that it cannot find required cmt/cmti files.
 
-How to do it?
----------------------------
+Browsing libraries, packages and OCaml stdlibs 
+=======================================================
 
-Normally this requires little modifications to the build script (Makefile/OMakefile/...) of each library.
+Libraries and packages
+-----------------------------
+
+Normally OCaml libraries and packages are not always compiled with -bin-annot option
+and do not always install the annotation files.
+Therefore, if you want to use OCamlSpotter with installed libraries and packages,
+you must rebuild them with -bin-annot compiler option.
+This requires little modifications to their build script (Makefile/OMakefile/...).
 Basically, you need:
 
 * Add -bin-annot to the compiler switch. For example OCAMLCFLAGS += -bin-annot
@@ -79,13 +85,16 @@ Basically, you need:
      install::
         cp \*.mli \*.cmi \*.cma \*.cmt \*.cmti \*.cmxa $(INSTALLDIR)
 
-This means that you need to recompile all the OCaml libraries you use with -bin-annot.
+* Do not remove the original source files, otherwise browsing cannot work.
+
+Browsing OCaml stdlib and otherlibs
+------------------------------------------
 
 If you want to browse OCaml's standard library (stdlib and otherlibs), 
-you must also recompile those modules with -bin-annot option to create cmt/cmti files.
+you must recompile those modules with -bin-annot option to create cmt/cmti files.
 
-Some automation
---------------------------
+Automation
+------------------------------------
 
 To facilitate these you may want to use SpotInstall( https://bitbucket.org/camlspotter/spotinstall ). SpotInstall provides:
 
