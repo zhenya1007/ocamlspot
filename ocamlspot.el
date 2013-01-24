@@ -11,41 +11,41 @@
 ; (*                                                                     *)
 ; (***********************************************************************)
 
-; How-to-use
+; # How-to-use: Write the following to your .emacs
 ;
-; Write the following to your .emacs
-
-; CR jfuruse: no tree node found is displayed when ocamlspot program is not found
-
-;; load-path
-; (setq load-path (cons "WHERE-YOU-HAVE-INSTALLED-THE-ELISP" load-path))
+;     ; load-path
+;      (setq load-path (cons "WHERE-YOU-HAVE-INSTALLED-THIS-ELISP" load-path))
+;     
+;      (require 'ocamlspot)
+;     
+;     ; tuareg mode hook (use caml-mode-hook instead if you use caml-mode)
+;        (add-hook 'tuareg-mode-hook
+;              '(lambda ()
+;                 (local-set-key "\C-c;" 'ocamlspot-query)
+;      	     (local-set-key "\C-c:" 'ocamlspot-query-interface)
+;                 (local-set-key "\C-c'" 'ocamlspot-query-uses)
+;                 (local-set-key "\C-c\C-t" 'ocamlspot-type)
+;                 (local-set-key "\C-c\C-i" 'ocamlspot-xtype)
+;                 (local-set-key "\C-c\C-y" 'ocamlspot-type-and-copy)
+;                 (local-set-key "\C-cx" 'ocamlspot-expand)
+;                 (local-set-key "\C-c\C-u" 'ocamlspot-use)
+;                 (local-set-key "\C-ct" 'caml-types-show-type)
+;                 (local-set-key "\C-cp" 'ocamlspot-pop-jump-stack)))
+;     
+;     ; set the path of the ocamlspot binary. If you did make opt, ocamlspot.opt is recommended.
+;      (setq ocamlspot-command "WHERE-YOU-HAVE-INSTALLED-THE-BINARIES/ocamlspot")
+;     
+;     ; You can also change overlay colors as follows:
+;      (set-face-background 'ocamlspot-spot-face "#660000")
+;      (set-face-background 'ocamlspot-tree-face "#006600")
 ;
-;; set the path of the ocamlspot binary
-;; this can be a shell command, e.g., "ocamlfind ocamlspot"
-; (setq ocamlspot-command "WHERE-YOU-HAVE-INSTALLED-THE-BINARIES/ocamlspot")
 ;
-; (require 'ocamlspot)
+; # Setup
 ;
-;; tuareg mode hook (use caml-mode-hook instead if you use caml-mode)
-;   (add-hook 'tuareg-mode-hook
-;         '(lambda ()
-;            (local-set-key "\C-c;" 'ocamlspot-query)
-; 	     (local-set-key "\C-c:" 'ocamlspot-query-interface)
-;            (local-set-key "\C-c'" 'ocamlspot-query-uses)
-;            (local-set-key "\C-c\C-t" 'ocamlspot-type)
-;            (local-set-key "\C-c\C-i" 'ocamlspot-xtype)
-;            (local-set-key "\C-c\C-y" 'ocamlspot-type-and-copy)
-;            (local-set-key "\C-cx" 'ocamlspot-expand)
-;            (local-set-key "\C-c\C-u" 'ocamlspot-use)
-;            (local-set-key "\C-ct" 'caml-types-show-type)
-;            (local-set-key "\C-cp" 'ocamlspot-pop-jump-stack)))
+; M-x customize-group => ocamlspot
 ;
-;; You can also change overlay colors as follows:
-; (set-face-background 'ocamlspot-spot-face "#660000")
-; (set-face-background 'ocamlspot-tree-face "#006600")
-
-
-
+; # Commands
+;
 ; ocamlspot-query
 ;   Show the type of the inner-most subexpression under the cursor.
 ;   If there is an identifier under the cursor, browse and show its definition
@@ -66,6 +66,11 @@
 ; ocamlspot-xtype
 ;   Same as ocamlspot-type but it shows you more detailed information: 
 ;   path id numbers. You can browse path names in this result using C-c;
+
+
+
+; CR jfuruse: no tree node found is displayed when ocamlspot program is not found
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Configurable variables
 

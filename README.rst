@@ -33,44 +33,51 @@ If you want to use the latest stable version of OCamlSpotter, choose the tip of 
 with the name of your OCaml compiler version. 
 When you report bugs, please note the revision hash with your issue description please.
 
-Installation and Usage
+Installation
 ============================
 
-To compile OCamlSpotter, just type ``make`` and ``make install``.
+To compile OCamlSpotter::
+
+   % make
+   % make opt           (This is optional but recommended)
+   % make install     
  
+Setup
+============================
+
 If you are Emacs user, see ``ocamlspot.el``. It explains how to set up
-and use it:
-
-* Set ``load-path``.
-* Set your ``ocamlspot`` binary in your emacs setting (``M-x customize-group => ocamlspot``)
-* Add caml or tuareg mode hook.
-* See the buffer ``*ocamlspot-process*`` if you thing something goes wrong.
-
-If you have done properly, move your cursor to OCaml identifier and
-press ``C-c ;``. Emacs should display the definition of the identifier.
-Otherwise... you made mistake or a bug of OCamlSpotter. Yes, it has bugs.
+and use it.
 
 I have also written Vim script ``ocamlspot.vim``, but it is not tested at all.
 Sorry but I do not use Vim.
 
 
-If something goes wrong...
---------------------------------
+How to use
+===============================
 
-To browse modules correctly, 
+Before using, it is better to know what to do if something goes wrong
+---------------------------------------------------------------------------
 
 * Use the correct ``ocamlspot`` matching with your OCaml compiler version.
 * Compile OCaml modules with ``-bin-annot`` ocaml compiler option.
 * Keep the source code and produced cmt/cmti files.
 * Install cmt/cmti files along with cmi/cma/cmxa files.
+* Use ``ocamlspot.opt`` if you have done ``make opt``. It is much faster than ``ocamlspot``.
+* CamlP4 has lots of location issues. In many cases, OCamlSpotter cannot workaround them.
+* OCamlSpotter has its own bugs.
 
-Otherwise OCamlSpotter complains that it cannot find required cmt/cmti files.
+Browsing your code
+-------------------------------------------------
 
-Browsing libraries, packages and OCaml stdlibs 
-=======================================================
+Compile your OCaml source code with ``-bin-annot`` option, 
+then it should create ``\*.cmt`` and ``\*.cmti`` files.
 
-Libraries and packages
------------------------------
+Open the source code in your Emacs and move the cursor to an identifier
+usage, then type ``C-c ;``. If things are properly installed and set up,
+Emacs should display the definition of the identifier.
+
+Browsing libraries and packages
+----------------------------------------------
 
 Normally OCaml libraries and packages are not always compiled with -bin-annot option
 and do not always install the annotation files.
@@ -88,15 +95,18 @@ Basically, you need:
 * Do not remove the original source files, otherwise browsing cannot work.
 
 Browsing OCaml stdlib and otherlibs
-------------------------------------------
+---------------------------------------------------
 
 If you want to browse OCaml's standard library (stdlib and otherlibs), 
-you must recompile those modules with -bin-annot option to create cmt/cmti files.
+you must recompile those modules with -bin-annot option to create cmt/cmti files. 
+It should require some Makefile changes and reinstallation of the compiler.
 
 Automation
 ------------------------------------
 
-To facilitate these you may want to use SpotInstall( https://bitbucket.org/camlspotter/spotinstall ). SpotInstall provides:
+Recompilation of libraries and compiler with fixing their build scripts is very lousy. To facilitate these you may want to use SpotInstall( https://bitbucket.org/camlspotter/spotinstall ). SpotInstall provides:
 
 * A small OCaml compiler patch to automatically enable -bin-annot by the existence of OCAML_ANNOT environment variable; no need to fix build scripts.
 * An automatic cmt/cmti post installation command, spotinstall.
+
+Even with SpotInstall, you have to still recompile the compiler and the libraries. But you do no longer need to fix the build scripts.
