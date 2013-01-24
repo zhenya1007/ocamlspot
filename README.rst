@@ -70,7 +70,7 @@ Browsing your code
 -------------------------------------------------
 
 Compile your OCaml source code with ``-bin-annot`` option, 
-then it should create ``\*.cmt`` and ``\*.cmti`` files.
+then it should create ``*.cmt`` and ``*.cmti`` files.
 
 Open the source code in your Emacs and move the cursor to an identifier
 usage, then type ``C-c ;``. If things are properly installed and set up,
@@ -79,18 +79,18 @@ Emacs should display the definition of the identifier.
 Browsing libraries and packages
 ----------------------------------------------
 
-Normally OCaml libraries and packages are not always compiled with -bin-annot option
+Normally OCaml libraries and packages are not always compiled with ``-bin-annot`` option
 and do not always install the annotation files.
 Therefore, if you want to use OCamlSpotter with installed libraries and packages,
 you must rebuild them with -bin-annot compiler option.
 This requires little modifications to their build script (Makefile/OMakefile/...).
 Basically, you need:
 
-* Add -bin-annot to the compiler switch. For example OCAMLCFLAGS += -bin-annot
+* Add ``-bin-annot`` to the compiler switch. For example ``OCAMLCFLAGS += -bin-annot``
 * Copy cmt and cmti files at installation. For example::
 
      install::
-        cp \*.mli \*.cmi \*.cma \*.cmt \*.cmti \*.cmxa $(INSTALLDIR)
+        cp *.mli *.cmi *.cma *.cmt *.cmti *.cmxa $(INSTALLDIR)
 
 * Do not remove the original source files, otherwise browsing cannot work.
 
@@ -98,7 +98,7 @@ Browsing OCaml stdlib and otherlibs
 ---------------------------------------------------
 
 If you want to browse OCaml's standard library (stdlib and otherlibs), 
-you must recompile those modules with -bin-annot option to create cmt/cmti files. 
+you must recompile those modules with ``-bin-annot`` option to create cmt/cmti files. 
 It should require some Makefile changes and reinstallation of the compiler.
 
 Automation
@@ -106,7 +106,19 @@ Automation
 
 Recompilation of libraries and compiler with fixing their build scripts is very lousy. To facilitate these you may want to use SpotInstall( https://bitbucket.org/camlspotter/spotinstall ). SpotInstall provides:
 
-* A small OCaml compiler patch to automatically enable -bin-annot by the existence of OCAML_ANNOT environment variable; no need to fix build scripts.
+* A small OCaml compiler patch to automatically enable ``-bin-annot`` by the existence of ``OCAML_ANNOT`` environment variable; no need to fix build scripts.
 * An automatic cmt/cmti post installation command, spotinstall.
 
 Even with SpotInstall, you have to still recompile the compiler and the libraries. But you do no longer need to fix the build scripts.
+
+
+Reporting bugs
+==============================
+
+OCamlSpotter has bugs. I need your help to fix them.
+Please report your issues at 
+https://bitbucket.org/camlspotter/ocamlspot/issues?status=new&status=open .
+
+* Please attach the smallest reproducible example as possible.
+* Explain which version of OCamlSpot you use. i.e. OPAM version or Repo fingerprint.
+* If your code is compiled with CamlP4 and ocamlspot shows you strange locations, probably it is due to CamlP4 location bugs. Check the P4-expanded version whether it is a bug of P4 or OCamlSpotter.
