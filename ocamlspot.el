@@ -598,7 +598,7 @@
   (interactive)
   (ocamlspot-message-init (buffer-file-name))
   (ocamlspot-type-init)
-  (ocamlspot-query-at-cursor '("-n --type-expand"))
+  (ocamlspot-query-at-cursor (list "-n" "--type-expand"))
   (let ((expansion (ocamlspot-find-query-result "Expand")))
     (if expansion
 	(let ((start-end (ocamlspot-find-tree)))
