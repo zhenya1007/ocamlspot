@@ -16,9 +16,9 @@ open Utils
 let ident id = Ident.create_persistent (Ident.name id)
   
 let rec path = function
-    | Path.Pident id -> Path.Pident (ident id)
-    | Path.Pdot (t, name, pos) -> Path.Pdot (path t, Name.create name pos, pos)
-    | Path.Papply (t1, t2) -> Path.Papply (path t1, path t2)
+  | Path.Pident id -> Path.Pident (ident id)
+  | Path.Pdot (t, name, pos) -> Path.Pdot (path t, Name.create name pos, pos)
+  | Path.Papply (t1, t2) -> Path.Papply (path t1, path t2)
         
 module TypeTable = Hashtbl.Make(Types.TypeOps)
 open Types

@@ -313,7 +313,7 @@ module Eval = struct
                     match kind with
                     | Kind.Value | Kind.Module | Kind.Class | Kind.Exception -> error id
                     | _ ->
-                        let gid = Ident.unsafe_create_with_stamp (Ident0.name id) (-1) in
+                        let gid = Ident.create_with_stamp (Ident0.name id) (-1) in
                         match Env.find env gid with
                         | Some (_, lazy v) -> v
                         | None -> error id

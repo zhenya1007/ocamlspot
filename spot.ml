@@ -260,7 +260,7 @@ module Abstraction = struct
     let must_be_empty, res = List.fold_left (fun (ids, res) sitem ->
       let addition sitem =
         List.map (fun (k,id) ->
-          Ident.unsafe_create_with_stamp (Ident0.name id) (-1), (k,id))
+          Ident.create_with_stamp (Ident0.name id) (-1), (k,id))
           (List.map ident_of_structure_item (T.signature_item sitem))
       in
       match sitem with
