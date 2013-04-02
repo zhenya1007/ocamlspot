@@ -618,7 +618,7 @@ module Annot = struct
         end;
         super#exp_extra ee
 
-      method !expression_desc ed =
+      method! expression_desc ed =
         begin match ed with
         | Texp_ident (_path, {loc=_loc}, _) ->
             (* CR jfuruse: P4 has a bug and loc is only x of X.x, which is BAD. 
