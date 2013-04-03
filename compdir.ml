@@ -19,8 +19,7 @@ module FP = Filepath
 
 let comp_dir fp0 =
   assert (FP.is_absolute fp0);
-
-  let rec f rev_bases fp = 
+  let rec f bases fp = 
     let dir = FP.to_string fp in
     let ocamlbuild_path = dir ^/ "_build" in
     let diropt = 
@@ -28,11 +27,11 @@ let comp_dir fp0 =
       else None
     in
     match diropt with
-    | Some _ -> Some (FP.(^/) fp (Filename.concats ("_build" :: List.rev rev_bases)))
+    | Some _ -> Some (FP.(^/) fp (Filename.concats ("_build" :: bases)))
     | None ->
         if FP.is_root fp then Some fp0
         else match FP.dirbase fp with
-        | dir, Some base -> f (base :: rev_bases) dir
+        | dir, Some base -> f (base :: bases) dir
         | _ -> assert false
   in
   Option.default (f [] fp0) (fun () -> fp0)
