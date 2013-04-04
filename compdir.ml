@@ -21,14 +21,26 @@ let comp_dir fp0 =
   assert (FP.is_absolute fp0);
   let rec f bases fp = 
     let dir = FP.to_string fp in
-    let ocamlbuild_path = dir ^/ "_build" in
-    let diropt = 
-      if Unix.is_dir ocamlbuild_path then Some ocamlbuild_path
-      else None
+
+    let fix () =
+      let dot_ocamlspot = 
+        let dot_ocamlspot_path = dir ^/ ".ocamlspot" in
+        if Sys.file_exists dot_ocamlspot_path then
+          match (Dotfile.load dot_ocamlspot_path).Dotfile.build_dir with
+          | (Some _ as res) -> res
+          | None -> None
+        else None
+      in
+      match dot_ocamlspot with
+      | (Some _ as res) -> res
+      | None ->
+          let ocamlbuild_path = dir ^/ "_build" in
+          if Unix.is_dir ocamlbuild_path then Some "_build"
+          else None
     in
-    match diropt with
-    | Some _ -> Some (FP.(^/) fp (Filename.concats ("_build" :: bases)))
-    | None ->
+    match fix () with
+    | Some p -> Some (FP.(^/) fp (Filename.concats (p :: bases)))
+    | None -> 
         if FP.is_root fp then Some fp0
         else match FP.dirbase fp with
         | dir, Some base -> f (base :: bases) dir
