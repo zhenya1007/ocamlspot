@@ -216,7 +216,7 @@
               (<= lines max-echo-height))
           (progn
             (let ((mes (buffer-string)))
-              (message mes)
+              (message "%s" mes)
               mes))
         (if may-pop ; buffer layout may change... no way to recover ?
             (progn
@@ -226,7 +226,7 @@
           (let ((lines (max 1 (1- max-echo-height))))
             (goto-char (point-min))
             (forward-visible-line (max 1 (- max-echo-height 2)))
-            (message (concat (buffer-substring (point-min) (point)) "... Result is too long. Truncated."))
+            (message "%s" (concat (buffer-substring (point-min) (point)) "... Result is too long. Truncated."))
             nil))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; type buffer
@@ -661,7 +661,7 @@
 		 (progn
 		   (move-overlay ocamlspot-tree-overlay start end)
 		   (buffer-substring-no-properties start end)))))))
-    (message (concat "path-name " path-name))
+    (message "%s" (concat "path-name " path-name))
     (let ((file-name 
 	   (save-excursion
 	     (goto-char (point-min))
@@ -684,7 +684,7 @@
       (let ((query (ocamlspot-xtype-build-query-at-cursor)))
 	(if query
 	    (progn
-	      (message query)
+	      (message "%s" query)
 	      (ocamlspot-run-query '(query))
 	      (ocamlspot-find-spot)
 	      (ocamlspot-wait))
