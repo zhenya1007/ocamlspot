@@ -13,7 +13,7 @@
 
 (* module for .ocamlspot file 
 
-   build_dir: dirname
+   build_dir=dirname
 
       Work around for ocamlbuild. If .ocamlspot is placed in a directory $DIR,
       then spot files of source files under $DIR ex. $DIR/subdir/source.ml
