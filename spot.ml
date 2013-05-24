@@ -1425,11 +1425,14 @@ end = struct
   let of_loc_annots ~builddir ~path loc_annots =
     Hashtbl.fold (fun loc annots st ->
       let fname, region = Region.of_parsing loc in
-      if path = builddir ^/ fname then
-        add st { Regioned.region; value = annots } 
-      else begin
-        Format.eprintf "Call the Author: Guru meditation: path=%s fname=%s@." path fname;
-        add st { Regioned.region; value = annots } 
+      match fname with
+      | "_none_" -> st
+      | _ -> 
+          if path = builddir ^/ fname then
+            add st { Regioned.region; value = annots } 
+          else begin
+            Format.eprintf "Call the Author: Guru meditation: path=%s fname=%s@." path fname;
+            add st { Regioned.region; value = annots } 
       end)
       loc_annots empty
 

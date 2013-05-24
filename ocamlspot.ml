@@ -179,7 +179,8 @@ module Main = struct
         List.iter (printf "@[<v>%a@]@." Annot.format) annots;
 
 	(* Tree is an older format. XTree is a newer which is the same as one for Spot *)
-        printf "Tree: %s:%s@." file.Unit.path (Region.to_string r);
+        printf "Tree: %s@." (Region.to_string r);
+        (* Beware, the search target and file.Unit.path may be different *)
         printf "XTree: <%s:%s>@." file.Unit.path (Region.to_string r);
 
 	(* Find the innermost module *)
