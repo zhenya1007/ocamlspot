@@ -16,6 +16,9 @@ module type OrderedType = sig
   val compare : t -> t 
     -> [ `Included | `Includes | `Left | `Overwrap | `Right | `Same ]
   val split : t -> by:t -> (t * t) option
+
+  val format : Format.formatter -> t -> unit
+  (** for debugging *)
 end
 
 module Make (Ord : OrderedType) : sig

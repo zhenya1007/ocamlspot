@@ -13,13 +13,17 @@
 
 (* Set with binary custom search *)
 
-module type OrderedType = Set.OrderedType
+module type OrderedType = sig
+  include Set.OrderedType
+  val format : Format.formatter -> t -> unit
+end
 
 module type S = sig
   include Set.S
   val unsafe_binary : t -> (t * elt * t) option
   val unsafe_middle : t -> elt option
   val unsafe_find : elt -> t -> elt option
+  val unsafe_dump : Format.formatter -> t -> unit
 end
 
 module Make(Ord : OrderedType) : S with type elt = Ord.t = struct
@@ -47,9 +51,19 @@ module Make(Ord : OrderedType) : S with type elt = Ord.t = struct
   let rec unsafe_find elt t = match unsafe_internal t with
     | Empty -> None
     | Node (left, elt', right, _) -> 
+        (* Format.eprintf "looking %a@." Ord.format elt'; *)
 	match Ord.compare elt elt' with 
 	| 0  -> Some elt'
 	| -1 -> unsafe_find elt left
 	| 1  -> unsafe_find elt right
 	| _  -> assert false
+
+  let rec unsafe_dump ppf t = match unsafe_internal t with
+    | Empty -> Format.fprintf ppf "."
+    | Node (left, elt', right, _) -> 
+        Format.fprintf ppf "@[<v2>%a@,%a@,%a@]"
+          Ord.format elt'
+          unsafe_dump left
+          unsafe_dump right
+      
 end

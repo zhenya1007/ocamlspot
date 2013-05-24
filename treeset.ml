@@ -16,6 +16,7 @@ module type OrderedType = sig
   val compare : t -> t 
     -> [`Left | `Right | `Includes | `Included | `Same | `Overwrap]
   val split : t -> by:t -> (t * t) option
+  val format : Format.formatter -> t -> unit
 end
 
 module Make(Ord : OrderedType) = struct
@@ -30,6 +31,8 @@ module Make(Ord : OrderedType) = struct
       | `Left -> -1
       | `Right -> 1
       | _ -> 0
+    let format ppf = function
+      | Node (e, _) -> Ord.format ppf e
   end
   
   and NodeSet : Xset.S with type elt = 
@@ -57,6 +60,11 @@ module Make(Ord : OrderedType) = struct
   let add_elem elem t = add_node (Node (elem, empty)) t  
 
   let rec find_path_contains_aux path node t =
+(*
+    Format.eprintf "FIND: %a in @[%a@]@."
+      (fun ppf node -> match node with Node (e, _) -> Ord.format ppf e) node
+      NodeSet.unsafe_dump t;
+*)
     match unsafe_find node t with
     | None -> path
     | Some (Node (elem', t')) ->
