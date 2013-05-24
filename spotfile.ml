@@ -232,7 +232,7 @@ let invalid_env file =
     
 type result =
     | File_itself
-    | Found_at of Region.t
+    | Found_at of string * Region.t
     | Predefined
 
 let find_path_in_flat file path : PIdent.t * result =
@@ -252,14 +252,16 @@ let find_path_in_flat file path : PIdent.t * result =
         match pid.PIdent.ident with
         | None -> File_itself (* the whole file *)
         | Some id -> 
-            Found_at begin try
-              Hashtbl.find !!(file.Unit.id_def_regions) id
+            try
+              let path, r = 
+                Hashtbl.find !!(file.Unit.id_def_regions) id
+              in
+              Found_at (file.Unit.builddir ^/ path, r)
             with
             | Not_found ->
                 eprintf "Error: find location of id %a failed@."
                   PIdent.format pid;
                 raise Not_found
-            end
   in
   
   let eval_and_find path =

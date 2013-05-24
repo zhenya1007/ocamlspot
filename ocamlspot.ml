@@ -33,7 +33,7 @@ module Dump = struct
 
   let rannots unit = 
     eprintf "@[<2>rannots =@ [ @[<v>%a@]@] ]@."
-      (Format.list ";@ " (Regioned.format (Format.list ";@ " Annot.summary)))
+      (Format.list ";@ " (FileRegioned.format (Format.list ";@ " Annot.summary)))
       !!(unit.Unit.rannots)
   ;;
   
@@ -122,9 +122,9 @@ module Main = struct
     | Some (pident, res) -> match res with
 	| File.File_itself ->
             printf "Spot: <%s:all>@." pident.PIdent.path
-	| File.Found_at region ->
-            printf "Spot: <%s>@."
-              (* pident.PIdent.path *)
+	| File.Found_at (path, region) ->
+            printf "Spot: <%s:%s>@."
+              path
               (Region.to_string region)
 	| File.Predefined ->
             printf "Spot: %a: predefined %s@."
@@ -134,7 +134,7 @@ module Main = struct
     
   let query_by_pos file orig_path pos = 
     (* CR jfuruse: probe should be created outside *)
-    let probe = Region.complete orig_path (Region.point orig_path pos) in
+    let probe = Region.complete orig_path (Region.point pos) in
     Debug.format "probing by %s@." (Region.to_string probe);
     let treepath = 
       List.map fst (Tree.find_path_contains probe !!(file.Unit.tree))
@@ -155,6 +155,7 @@ module Main = struct
         in
 
 	(* annots and region improvement by subpath *)
+(*
 	let annots, r = 
 	  match 
 	    (* only the first Use *)
@@ -173,11 +174,13 @@ module Main = struct
 	  | None -> annots, r
 	  | Some (annots, r) -> annots, r
 	in
+*)
+
         List.iter (printf "@[<v>%a@]@." Annot.format) annots;
 
 	(* Tree is an older format. XTree is a newer which is the same as one for Spot *)
-        printf "Tree: %s@." (Region.to_string_no_path r);
-        printf "XTree: <%s>@." (* file.Unit.path *) (Region.to_string r);
+        printf "Tree: %s:%s@." file.Unit.path (Region.to_string r);
+        printf "XTree: <%s:%s>@." file.Unit.path (Region.to_string r);
 
 	(* Find the innermost module *)
         let find_module_path treepath = List.concat_map (fun { Regioned.value = annots } ->
@@ -275,13 +278,14 @@ module Main = struct
 	    | Path.Papply _ -> assert false
 	  in
 	  let base = base_ident path in
-	  List.iter (fun { Regioned.region= region; value= annots } -> 
+	  List.iter (fun { FileRegioned.file_region= (rpath, region); value= annots } -> 
                 List.iter (function
                   | Annot.Use (k', path') when k = k' && base = base_ident path' ->
 	              begin match query_by_kind_path file k' path' with
 	              | Some found' when found = found' ->
-		          printf "<%s:%s>: %s@." 
+		          printf "<%s:%s:%s>: %s@." 
 		            file.Unit.path
+                            rpath
 		            (Region.to_string region)
 		            (Path.name path)
 	              | None | Some _ -> ()

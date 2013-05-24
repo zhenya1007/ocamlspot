@@ -126,20 +126,17 @@ end
 
 module Region : sig
 
-  type t = private { fname : (string * Fileident.t option) option; 
-                     start : Position.t; 
+  type t = private { start : Position.t; 
                      end_ : Position.t; }
   
   val compare : t -> t -> [> `Included | `Includes | `Left | `Overwrap | `Right | `Same ]
 
   val to_string : t -> string
-  val to_string_no_path : t -> string
-  val of_parsing : string -> Location.t -> t
+  val of_parsing : Location.t -> string * t
   val split : t -> by:t -> (t * t) option
-  val point_by_byte : string -> int -> t  
+  val point_by_byte : int -> t  
     (** works only if bytes are available *)
-  val point : string -> Position.t -> t
-  val change_positions : t -> Position.t -> Position.t -> t
+  val point : Position.t -> t
   val length_in_bytes : t -> int
   val is_complete : t -> bool
   val complete : string -> t -> t
@@ -155,11 +152,19 @@ module Regioned : sig
   val format : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
 end
 
+module FileRegioned : sig
+  type 'a t = { file_region : string * Region.t; value : 'a; }
+  val format :
+    (Format.formatter -> 'a -> unit) ->
+    Format.formatter -> 'a t -> unit
+end
+
 module Tree : sig
   type elem = Annot.t list Regioned.t
   type t
   val empty : t
   val is_empty : t -> bool
+(*
   val union : t -> t -> t
   val inter : t -> t -> t
   val diff : t -> t -> t
@@ -168,6 +173,9 @@ module Tree : sig
   val subset : t -> t -> bool
   val cardinal : t -> int
   val add : t -> elem -> t
+*)
+  val of_loc_annots : builddir: string -> path: string -> (Location.t, Annot.t list) Hashtbl.t -> t
+
   val find_path_contains : Region.t -> t -> (elem * t) list
 
   val iter : (parent:elem option -> elem -> unit) -> t -> unit
@@ -210,8 +218,8 @@ module Unit : sig
     (* the following fields are computed from the above, the fields from File.t *) 
 
     flat           : Abstraction.structure lazy_t;
-    id_def_regions : (Ident.t, Region.t) Hashtbl.t lazy_t;
-    rannots        : Annot.t list Regioned.t list lazy_t;
+    id_def_regions : (Ident.t, (string * Region.t)) Hashtbl.t lazy_t;
+    rannots        : Annot.t list FileRegioned.t list lazy_t;
     tree           : Tree.t lazy_t;
   }
   val dump : t -> unit (** just same as File.dump. Ignores the added fields *)

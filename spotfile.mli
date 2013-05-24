@@ -24,7 +24,7 @@ val load_directly_with_cache : string -> Unit.t
 val initial_env   : Unit.t -> Env.t
 val invalid_env : Unit.t -> Env.t
 
-type result = File_itself | Found_at of Region.t | Predefined
+type result = File_itself | Found_at of string * Region.t | Predefined
 
 val find_path_in_flat : Unit.t -> Kind.t * Path.t -> PIdent.t * result
 val str_of_global_ident : cwd:string -> load_paths:string list -> Ident.t -> string * Value.structure

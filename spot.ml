@@ -1214,7 +1214,8 @@ module Position = struct
   (* it drops one byte at the end, but who cares? *)
   let complete mlpath t = match t with
     | { line_column = Some _ } ->
-        t (* already complete *)
+        t (* already complete
+ *)
     (* Completing of the byte part from line-column is HARD,
        for the case of auto-generated source files.
        line_column : this is of the original file
@@ -1244,21 +1245,18 @@ end
 module Region : sig
 
   type t = private {
-    fname : (string * Fileident.t option) option;
     start : Position.t;
-    end_ : Position.t
+    end_  : Position.t
   }
 
   val compare : t -> t -> [> `Included | `Includes | `Left | `Overwrap | `Right | `Same ]
 
   val to_string : t -> string
-  val to_string_no_path : t -> string
-  val of_parsing : string -> Location.t -> t
+  val of_parsing : Location.t -> string * t
   val split : t -> by:t -> (t * t) option
-  val point_by_byte : string -> int -> t
+  val point_by_byte : int -> t
     (** works only if bytes are available *)
-  val point : string -> Position.t -> t
-  val change_positions : t -> Position.t -> Position.t -> t
+  val point : Position.t -> t
   val length_in_bytes : t -> int
   val is_complete : t -> bool
   val complete : string -> t -> t
@@ -1268,64 +1266,38 @@ end = struct
 
   (* CR jfuruse: I heard that inode is not a good idea; mingw has no inode *)
   type t = {
-    fname : (string * Fileident.t option) option;
     start : Position.t;
-    end_ : Position.t
+    end_  : Position.t
   }
 
-  let fname = function
-    | "_none_" -> None
-    | s ->
-        let module FP = Filepath in
-        let s = (* CR jfuruse: we must make it a function *)
-          if Filename.is_relative s then Unix.getcwd () ^/ s
-          else s
-        in
-        let fp = FP.of_string s in
-        let s = 
-          match FP.dirbase fp with
-          | _, None -> failwithf "Error: %s is not a normal file path" s
-          | dir, Some base -> 
-              FP.to_string (FP.(^/) (Compdir.src_dir dir) base)
-        in
-        Some (Fileident.get s)
-
   let to_string t =
-    Printf.sprintf "%s:%s:%s"
-      (match t.fname with Some fname -> fst fname | None -> "_none_")
-      (Position.to_string t.start)
-      (Position.to_string t.end_)
-
-  let to_string_no_path t =
     Printf.sprintf "%s:%s"
       (Position.to_string t.start)
       (Position.to_string t.end_)
 
-  let of_parsing builddir l =
+  let of_parsing l =
     let fname1 = l.Location.loc_start.Lexing.pos_fname in
     let fname2 = l.Location.loc_end.Lexing.pos_fname in
     if fname1 <> fname2 then
       Format.eprintf "Warning: A location contains strange file names %s and %s@." fname1 fname2;
-    let fname = fname (if fname1 = "_none_" then fname1 else builddir ^/ fname1) in
+    (* Flip locs if they are in opposite order. 
+       Actually this never helps. Such strange poses are created by
+       buggy P4. *)
     let start = Position.of_lexing_position l.Location.loc_start in
     let end_ = Position.of_lexing_position l.Location.loc_end in
     match Position.compare start end_ with
-    | -1 | 0 -> { fname; start = start; end_ = end_ }
-    | _ -> { fname; start = end_; end_ = start }
+    | -1 | 0 -> fname1, { start; end_ }
+    | _ -> fname1, { start = end_; end_ = start }
 
   let compare l1 l2 =
-    match compare l1.fname l2.fname with
-    | 1 -> `Left
-    | -1 -> `Right
-    | _ (* 0 *) ->
-        let starts = Position.compare l1.start l2.start in
-        let ends   = Position.compare l1.end_  l2.end_  in
-        if starts = 0 && ends = 0 then `Same
-        else if starts <= 0 && ends >= 0 then `Includes
-        else if starts >= 0 && ends <= 0 then `Included
-        else if Position.compare l1.end_ l2.start <= 0 then `Left
-        else if Position.compare l2.end_ l1.start <= 0 then `Right
-        else `Overwrap
+    let starts = Position.compare l1.start l2.start in
+    let ends   = Position.compare l1.end_  l2.end_  in
+    if starts = 0 && ends = 0 then `Same
+    else if starts <= 0 && ends >= 0 then `Includes
+    else if starts >= 0 && ends <= 0 then `Included
+    else if Position.compare l1.end_ l2.start <= 0 then `Left
+    else if Position.compare l2.end_ l1.start <= 0 then `Right
+    else `Overwrap
 
   let split l1 ~by:l2 =
     if compare l1 l2 = `Overwrap then
@@ -1340,19 +1312,14 @@ end = struct
 
   open Position
 
-  let point_by_byte fn pos =
-    let fname = fname fn in
-    { fname;
-      start = { line_column = None;
+  let point_by_byte pos =
+    { start = { line_column = None;
  		bytes = Some pos };
       end_ = { line_column = None;
                bytes = Some (pos + 1)} }
 
-  let point fn pos =
-    let fname = fname fn in
-    { fname; start = pos; end_ = Position.next pos }
-
-  let change_positions t p1 p2 = { t with start = p1; end_ = p2 }
+  let point pos =
+    { start = pos; end_ = Position.next pos }
 
   let length_in_bytes t =
     let bytes = function
@@ -1364,12 +1331,9 @@ end = struct
   let is_complete t =
     Position.is_complete t.start && Position.is_complete t.end_
 
-  (* CR jfuruse: fname is overwritten. Strange. *)
   let complete mlpath t =
-    let fname = fname mlpath in
-    { fname;
-      start = Position.complete mlpath t.start;
-      end_ = Position.complete mlpath t.end_ }
+    { start = Position.complete mlpath t.start;
+      end_ =  Position.complete mlpath t.end_ }
 
   let substring mlpath t =
     let t = complete mlpath t in
@@ -1400,21 +1364,74 @@ module Regioned = struct
       f v
 end
 
-(* annotation with region *)
-module RAnnot = struct
-  type t      = Annot.t list Regioned.t
-  let split   = Regioned.split
-  let compare = Regioned.compare
-  let format  = Regioned.format (Format.list ";@ " Annot.format)
+module FileRegioned = struct
+  type 'a t = { file_region: string * Region.t; value: 'a }
+
+  let format f ppf { file_region = (file,r); value = v } =
+    fprintf ppf "@[<2>%s:%s:@ @[%a@]@]"
+      file
+      (Region.to_string r)
+      f v
 end
 
-module Tree = struct
+module Tree : sig
+  type elem = Annot.t list Regioned.t
+  type t
+  val empty : t
+  val is_empty : t -> bool
+(*
+  val union : t -> t -> t
+  val inter : t -> t -> t
+  val diff : t -> t -> t
+  val compare : t -> t -> int
+  val equal : t -> t -> bool
+  val subset : t -> t -> bool
+  val cardinal : t -> int
+  val add : t -> elem -> t
+*)
+  val of_loc_annots : builddir: string -> path: string -> (Location.t, Annot.t list) Hashtbl.t -> t
+  val find_path_contains : Region.t -> t -> (elem * t) list
+
+  val iter : (parent:elem option -> elem -> unit) -> t -> unit
+    (** Region splitted Annot may be itered more than once. *)
+
+  val dump : t -> unit
+  val dump2 : t -> unit
+end = struct
+
+  (* Tree is for search by location, and it is only meaningful
+     for one source file. cmt may contain more than one file path,
+     but we stick to the main file path.
+
+     [of_loc_annots ~path loc_annots] does rather ragical simplifiction.
+     It throws away the loc_annots with file file basenames from [path]'s.
+  *)
+
+  (* annotation with region *)
+  module RAnnot = struct
+    type t      = Annot.t list Regioned.t
+    let split   = Regioned.split
+    let compare = Regioned.compare
+    let format  = Regioned.format (Format.list ";@ " Annot.format)
+  end
+
   include Treeset.Make(RAnnot)
 
   open Regioned
 
   (* If the region maybe splitted, the original region will be gone *)
   let add t rannot = add_elem rannot t
+
+  let of_loc_annots ~builddir ~path loc_annots =
+    Hashtbl.fold (fun loc annots st ->
+      let fname, region = Region.of_parsing loc in
+      if path = builddir ^/ fname then
+        add st { Regioned.region; value = annots } 
+      else begin
+        Format.eprintf "Call the Author: Guru meditation: path=%s fname=%s@." path fname;
+        add st { Regioned.region; value = annots } 
+      end)
+      loc_annots empty
 
   let iter = iter_elem
 
@@ -1567,6 +1584,14 @@ module File = struct
       let ext = if Cmt.is_opt cmt then ".cmx" else ".cmo" in
       Filename.chop_extension path ^ ext)
     in
+(*
+Format.eprintf "Spot.Tree.of_cmt path=%s digest=%s@." 
+  path
+  (match cmt.Cmt_format.cmt_source_digest with
+  | None -> "None"
+  | Some s -> Digest.to_hex s)
+    ;
+*)
     let top, loc_annots = abstraction cmt in
     { modname  = cmt.cmt_modname;
       builddir = cmt.cmt_builddir;
@@ -1593,8 +1618,8 @@ module Unit = struct
     loc_annots     : (Location.t, Annot.t list) Hashtbl.t;
 
     flat           : Abstraction.structure lazy_t;
-    id_def_regions : (Ident.t, Region.t) Hashtbl.t lazy_t;
-    rannots        : Annot.t list Regioned.t list lazy_t;
+    id_def_regions : (Ident.t, (string * Region.t)) Hashtbl.t lazy_t;
+    rannots        : Annot.t list FileRegioned.t list lazy_t;
     tree           : Tree.t lazy_t
   }
 
@@ -1618,25 +1643,27 @@ module Unit = struct
     }
 
   let of_file ({ F.loc_annots; } as f) =
-    let rannots = lazy (Hashtbl.fold (fun loc annots st ->
-      { Regioned.region = Region.of_parsing f.F.builddir loc;  value = annots } :: st)
-                          loc_annots [])
-    in
+    let rannots = lazy begin
+      Hashtbl.fold (fun loc annots st ->
+        { FileRegioned.file_region = Region.of_parsing loc;  
+          value = annots } :: st
+      ) loc_annots []
+    end in
     let id_def_regions = lazy (
       let tbl = Hashtbl.create 1023 in
       Hashtbl.iter (fun loc annots ->
         List.iter (function
           | Annot.Str_item sitem ->
               let _kind,id = Abstraction.ident_of_structure_item sitem in
-              Hashtbl.add tbl id (Region.of_parsing f.F.builddir loc)
+              Hashtbl.add tbl id (let (file, r) = Region.of_parsing loc in
+                                  f.F.builddir ^/ file,r)
           | _ -> ()) annots) loc_annots;
       tbl)
     in
     let tree = lazy begin
-      Hashtbl.fold (fun loc annots st ->
-        Tree.add st { Regioned.region = Region.of_parsing f.F.builddir loc; value = annots })
-        loc_annots Tree.empty
+      Tree.of_loc_annots ~builddir: f.F.builddir ~path:f.F.path loc_annots
     end in
+
     (* CR jfuruse: it is almost the same as id_def_regions_list *)
     let flat = lazy (Hashtbl.fold (fun _loc annots st ->
       List.filter_map (function
