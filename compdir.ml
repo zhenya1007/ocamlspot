@@ -48,6 +48,11 @@ let comp_dir fp0 =
   in
   Option.default (f [] fp0) (fun () -> fp0)
 
+let comp_dir x =
+  let y = comp_dir x in
+  Format.eprintf "comp_dir: %s => %s@." (FP.to_string x) (FP.to_string y);
+  y
+
 let comp_dir = Hashtbl.memoize (Hashtbl.create 107) comp_dir
 
 let src_dir fp0 =

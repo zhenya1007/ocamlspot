@@ -41,7 +41,7 @@ let of_path path =
       | body, ".mli" -> 
           [ FP.(^/) (Compdir.comp_dir dir ) (body ^ ".cmti");
             FP.(^/) dir (body ^ ".cmti"); ]
-      | body, _ (* .ml, mll, mly *) -> 
+      | body, _ (* .ml, mll, mly, or eliom *) -> 
           [ FP.(^/) (Compdir.comp_dir dir ) (body ^ ".cmt");
             FP.(^/) dir (body ^ ".cmt") ])
 
