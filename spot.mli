@@ -77,6 +77,7 @@ end
 module Annot : sig
   type t =
     | Use of Kind.t * Path.t
+    | UseConstruct of Kind.t * Path.t * string
     | Type of Types.type_expr * Env.t * [`Expr of Path.t option | `Pattern of Ident.t option ]
     | Mod_type of Types.module_type
     | Str_item of Abstraction.structure_item 
@@ -86,7 +87,7 @@ module Annot : sig
 
   module Record : sig
     class fold : (Location.t, t list) Hashtbl.t -> object 
-      inherit Ttfold.fold
+      inherit Ttfold.ovisit
       method table : (Location.t, t list) Hashtbl.t 
       method size : int
       method report : unit
