@@ -574,17 +574,18 @@ module Annot = struct
         record p.pat_loc (Type (p.pat_type, p.pat_env, `Pattern ident_opt));
         begin match p.pat_desc with
         | Tpat_construct (_, cdesc, _, _) ->
-            let kind = match cdesc.Types.cstr_tag with
-              | Types.Cstr_exception _ -> K.Exception
-              | _ -> K.Type
-            in
-            let path = 
-              let ty = cdesc.Types.cstr_res in
-              match (Ctype.repr ty).Types.desc with
-              | Tconstr (p, _, _) -> p
-              | _ -> assert false
-            in
-            record p.pat_loc (Use (kind, Path.Pdot(path, cdesc.Types.cstr_name, -1 (* dummy *))))
+            begin match cdesc.Types.cstr_tag with
+            | Types.Cstr_exception (path,_) -> 
+                record p.pat_loc (Use (Kind.Exception, path))
+            | _ -> 
+                let path = 
+                  let ty = cdesc.Types.cstr_res in
+                  match (Ctype.repr ty).Types.desc with
+                  | Tconstr (p, _, _) -> p
+                  | _ -> assert false
+                in
+                record p.pat_loc (Use (Kind.Type, Path.Pdot(path, cdesc.Types.cstr_name, -1 (* dummy *))))
+            end
         | Tpat_record _ -> record_record tbl p.pat_loc p.pat_type
         | _ -> ()
         end;
@@ -631,18 +632,19 @@ module Annot = struct
 
         begin match e.exp_desc with
         | Texp_construct (_, cdesc, _, _) ->
-            let kind = match cdesc.Types.cstr_tag with
-              | Types.Cstr_exception _ -> K.Exception
-              | _ -> K.Constructor
-            in
-            (* CR jfuruse: dupe at class fold *)
-            let path = 
-              let ty = cdesc.Types.cstr_res in
-              match (Ctype.repr ty).Types.desc with
-              | Tconstr (p, _, _) -> p
-              | _ -> assert false
-            in
-            record_use_construct e.exp_loc kind path cdesc.Types.cstr_name
+            begin match cdesc.Types.cstr_tag with
+              | Types.Cstr_exception (path, _) ->
+                  record e.exp_loc (Use (Kind.Exception, path))
+              | _ ->
+                  (* CR jfuruse: dupe at class fold *)
+                  let path = 
+                    let ty = cdesc.Types.cstr_res in
+                    match (Ctype.repr ty).Types.desc with
+                    | Tconstr (p, _, _) -> p
+                    | _ -> assert false
+                  in
+                  record_use_construct e.exp_loc Kind.Constructor path cdesc.Types.cstr_name
+            end
         | Texp_record _ -> record_record tbl e.exp_loc e.exp_type
         | _ -> ()
         end;
