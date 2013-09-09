@@ -23,6 +23,8 @@ functor_call.cmo \
 functor_expansion.cmo \
 functor_parameter.cmo \
 immediate_include.cmo \
+inc1.cmo \
+inc2.cmo \
 include.cmo \
 include_exception.cmo \
 include_functor_app.cmo \

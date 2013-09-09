@@ -219,6 +219,7 @@ module Abstraction = struct
     Structure_item.Table.clear cache_structure_item
 
   module T = struct
+(*
     let kident_of_sigitem = function
       | Sig_value (id, _)         -> Kind.Value       , id
       | Sig_exception (id, _)     -> Kind.Exception   , id
@@ -227,6 +228,7 @@ module Abstraction = struct
       | Sig_modtype (id, _)       -> Kind.Module_type , id
       | Sig_class (id, _, _)      -> Kind.Class       , id
       | Sig_class_type (id, _, _) -> Kind.Class_type  , id
+*)
 
     let rec signature sg = AMod_structure (List.flatten (List.map signature_item sg))
 
@@ -258,57 +260,18 @@ module Abstraction = struct
       | Modtype_manifest mty -> module_type mty
   end
 
-  let aliases_of_include' no_value_is_not_in_ids sg ids =
+  let aliases_of_include' sg (* <= includee *) sg' (* <= includer *) =
     let sgstr = List.flatten (List.map T.signature_item sg) in
     let sgkidents = List.map ident_of_structure_item sgstr in
-    (* We cannot use kind directly since it does not distinguish normal values and primitives *)
-    Debug.format "@[<2>DEBUG alias_of_include': ids=[ @[%a@] ]@ + sg=[ @[%a@] ]@]@."
-      (Format.list ";@ " Ident.format) ids
-      (Format.list ";@ " (fun ppf (k, id) -> Format.fprintf ppf "%s:%a" (Kind.name k) Ident.format id)) sgkidents;
-    (* Here, we are going to make a map of [(Ident.t * (Kind.t Ident.t)) list],
-       from sgkidents, but it is not very easy. If [no_value_is_not_in_ids = false],
-       the main ident of [Sig_*(<main_id>, ...)] must be listed in [ids] of the function
-       argument, which is the list of included.  The other, non-main idents are from
-       variant names and record fields. They are also kept in the final result.
+    let sg'str = List.flatten (List.map T.signature_item sg') in
+    let sg'kidents = List.map ident_of_structure_item sg'str in
 
-       CR jfuruse: we need a big rewrite here. So strange.
-    *)
-    let must_be_empty, res = List.fold_left (fun (ids, res) sitem ->
-      let addition sitem =
-        List.map (fun (k,id) ->
-          Ident.create_with_stamp (Ident0.name id) (-1), (k,id))
-          (List.map ident_of_structure_item (T.signature_item sitem))
-      in
-      match sitem with
-      | Sig_value (_id, { Types.val_kind = Types.Val_prim _ })
-      | Sig_type (_id, _, _)
-      | Sig_modtype (_id, _)
-      | Sig_class_type (_id, _, _) when no_value_is_not_in_ids ->
-          (* They have no value, so id is not listed in [ids] *)
-          (ids, addition sitem @ res)
-      | Sig_value (id, _)
-      | Sig_exception (id, _)
-      | Sig_module (id, _, _)
-      | Sig_class (id, _, _)
-      | Sig_type (id, _, _)
-      | Sig_modtype (id, _)
-      | Sig_class_type (id, _, _) ->
-          (* They have a value, so id must be listed in [ids] *)
-          begin match ids with
-          | [] -> assert false
-          | id'::ids ->
-              assert (Ident0.name id = Ident0.name id');
-              (ids,
-               List.map (fun (id0, (k,id_extracted)) ->
-                 if id = id_extracted then id', (k, id_extracted)
-                 else id0, (k, id_extracted)) (addition sitem) @ res)
-          end)
-      (ids, []) sg
-    in
-    assert (must_be_empty = []);
-    res
+    List.map2 (fun (k,id) (k',id') ->
+      assert (k=k');
+      id', k, id (* id' is an alias of id of kind k *)
+      ) sgkidents sg'kidents
 
-  let aliases_of_include mexp ids =
+  let aliases_of_include mexp includer_sg =
     let env' = try Cmt.recover_env mexp.mod_env with e -> 
       Format.eprintf "recover_env: %s@." (Printexc.to_string e);
       assert false 
@@ -318,7 +281,7 @@ module Abstraction = struct
       | _ -> prerr_endline "strange!";assert false 
       with _ -> assert false 
     in
-    aliases_of_include' true sg ids
+    aliases_of_include' sg includer_sg
 
   let rec module_expr mexp =
     try
@@ -389,16 +352,11 @@ module Abstraction = struct
 	List.map (fun (cls, _names, _) -> AStr_class cls.ci_id_class) classdescs
     | Tstr_class_type iddecls ->
 	List.map (fun (id, _, _) -> AStr_class_type id) iddecls
-(*
-    | Tstr_include (mexp, idents) ->
-*)
     | Tstr_include (mexp, sg) ->
-        (* CR jfuruse: 4.01.0 now returns sig instead of just idents! *)
-        let idents = List.map snd (List.map T.kident_of_sigitem sg) in
-        let id_kid_list = try aliases_of_include mexp idents with e -> prerr_endline "structure_item include failed!!!"; raise e in
+        let idmap = try aliases_of_include mexp sg with e -> prerr_endline "structure_item include failed!!!"; raise e in
         let m = module_expr mexp in
-        List.map (fun (id, (k, id')) -> AStr_included (id, m, k, id')) id_kid_list
-
+        List.map (fun (id_includer, k, id_included) -> 
+          AStr_included (id_includer, m, k, id_included)) idmap
 
   (* CR jfuruse: TODO: caching like module_expr_sub *)
   and module_type mty = module_type_desc mty.mty_desc
@@ -441,9 +399,8 @@ module Abstraction = struct
     | Tsig_include (mty, sg) ->
         let m = module_type mty in
         let sg0 = try match Mtype.scrape (Cmt.recover_env mty.mty_env) mty.mty_type with Mty_signature sg -> sg | _ -> assert false with _ -> assert false in
-        let ids = List.map (fun si -> snd (T.kident_of_sigitem si)) sg in
-        let aliases = try aliases_of_include' false sg0 ids with _ -> assert false in
-        List.map (fun (id, (k, id')) -> AStr_included (id, m, k, id')) aliases
+        let idmap = try aliases_of_include' sg0 sg with _ -> assert false in
+        List.map (fun (id, k, id') -> AStr_included (id, m, k, id')) idmap
 
   and modtype_declaration = function
     | Tmodtype_abstract -> AMod_abstract
@@ -812,13 +769,11 @@ and structure = {
       method! structure_item sitem =
         begin match sitem.str_desc with (* CR jfuruse; todo add env *)
         | Tstr_include (mexp, sg) ->
-            (* CR jfuruse: 4.01.0 now returns sig instead of just idents! *)
-            let idents = List.map snd (List.map T.kident_of_sigitem sg) in
             let loc = sitem.str_loc in
-            let id_kid_list = try aliases_of_include mexp idents with e -> prerr_endline "structure_item include failed!!!"; raise e in
+            let idmap = try aliases_of_include mexp sg with e -> prerr_endline "structure_item include failed!!!"; raise e in
             let m = module_expr mexp in
-            List.iter (fun (id, (k, id')) ->
-              record_def loc (AStr_included (id, m, k, id'))) id_kid_list
+            List.iter (fun (id, k, id') ->
+              record_def loc (AStr_included (id, m, k, id'))) idmap
         | _ -> ()
         end;
         super#structure_item sitem
@@ -924,10 +879,9 @@ and signature = {
                   (* Strange... failed to scrape? *)
                   assert false
             in
-            let ids = List.map (fun si -> snd (T.kident_of_sigitem si)) sg in
-            let aliases = try aliases_of_include' false sg0 ids with _ -> assert false in
-            List.iter (fun (id, (k, id')) ->
-              record_def loc (AStr_included (id, m, k, id'))) aliases
+            let idmap = try aliases_of_include' sg0 sg with _ -> assert false in
+            List.iter (fun (id, k, id') ->
+              record_def loc (AStr_included (id, m, k, id'))) idmap
         | _ -> ()
         end;
         super#signature_item si
