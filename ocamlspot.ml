@@ -280,18 +280,18 @@ module Main = struct
 	  in
 	  let base = base_ident path in
 	  List.iter (fun { FileRegioned.file_region= (rpath, region); value= annots } -> 
-                List.iter (function
-                  | Annot.Use (k', path') when k = k' && base = base_ident path' ->
-	              begin match query_by_kind_path file k' path' with
-	              | Some found' when found = found' ->
-		          printf "<%s:%s:%s>: %s@." 
-		            file.Unit.path
-                            rpath
-		            (Region.to_string region)
-		            (Path.name path)
-	              | None | Some _ -> ()
-	              end
-                  | _ -> ()) annots) !!(file.Unit.rannots)
+            List.iter (function
+              | Annot.Use (k', path') when k = k' && base = base_ident path' ->
+	          begin match query_by_kind_path file k' path' with
+	          | Some found' when found = found' ->
+		      printf "<%s:%s:%s>: %s@." 
+		        file.Unit.path
+                        rpath
+		        (Region.to_string region)
+		        (Path.name path)
+	          | None | Some _ -> ()
+	          end
+              | _ -> ()) annots) !!(file.Unit.rannots)
 	| _ -> ());
     in
 

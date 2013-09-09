@@ -27,6 +27,7 @@ module Kind : sig
     | Value | Type | Exception 
     | Module | Module_type 
     | Class | Class_type
+    | Constructor | Field
 
   val to_string : t -> string
   val from_string : string -> t
@@ -53,13 +54,15 @@ module Abstraction : sig
 
   and structure_item = 
     | AStr_value      of Ident.t
-    | AStr_type       of Ident.t
+    | AStr_type       of Ident.t * structure
     | AStr_exception  of Ident.t
     | AStr_module     of Ident.t * module_expr
     | AStr_modtype    of Ident.t * module_expr
     | AStr_class      of Ident.t
     | AStr_class_type of Ident.t
     | AStr_included   of Ident.t * module_expr * Kind.t * Ident.t
+    | AStr_constructor of Ident.t
+    | AStr_field       of Ident.t
 
   val ident_of_structure_item : structure_item -> (Kind.t * Ident.t)
 
@@ -77,7 +80,6 @@ end
 module Annot : sig
   type t =
     | Use of Kind.t * Path.t
-    | UseConstruct of Kind.t * Path.t * string
     | Type of Types.type_expr * Env.t * [`Expr of Path.t option | `Pattern of Ident.t option ]
     | Mod_type of Types.module_type
     | Str_item of Abstraction.structure_item 

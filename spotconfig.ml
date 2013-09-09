@@ -142,11 +142,13 @@ module SearchSpec = struct
       try
         let at2 = String.rindex_from s (at - 1) ':' in
         String.sub s 0 at2,
-        Kind 
-          (Kind.from_string (String.sub s (at2+1) (at-at2-1)),
-           let s = String.sub s (at+1) (String.length s - at - 1) in 
-           try Path.parse s with
-           | _ -> failwithf "illegal path in <file>:<kind>:<path> : %s" s)
+        let kind = Kind.from_string (String.sub s (at2+1) (at-at2-1)) in
+        let path_string = String.sub s (at+1) (String.length s - at - 1) in
+        let path = 
+          try Path.parse s with
+          | _ -> failwithf "illegal path in <file>:<kind>:<path> : %s" path_string
+        in 
+        Kind (kind, path)
       with
       | Invalid_argument _ | Not_found -> 
           String.sub s 0 at,

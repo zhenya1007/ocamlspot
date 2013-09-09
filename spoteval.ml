@@ -262,12 +262,12 @@ module Eval = struct
   let packed = ref (fun _ _ -> assert false : Env.t -> string -> Value.t)
 
   let rec find_path env (kind, p) : Value.z = 
-    match p with
-    | Path.Papply (p1, p2) -> 
-	let v1 = find_path env (kind, p1) in (* CR jfuruse: Kind.Module ? *)
-	let v2 = find_path env (kind, p2) in
+    match kind, p with
+    | _, Path.Papply (p1, p2) ->
+	let v1 = find_path env (Kind.Module, p1) in
+	let v2 = find_path env (Kind.Module, p2) in
 	apply v1 v2
-    | Path.Pident id -> 
+    | _, Path.Pident id ->
         (* predef check first (testing) *)
         begin match Env.find Env.predef id with
         | Some (_, v) -> v
@@ -320,7 +320,21 @@ module Eval = struct
               end
             end
             end
-    | Path.Pdot (p, name, pos) ->
+    | (Kind.Constructor | Field), Path.Pdot (p, name, pos) ->
+        assert (pos = -1);
+        lazy begin
+          match !!(find_path env (Kind.Type, p)) with
+          | Structure (pid, str, _ (* CR jfuruse *)) -> 
+              begin Debug.format "Type %s found (%a)@." (Path.name p) PIdent.format pid;
+              try
+                !!(find_name str (kind, name))
+              with
+              | Not_found -> Error (Failure (Printf.sprintf "Not_found %s:any" name))
+              end
+          | _ -> assert false
+        end
+
+    | _, Path.Pdot (p, name, pos) ->
         lazy begin
           match !!(find_path env (Kind.Module, p)) with
           | Ident _ -> (try assert false with e -> Error e)
@@ -346,6 +360,7 @@ module Eval = struct
 *)
       k = kind && Ident0.name id = name in
     (* CR jfuruse: double check by pos! *)
+    (* CR jfuruse: yes it can cause a bug if two x with the same kind exist in a stucture *)
     lazy begin
       try
         !!(snd (snd (List.find (fun id_value ->
@@ -357,6 +372,22 @@ module Eval = struct
             name
             Value.Format.structure str;
           Error (Failure (Printf.sprintf "Not found: %s__%d" name pos))
+    end
+
+  (* Used for finding constructor/field *)      
+  and find_name (str : Value.structure) (kind, name) : Value.z =
+    let name_filter = fun (id, (k,_)) -> k = kind && Ident0.name id = name in
+    lazy begin
+      try
+        !!(snd (snd (List.find (fun id_value ->
+          (* pos_filter id_value && *) name_filter id_value) str)))
+      with
+      | Not_found ->
+          Debug.format "Error: Not found %s %s in { @[%a@] }@."
+            (String.capitalize (Kind.to_string kind))
+            name
+            Value.Format.structure str;
+          Error (Failure (Printf.sprintf "Not found: %s__any" name))
     end
 
   and module_expr env idopt : module_expr -> Value.z = function
@@ -408,18 +439,21 @@ module Eval = struct
 
     List.fold_left (fun str sitem ->
       match sitem with
-      | AStr_value     id 
-      | AStr_type      id
-      | AStr_exception id
-      | AStr_class     id
-      | AStr_class_type    id ->
+      | AStr_value       id 
+      | AStr_constructor id 
+      | AStr_field       id 
+      | AStr_exception   id
+      | AStr_class       id
+      | AStr_class_type  id ->
           (* CR jfuruse: not sure *)
           let pident = { PIdent.path = env0.Env.path; ident = Some id } in
           let v = Ident pident in
           (* CR jfuruse: use ident_of_structure_item *)
           let kind = match sitem with
             | AStr_value      _ -> Kind.Value
-            | AStr_type       _ -> Kind.Type
+            | AStr_type       _ -> assert false
+            | AStr_constructor _ -> Kind.Constructor
+            | AStr_field      _ -> Kind.Field
             | AStr_exception  _ -> Kind.Exception
             | AStr_modtype    _ -> Kind.Module_type
             | AStr_class      _ -> Kind.Class
@@ -448,6 +482,17 @@ module Eval = struct
           end
           in
           (id, (Kind.Module, v)) :: str
+
+      | AStr_type (id, td) ->
+          let v = lazy begin
+            let pident = { PIdent.path = env0.Env.path; ident = Some id } in
+            try
+              Structure (pident, structure env0 td, None)
+            with
+            | exn -> Error exn
+          end
+          in
+          (id, (Kind.Type, v)) :: str
 
       | AStr_modtype (id, mexp) ->
           (* CR jfuruse: dup code *)
