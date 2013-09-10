@@ -446,7 +446,6 @@ module Annot = struct
   module Record = struct
     open Typedtree
     open Abstraction
-    module K = Kind
 
     open Location
 
@@ -502,14 +501,31 @@ module Annot = struct
       let open Types in
       let open Ctype in
       match (repr typ).desc with
-      | Tconstr (path, _, _) -> record tbl loc (Use (K.Field, path))
-      | _ -> (* strange.. *) ()
+      | Tconstr (path, _, _) -> record tbl loc (Use (Kind.Type, path))
+      | _ -> (* strange.. *) assert false
+
+    let record_construct tbl loc cdesc =
+      let open Types in
+      match cdesc.cstr_tag with
+      | Cstr_exception (path,_) -> record tbl loc (Use (Kind.Exception, path))
+      | _ -> 
+          let path = 
+            let ty = cdesc.cstr_res in
+            match (Ctype.repr ty).desc with
+            | Tconstr (p, _, _) -> p
+            | _ -> assert false
+          in
+          record tbl loc (Use (Kind.Type, path))
 
     class fold tbl =
       let record = record tbl in
       let record_def loc sitem = record loc (Str_item sitem)
       and record_use loc kind path = record loc (Use (kind, path))
-      and record_use_construct loc kind path name = record loc (Use (kind, Path.Pdot (path, name, -1 (* dummy *)))) in
+      and record_use_construct loc kind path name = 
+        (* Note, this is different from record_record and record_construct *)
+        assert (match kind with Kind.Constructor | Field -> true | _ -> false);
+        record loc (Use (kind, Path.Pdot (path, name, -1 (* dummy *)))) 
+      in
     object
       inherit Ttfold.ovisit as super
 
@@ -531,19 +547,9 @@ module Annot = struct
         record p.pat_loc (Type (p.pat_type, p.pat_env, `Pattern ident_opt));
         begin match p.pat_desc with
         | Tpat_construct (_, cdesc, _, _) ->
-            begin match cdesc.Types.cstr_tag with
-            | Types.Cstr_exception (path,_) -> 
-                record p.pat_loc (Use (Kind.Exception, path))
-            | _ -> 
-                let path = 
-                  let ty = cdesc.Types.cstr_res in
-                  match (Ctype.repr ty).Types.desc with
-                  | Tconstr (p, _, _) -> p
-                  | _ -> assert false
-                in
-                record p.pat_loc (Use (Kind.Type, Path.Pdot(path, cdesc.Types.cstr_name, -1 (* dummy *))))
-            end
-        | Tpat_record _ -> record_record tbl p.pat_loc p.pat_type
+            record_construct tbl p.pat_loc cdesc
+        | Tpat_record _ -> 
+            record_record tbl p.pat_loc p.pat_type
         | _ -> ()
         end;
         super#pattern p
@@ -554,16 +560,29 @@ module Annot = struct
         begin match pd with 
         | Tpat_var (id, {loc})
         | Tpat_alias (_, id, {loc}) -> record_def loc (AStr_value id)
-        | Tpat_construct _ -> () (* done in #pattern *)
+        | Tpat_construct ({loc}, cdesc, _, _) ->
+            begin match cdesc.Types.cstr_tag with
+            | Types.Cstr_exception (_path,_) -> 
+                (* We have done it already for E e part. *)
+                (* record loc (Use (Kind.Exception, path)) *)
+                ()
+            | _ -> 
+                let path = 
+                  let ty = cdesc.Types.cstr_res in
+                  match (Ctype.repr ty).Types.desc with
+                  | Tconstr (p, _, _) -> p
+                  | _ -> assert false
+                in
+                record_use_construct loc Kind.Constructor path cdesc.Types.cstr_name
+            end
+
         | Tpat_record (lst , _) ->
-            (* CR jfuruse: we can extract the real Ident.t of the field
-               but it requires rebuilding environment. Is it worth? *)
             List.iter (fun ({loc}, ldesc, _) ->
               let path = match (Ctype.repr ldesc.Types.lbl_res).desc with
                 | Tconstr (p, _, _) -> p
                 | _ -> assert false
               in
-              record_use_construct loc K.Type path ldesc.lbl_name) lst
+              record_use_construct loc Kind.Field path ldesc.lbl_name) lst
         | Tpat_any | Tpat_constant _ | Tpat_tuple _
         | Tpat_variant _ | Tpat_array _ | Tpat_or _ | Tpat_lazy _ -> ()
         end;
@@ -583,7 +602,7 @@ module Annot = struct
         (* Workaround of strange ident position by Camlp4 *)
         begin match e.exp_desc with
         | Texp_ident (path, {loc=_i_am_strange}, _) -> 
-            record_use e.exp_loc K.Value path 
+            record_use e.exp_loc Kind.Value path 
         | _ -> ()
         end;
 
@@ -610,7 +629,7 @@ module Annot = struct
       method! exp_extra ee =
         begin match ee with
         | Texp_constraint _ -> ()
-        | Texp_open (_, path, {loc}, _) -> record_use loc K.Module path
+        | Texp_open (_, path, {loc}, _) -> record_use loc Kind.Module path
         | Texp_poly _ -> ()
         | Texp_newtype _ -> ()
         end;
@@ -623,7 +642,7 @@ module Annot = struct
                We do not record the use of path here, but in [expression],
                with e.exp_loc.
             *)
-            (* record_use loc K.Value path *)
+            (* record_use loc Kind.Value path *)
             ()
         | Texp_construct _ -> () (* done in #expression *)
         | Texp_record (lst, _) ->
@@ -634,7 +653,7 @@ module Annot = struct
                 | Tconstr (p, _, _) -> p
                 | _ -> assert false
               in
-              record_use_construct loc K.Type path ldesc.lbl_name) lst
+              record_use_construct loc Kind.Field path ldesc.lbl_name) lst
         | Texp_field (_, {loc}, ldesc)
         | Texp_setfield (_, {loc}, ldesc, _) ->
             (* CR jfuruse: duped *)
@@ -642,18 +661,18 @@ module Annot = struct
               | Tconstr (p, _, _) -> p
               | _ -> assert false
             in
-            record_use_construct loc K.Type path ldesc.lbl_name
+            record_use_construct loc Kind.Field path ldesc.lbl_name
         | Texp_for (id, {loc}, _, _, _, _) ->
             (* CR jfuruse: add type int to id *)
             record_def loc (AStr_value id)
         | Texp_new (path, {loc}, _) ->
-            record_use loc K.Class path
+            record_use loc Kind.Class path
         | Texp_instvar (_path, path, {loc}) (* CR jfuruse: not sure! *)
         | Texp_setinstvar (_path, path, {loc}, _) ->
-            record_use loc K.Value path
+            record_use loc Kind.Value path
         | Texp_override (_path, lst) ->  (* CR jfuruse: what todo with _path? *)
             List.iter (fun (path, {loc}, _) ->
-              record_use loc K.Type path) lst
+              record_use loc Kind.Type path) lst
         | Texp_letmodule (id, {loc}, mexp, _) ->
             record_def loc (AStr_module (id, module_expr mexp))
         | Texp_constant _ | Texp_let _ | Texp_function _
@@ -678,7 +697,7 @@ and meth =
 
       method! class_expr_desc ced =
         begin match ced with
-        | Tcl_ident (path, {loc}, _) -> record_use loc K.Class path
+        | Tcl_ident (path, {loc}, _) -> record_use loc Kind.Class path
         | Tcl_structure _ -> ()
         | Tcl_fun (_, _, lst , _, _)
         | Tcl_let (_, _, lst, _) ->
@@ -746,7 +765,7 @@ and module_type_constraint =
       method! module_expr_desc med =
         begin match med with
         | Tmod_ident (path, {loc}) ->
-            record_use loc K.Module path
+            record_use loc Kind.Module path
         | Tmod_functor (id, {loc}, _, _) ->
             (* CR jfuruse: must rethink *)
             record_def loc (AStr_module (id, AMod_functor_parameter));
@@ -800,7 +819,7 @@ and structure = {
             record_def loc (AStr_exception id)
         | Tstr_exn_rebind (id, {loc}, path, {loc=loc'}) ->
             record_def loc (AStr_exception id);
-            record_use loc' K.Exception path
+            record_use loc' Kind.Exception path
         | Tstr_module (id, {loc}, mexp) ->
             record loc (Mod_type mexp.mod_type);
             record_def loc (AStr_module (id, module_expr mexp))
@@ -811,7 +830,7 @@ and structure = {
         | Tstr_modtype (id, {loc}, mty) ->
             record_def loc (AStr_modtype (id, module_type mty))
         | Tstr_open (_, path, {loc}) ->
-            record_use loc K.Module path
+            record_use loc Kind.Module path
         | Tstr_class_type lst ->
             List.iter (fun (id, {loc}, _) ->
               record_def loc (AStr_class_type id)) lst
@@ -842,16 +861,16 @@ and module_type =
       method! module_type_desc mtd =
         begin match mtd with
         | Tmty_ident (path, {loc}) ->
-            record_use loc K.Module_type path
+            record_use loc Kind.Module_type path
         | Tmty_functor (id, {loc}, mty, _mty) ->
             record_def loc (AStr_module (id, module_type mty))
         | Tmty_with (_mty, lst) ->
             List.iter (fun (path, {loc}, with_constraint) ->
               record loc (Use ( (match with_constraint with
-                                 | Twith_type _      -> K.Type
-                                 | Twith_module _    -> K.Module
-                                 | Twith_typesubst _ -> K.Type
-                                 | Twith_modsubst _  -> K.Module),
+                                 | Twith_type _      -> Kind.Type
+                                 | Twith_module _    -> Kind.Module
+                                 | Twith_typesubst _ -> Kind.Type
+                                 | Twith_modsubst _  -> Kind.Module),
                                 path))) lst
         | Tmty_typeof _
         | Tmty_signature _ -> ()
@@ -911,7 +930,7 @@ and signature_item =
               record_def loc (AStr_module (id, module_type mty))) lst
         | Tsig_modtype (id, {loc}, mtd) ->
             record_def loc (AStr_modtype (id, modtype_declaration mtd))
-        | Tsig_open (_, path, {loc}) -> record_use loc K.Module path
+        | Tsig_open (_, path, {loc}) -> record_use loc Kind.Module path
         | Tsig_include _ -> () (* done in #signature_item *)
         | Tsig_class _ -> ()
         | Tsig_class_type _ -> ()
@@ -921,8 +940,8 @@ and signature_item =
 
       method! with_constraint wc =
         begin match wc with
-        | Twith_module (path, {loc}) -> record_use loc K.Module path
-        | Twith_modsubst (path, {loc}) -> record_use loc K.Module path  (*?*)
+        | Twith_module (path, {loc}) -> record_use loc Kind.Module path
+        | Twith_modsubst (path, {loc}) -> record_use loc Kind.Module path  (*?*)
         | Twith_type _ -> ()
         | Twith_typesubst _ -> ()
         end;
@@ -940,8 +959,8 @@ and core_type =
       method! core_type_desc ctd =
         begin match ctd with
         | Ttyp_var _var -> () (* CR jfuruse: todo *)
-        | Ttyp_constr (path, {loc}, _) -> record_use loc K.Type path
-        | Ttyp_class (path, {loc}, _, _) -> record_use loc K.Class path
+        | Ttyp_constr (path, {loc}, _) -> record_use loc Kind.Type path
+        | Ttyp_class (path, {loc}, _, _) -> record_use loc Kind.Class path
             (* CR jfuruse: or class type? *)
         | Ttyp_alias (_core_type, _var) -> () (* CR jfuruse: todo *)
         | Ttyp_poly (_vars, _core_type) -> () (* CR jfuruse; todo *)
@@ -956,7 +975,7 @@ and core_type =
         super#core_type_desc ctd
 
       method! package_type pt =
-        record_use pt.pack_txt.loc K.Module_type pt.pack_name;
+        record_use pt.pack_txt.loc Kind.Module_type pt.pack_name;
         super#package_type pt
 (*
 and package_type = {
@@ -1026,7 +1045,7 @@ and class_type =
 
       method! class_type_desc ctd =
         begin match ctd with
-        | Tcty_constr (path, {loc}, _) -> record_use loc K.Class_type path
+        | Tcty_constr (path, {loc}, _) -> record_use loc Kind.Class_type path
         | Tcty_signature _
         | Tcty_fun _ -> ()
         end;
