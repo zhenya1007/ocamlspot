@@ -682,9 +682,13 @@ module EXTRACT = struct
   and type_declaration id td = match td.typ_kind with
     | Ttype_abstract -> AStr_type (id, [])
     | Ttype_variant lst -> 
-        AStr_type (id, List.map (fun (id, {loc=_loc}, _, _) -> AStr_constructor id) lst)
+        AStr_type (id, List.map (fun (id, {loc}, ctys, _loc) ->
+          List.iter core_type ctys;
+          with_record_def loc & AStr_constructor id) lst)
     | Ttype_record lst -> 
-        AStr_type (id, List.map (fun (id, {loc=_loc}, _, _, _) -> AStr_field id) lst)
+        AStr_type (id, List.map (fun (id, {loc}, _mutable_flag, cty, _loc) -> 
+          core_type cty;
+          with_record_def loc & AStr_field id) lst)
 
   and pat_expr_list xs = xs |> List.iter (fun (pat, expr) -> 
     ignore & pattern pat;
