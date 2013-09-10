@@ -284,106 +284,6 @@ module Annot = struct
   let dummy = Use (Kind.Value, Path.Pident (Ident.create_persistent "dummy"))
 end
 
-  module Record = struct
-    open Typedtree
-    open Abstraction
-    open Location
-    open Annot
-
-    (* CR jfuruse: A Location.t contains a filename, though it is always
-       unique. Waste of 4xn bytes. *)
-    (*
-    let recorded = (Hashtbl.create 1023 : (Location.t, (int * t list)) Hashtbl.t)
-    let clear () = Hashtbl.clear recorded
-    *)
-
-    type location_property = Wellformed | Flipped | Over_files | Illformed
-
-    let check_location loc =
-      if loc.loc_start == Lexing.dummy_pos || loc.loc_end == Lexing.dummy_pos then Illformed
-      else if loc.loc_start = Lexing.dummy_pos || loc.loc_end = Lexing.dummy_pos then Illformed
-      else
-        (* If the file name is different between the start and the end, we cannot tell the wellformedness. *)
-        if loc.loc_start.Lexing.pos_fname <> loc.loc_end.Lexing.pos_fname then Over_files
-        else
-          (* P4 creates some flipped locations where loc_start > loc_end *)
-          match compare loc.loc_start.Lexing.pos_cnum loc.loc_end.Lexing.pos_cnum
-          with
-          | -1 | 0 -> Wellformed
-          | _ -> Flipped
-
-    let record tbl loc t =
-      let really_record () =
-        let records = try Hashtbl.find tbl loc with Not_found -> [] in
-(*
-        (* CR jfuruse: I am not really sure the below is correct now,
-           but I remember the huge compilation slow down... *)
-        (* This caching works horribly when too many things are defined
-           at the same location. For example, a type definition of more than
-           3000 variants, with sexp camlp4 extension, the compile time explodes
-           from 10secs to 4mins! Therefore this works
-           only if [num_records <= 10]
-        *)
-        if num_records <= 10 && List.exists (equal t) records then ()
-        else Hashtbl.replace tbl loc (num_records + 1, t :: records)
-*)
-        Hashtbl.replace tbl loc (t :: records)
-      in
-      match check_location loc with
-      | Wellformed -> really_record ()
-      | Flipped | Illformed ->
-          if not loc.loc_ghost then Format.eprintf "%aWarning: Ill-formed location.@." Location.print loc
-      | Over_files -> ()
-
-    let record_record tbl loc typ =
-      let open Types in
-      let open Ctype in
-      match (repr typ).desc with
-      | Tconstr (path, _, _) -> record tbl loc (Use (Kind.Type, path))
-      | _ -> (* strange.. *) assert false
-
-    let record_construct tbl loc cdesc =
-      let open Types in
-      match cdesc.cstr_tag with
-      | Cstr_exception (path,_) -> record tbl loc (Use (Kind.Exception, path))
-      | _ -> 
-          let path = 
-            let ty = cdesc.cstr_res in
-            match (Ctype.repr ty).desc with
-            | Tconstr (p, _, _) -> p
-            | _ -> assert false
-          in
-          record tbl loc (Use (Kind.Type, path))
-
-
-  let structure o str =
-    ignore (o#structure str);
-    o#report
-
-  let signature o sg =
-    ignore (o#signature sg);
-    o#report
-
-(*
-  let record_structure str =
-    protect' "Spot.Annot.record_structure" (fun () ->
-      let tbl = Hashtbl.create 1023 in
-      let o = new Record.fold tbl in
-      structure o str;
-      o#table)
-      ()
-
-  let record_signature sg =
-    protect' "Spot.Annot.record_signature" (fun () ->
-      let tbl = Hashtbl.create 1023 in
-      let o = new Record.fold tbl in
-      signature o sg;
-      o#table)
-      ()
-*)
-
- end
-
 module EXTRACT = struct
   open Types
   open! Typedtree
@@ -506,7 +406,7 @@ module EXTRACT = struct
     aliases_of_include' sg includer_sg
 
   let class_infos f { ci_virt=_;
-                      ci_params; (* string loc list * Location.t; *)
+                      ci_params=_ (* CR jfuruse: ? *); (* string loc list * Location.t; *)
                       ci_id_name = {loc}; (* : string loc; *)
                       ci_id_class; (* : Ident.t; *)
                       ci_id_class_type; (*  : Ident.t; *)
@@ -586,7 +486,7 @@ module EXTRACT = struct
         ignore & expression e; 
         []
     | Tstr_value (_flag, pat_exps) ->
-	List.map (fun (pat, exp) ->
+	List.concat_map (fun (pat, exp) ->
           expression exp;
           pattern pat) pat_exps
     | Tstr_primitive (id, {loc}, vdesc) ->
@@ -616,9 +516,9 @@ module EXTRACT = struct
 	List.concat_map (fun (clsdecl, _names, _) -> 
           class_declaration clsdecl) classdescs
     | Tstr_class_type iddecls ->
-	List.map (fun (id, {loc}, clstydecl) -> 
-          class_type_declaration clstydecl; (* no tree but we must go deep *)
-          with_record_def clstydecl.ci_expr.cltyp_loc & AStr_class_type id) iddecls
+	List.concat_map (fun (id, {loc}, clstydecl) -> 
+          with_record_def loc (AStr_class_type id)
+          :: class_type_declaration clstydecl) iddecls
     | Tstr_include (mexp, sg) ->
         let idmap = try aliases_of_include mexp sg with e -> prerr_endline "structure_item include failed!!!"; raise e in
         let m = module_expr mexp in
@@ -759,7 +659,7 @@ module EXTRACT = struct
   and class_field 
       { cf_desc; (*  : class_field_desc; *)
         cf_loc=_ } = match cf_desc with
-      | Tcf_inher (_override_flag, clexpr, _nameopt (* ? *), _fields1 (* ? *), fields2 (* ? *)) -> 
+      | Tcf_inher (_override_flag, clexpr, _nameopt (* ? *), _fields1 (* ? *), _fields2 (* ? *)) -> 
           class_expr clexpr
       | Tcf_val (_name (* ? *), {loc}, _mutable_flag, id, clfieldk, _bool) -> 
           record_def loc & AStr_value id;
@@ -796,11 +696,11 @@ module EXTRACT = struct
   and expression 
       { exp_desc; (* : expression_desc; *)
         exp_loc=loc0;
-        exp_extra; (*  : (exp_extra * Location.t) list; *)
+        exp_extra=_ (* CR jfuruse: todo *); (*  : (exp_extra * Location.t) list; *)
         exp_type; (* : type_expr; *)
         exp_env; (* : Env.t *) } =
     let popt = match exp_desc with
-      | Texp_ident (p, {loc}, _) -> Some p
+      | Texp_ident (p, _loc, _) -> Some p
       | _ -> None
     in
     record loc0 (Type (exp_type, exp_env, `Expr popt)); (* `Expr is required? *)
@@ -894,11 +794,11 @@ module EXTRACT = struct
   and pattern 
       { pat_desc; (* : pattern_desc; *)
         pat_loc=loc0;
-        pat_extra; (*  : (pat_extra * Location.t) list; *)
+        pat_extra=_; (* CR jfuruse: todo *) (*  : (pat_extra * Location.t) list; *)
         pat_type; (*: type_expr; *)
         pat_env } = 
-    let idopt = match exp_desc with
-      | Tpat_var (id, _, _) -> Some id
+    let idopt = match pat_desc with
+      | Tpat_var (id, _) -> Some id
       | _ -> None
     in
     record loc0 (Type (pat_type, pat_env, `Pattern idopt)); (* `Expr is required? *)
@@ -907,7 +807,7 @@ module EXTRACT = struct
     | Tpat_var (id, {loc}) -> 
         [ with_record_def loc & AStr_value id ]
     | Tpat_alias (pat, id, {loc}) ->
-        with_record_def loc (Astr_value id) ::  pattern pat
+        with_record_def loc (AStr_value id) :: pattern pat
     | Tpat_constant _constant -> []
     | Tpat_tuple pats ->
         List.concat_map pattern pats
@@ -920,15 +820,22 @@ module EXTRACT = struct
             record_use_construct loc Kind.Constructor path cdesc.Types.cstr_name
         end;
         List.concat_map pattern pats
-    | Tpat_variant (_label, patopt, {contents = row_desc}) ->
-        
-  | Tpat_record of
-      (Longident.t loc * label_description * pattern) list *
-        closed_flag
-  | Tpat_array of pattern list
-  | Tpat_or of pattern * pattern * row_desc option
-  | Tpat_lazy of pattern
-    mat
+    | Tpat_variant (_label, patopt, {contents = _row_desc}) ->
+        (* I bleive row_desc can be ignored *)
+        begin match patopt with
+        | Some p -> pattern p
+        | None -> []
+        end
+    | Tpat_record (fields, _closed_flag) ->
+        List.concat_map (fun ({loc}, ldesc, pat) ->
+          let p = get_constr_path pat_type in
+          label_description loc p ldesc;
+          pattern pat) fields
+    | Tpat_array pats ->
+        List.concat_map pattern pats
+    | Tpat_or (p1, p2, _row_desc_opt) ->
+        pattern p1 @ pattern p2
+    | Tpat_lazy p -> pattern p
 
   and meth = function
     | Tmeth_name _name -> ()
@@ -1415,13 +1322,13 @@ module File = struct
           | Partial_structure_item sitem -> EXTRACT.structure_item sitem
           | Partial_expression e -> EXTRACT.expression e; []
           | Partial_pattern p -> EXTRACT.pattern p
-          | Partial_class_expr cexp -> EXTRACT.class_expr cexp
-          | Partial_signature sg -> EXTRACT.signature sg
+          | Partial_class_expr cexp -> EXTRACT.class_expr cexp; []
+          | Partial_signature sg -> down_to_sitems & EXTRACT.signature sg
           | Partial_signature_item sgitem -> EXTRACT.signature_item sgitem
-          | Partial_module_type mty -> EXTRACT.module_type mty
+          | Partial_module_type mty -> down_to_sitems & EXTRACT.module_type mty
         in
         let tbl = EXTRACT.tbl in (* CR jfuruse: this is global! *)
-        let amods = List.concat_map (fun x -> ignore (part x)) & Array.to_list parts in
+        let amods = List.concat_map part & Array.to_list parts in
         amods,
         tbl
 

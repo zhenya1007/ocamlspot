@@ -26,6 +26,8 @@ val of_path : string -> string
 val is_opt : cmt_infos -> bool
 (** Guess the cmt is created by opt(native code) compilation *)
 
+val reset_env_cache : unit -> unit
+
 val recover_env : Env.t -> Env.t
 (** Type environments in cmt are simplified and just have env summaries.
     If we want the real environment, we need to recover it from the summary. *)
