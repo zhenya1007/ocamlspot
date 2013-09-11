@@ -33,7 +33,7 @@ module Dump = struct
 
   let rannots unit = 
     eprintf "@[<2>rannots =@ [ @[<v>%a@]@] ]@."
-      (Format.list ";@ " (FileRegioned.format (Format.list ";@ " Annot.summary)))
+      (Format.list ";@ " (FileRegioned.format (Format.list ";@ " Annot.format)))
       !!(unit.Unit.rannots)
   ;;
   

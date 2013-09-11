@@ -603,8 +603,9 @@ module EXTRACT = struct
         record_use loc Kind.Class p;
         List.iter core_type core_types
     | Tcl_structure cs -> class_structure cs
-    | Tcl_fun (_label, pat, _pv, clexpr, _partial) ->
+    | Tcl_fun (_label, pat, classvals, clexpr, _partial) ->
         ignore & pattern pat;
+        class_values classvals;
         class_expr clexpr
     | Tcl_apply (clexpr, args) ->
         class_expr clexpr;
@@ -612,7 +613,8 @@ module EXTRACT = struct
           match expropt with
           | None -> ()
           | Some expr -> expression expr) args
-    | Tcl_let (_rec_flag, pat_exp_list, _pv, clexpr) ->
+    | Tcl_let (_rec_flag, pat_exp_list, classvals, clexpr) ->
+        class_values classvals;
         List.iter (fun (pat, expr) ->
           ignore & pattern pat;
           expression expr) pat_exp_list;
@@ -623,6 +625,12 @@ module EXTRACT = struct
         | Some cltyp -> class_type cltyp
         | None -> ()
 
+  and class_values xs =
+    (* I guess it is a info of class creation variables as class members *)
+    List.iter (fun (id, {loc}, expr) ->
+      record_def loc & AStr_value id;
+      expression expr) xs
+      
   and class_type cltyp = match cltyp.cltyp_desc with
     | Tcty_constr (p, {loc}, core_types) ->
         record_use loc Kind.Class_type p;
