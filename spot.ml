@@ -794,7 +794,7 @@ module EXTRACT = struct
         List.iter expression [e1; e2; e3]
     | Texp_send (e, m, eopt) ->
         expression e;
-        meth m; (* Wow meth can have ident! *)
+        meth loc0 m; (* Wow meth can have ident! but it lacks location! *)
         Option.iter ~f:expression eopt
     | Texp_new (p, {loc}, _ (* Types.class_declaration *)) ->
         record_use loc Kind.Class p
@@ -829,7 +829,7 @@ module EXTRACT = struct
   and pattern 
       { pat_desc; (* : pattern_desc; *)
         pat_loc=loc0;
-        pat_extra=_; (* CR jfuruse: todo *) (*  : (pat_extra * Location.t) list; *)
+        pat_extra=pextras;  (*  : (pat_extra * Location.t) list; *)
         pat_type; (*: type_expr; *)
         pat_env } = 
     let idopt = match pat_desc with
@@ -837,6 +837,7 @@ module EXTRACT = struct
       | _ -> None
     in
     record loc0 (Type (pat_type, pat_env, `Pattern idopt)); (* `Expr is required? *)
+    List.iter (fun (pextra, _loc) -> pat_extra pextra) pextras;
     match pat_desc with
     | Tpat_any -> []
     | Tpat_var (id, {loc}) -> 
@@ -872,9 +873,15 @@ module EXTRACT = struct
         pattern p1 @ pattern p2
     | Tpat_lazy p -> pattern p
 
-  and meth = function
+  and pat_extra = function
+    | Tpat_constraint cty -> core_type cty
+    | Tpat_type (p, {loc}) -> record_use loc Kind.Type p
+    | Tpat_unpack -> ()
+
+  and meth _loc = function
     | Tmeth_name _name -> ()
-    | Tmeth_val _id -> (* record_use loc ...id ... Oh, we cannot have the loc of this id. 
+    | Tmeth_val _id -> 
+        (* record_use loc ...id ... Oh, we cannot have the loc of this id. 
                           CR jfuruse: OCaml requires a fix
                        *)
         ()
