@@ -454,8 +454,9 @@ module EXTRACT = struct
 	   It sounds inefficient but not so much actually, since
 	   module_expr is nicely cached. *)
 	structure str
-    | Tmod_functor (id, _, mty, mexp) ->
+    | Tmod_functor (id, {loc}, mty, mexp) ->
         ignore & module_type mty;
+        record_def loc & AStr_module (id, AMod_functor_parameter);
 	AMod_functor(id, mty.mty_type, module_expr mexp)
     | Tmod_apply (mexp1, mexp2, _mcoercion) -> (* CR jfuruse ? *)
 	AMod_apply (module_expr mexp1, module_expr mexp2)
@@ -553,8 +554,7 @@ module EXTRACT = struct
                              | Twith_modsubst _  -> Kind.Module)
                           , path)));
         module_type mty (* CR jfuruse: ?? *)
-    | Tmty_typeof mexp ->  (* CR jfuruse: ?? *)
-        T.module_type mexp.mod_type
+    | Tmty_typeof mexp -> module_expr mexp
 
   and signature sg = AMod_structure (List.concat_map signature_item sg.sig_items)
 
