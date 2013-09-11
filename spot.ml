@@ -459,11 +459,16 @@ module EXTRACT = struct
 	AMod_functor(id, mty.mty_type, module_expr mexp)
     | Tmod_apply (mexp1, mexp2, _mcoercion) -> (* CR jfuruse ? *)
 	AMod_apply (module_expr mexp1, module_expr mexp2)
-    | Tmod_constraint (mexp, mty_, _constraint, _mcoercion) ->
+    | Tmod_constraint (mexp, mty_, cstraint, _mcoercion) ->
+        module_type_constraint cstraint;
 	AMod_constraint (module_expr mexp, mty_)
     | Tmod_unpack (expr, mty_) ->
         ignore & expression expr;
         AMod_unpack (T.module_type mty_) (* CR jfuruse: need to unpack, really? *)
+
+  and module_type_constraint = function
+      | Tmodtype_implicit -> ()
+      | Tmodtype_explicit mty -> ignore & module_type mty
 
   and structure str = AMod_structure (List.concat_map structure_item str.str_items)
 
@@ -679,7 +684,17 @@ module EXTRACT = struct
     | Tmodtype_abstract -> AMod_abstract
     | Tmodtype_manifest mty -> module_type mty
 
-  and type_declaration id td = match td.typ_kind with
+  and type_declaration id 
+      { typ_params=_; (* CR jfuruse ? : string loc option list; *)
+        typ_type=_; (* : Types.type_declaration; *)
+        typ_cstrs=_; (* CR jfuruse? : (core_type * core_type * Location.t) list; *)
+        typ_kind; (* : type_kind; *)
+        typ_private=_; (* : private_flag; *)
+        typ_manifest; (* : core_type option; *)
+        typ_variance=_; (* : (bool * bool) list; *)
+        typ_loc=_; } =
+    Option.iter ~f:core_type typ_manifest; 
+    match typ_kind with
     | Ttype_abstract -> AStr_type (id, [])
     | Ttype_variant lst -> 
         AStr_type (id, List.map (fun (id, {loc}, ctys, _loc) ->
