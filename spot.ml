@@ -761,13 +761,13 @@ module EXTRACT = struct
         pat_expr_list pes
     | Texp_tuple exprs ->
         List.iter expression exprs
-    | Texp_construct ({loc}, cdesc, exprs, _bool) -> 
+    | Texp_construct ({loc=_loc}, cdesc, exprs, _bool) -> 
         begin match cdesc.Types.cstr_tag with
         | Types.Cstr_exception (path, _) ->
             record loc0 (* whole (Failure "xxx") *) (Use (Kind.Exception, path))
         | _ ->
             let path = get_constr_path cdesc.Types.cstr_res in
-            record_use_construct loc Kind.Constructor path cdesc.Types.cstr_name
+            record_use_construct loc0 Kind.Constructor path cdesc.Types.cstr_name
         end;
         List.iter expression exprs
     | Texp_variant (_name, None) -> ()
@@ -858,13 +858,13 @@ module EXTRACT = struct
     | Tpat_constant _constant -> []
     | Tpat_tuple pats ->
         List.concat_map pattern pats
-    | Tpat_construct ({loc}, cdesc, pats, _bool) ->
+    | Tpat_construct ({loc=_loc}, cdesc, pats, _bool) ->
         begin match cdesc.Types.cstr_tag with
         | Types.Cstr_exception (path, _) ->
             record loc0 (* whole (Failure "xxx") *) (Use (Kind.Exception, path))
         | _ ->
             let path = get_constr_path cdesc.Types.cstr_res in
-            record_use_construct loc Kind.Constructor path cdesc.Types.cstr_name
+            record_use_construct loc0 Kind.Constructor path cdesc.Types.cstr_name
         end;
         List.concat_map pattern pats
     | Tpat_variant (_label, patopt, {contents = _row_desc}) ->
