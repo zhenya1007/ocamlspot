@@ -663,8 +663,13 @@ module EXTRACT = struct
 
   and class_field 
       { cf_desc; (*  : class_field_desc; *)
-        cf_loc=_ } = match cf_desc with
-      | Tcf_inher (_override_flag, clexpr, _nameopt (* ? *), _fields1 (* ? *), _fields2 (* ? *)) -> 
+        cf_loc=loc0 } = match cf_desc with
+      | Tcf_inher (_override_flag, clexpr, _nameopt (* ? *), inh_vars, inh_meths) -> 
+          (* CR jfuruse: We should to have a way to seek the inherited var 
+             into the super class... *)
+          List.iter (fun (_, id) -> record_def loc0 & AStr_value id) inh_vars;
+          (* CR jfuruse: meths should be spotted ... *)
+          List.iter (fun (_, id) -> record_def loc0 & AStr_value id) inh_meths;
           class_expr clexpr
       | Tcf_val (_name (* ? *), {loc}, _mutable_flag, id, clfieldk, _bool) -> 
           record_def loc & AStr_value id;
@@ -715,7 +720,7 @@ module EXTRACT = struct
   and expression 
       { exp_desc; (* : expression_desc; *)
         exp_loc=loc0;
-        exp_extra=_ (* CR jfuruse: todo *); (*  : (exp_extra * Location.t) list; *)
+        exp_extra=eextras; (*  : (exp_extra * Location.t) list; *)
         exp_type; (* : type_expr; *)
         exp_env; (* : Env.t *) } =
     let popt = match exp_desc with
@@ -723,6 +728,7 @@ module EXTRACT = struct
       | _ -> None
     in
     record loc0 (Type (exp_type, exp_env, `Expr popt)); (* `Expr is required? *)
+    List.iter (fun (eextra, _loc) -> exp_extra eextra) eextras;
     match exp_desc with
     | Texp_ident (p, {loc}, _) -> 
         record_use loc Kind.Value p
@@ -809,6 +815,16 @@ module EXTRACT = struct
     | Texp_assertfalse -> ()
     | Texp_object (clstr, _names) -> class_structure clstr
     | Texp_pack mexp -> ignore & module_expr mexp
+
+  and exp_extra = function
+    | Texp_constraint (ctyopt1, ctyopt2) ->
+        Option.iter ~f:core_type ctyopt1;
+        Option.iter ~f:core_type ctyopt2
+    | Texp_open (_override_flag, path, {loc}, _env) ->
+        record_use loc Kind.Module path
+    | Texp_poly ctyo ->
+        Option.iter ~f:core_type ctyo
+    | Texp_newtype _string -> () (* CR jfuruse: todo *)
 
   and pattern 
       { pat_desc; (* : pattern_desc; *)
