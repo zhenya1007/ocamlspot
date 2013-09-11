@@ -863,8 +863,9 @@ module EXTRACT = struct
         | None -> []
         end
     | Tpat_record (fields, _closed_flag) ->
+        let p = get_constr_path pat_type in
+        record loc0 (Use (Kind.Type, p));
         List.concat_map (fun ({loc}, ldesc, pat) ->
-          let p = get_constr_path pat_type in
           label_description loc p ldesc;
           pattern pat) fields
     | Tpat_array pats ->
