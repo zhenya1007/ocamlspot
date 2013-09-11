@@ -739,8 +739,10 @@ module EXTRACT = struct
     record loc0 (Type (exp_type, exp_env, `Expr popt)); (* `Expr is required? *)
     List.iter (fun (eextra, _loc) -> exp_extra eextra) eextras;
     match exp_desc with
-    | Texp_ident (p, {loc}, _) -> 
-        record_use loc Kind.Value p
+    | Texp_ident (p, {loc=_loc}, _) -> 
+        (* CamlP4 has a bug: if p = X.x, loc only points to x. So we use loc0 instead of loc 
+           PR#6170 *)
+        record_use loc0 Kind.Value p
     | Texp_constant _constant -> ()
     | Texp_let (_rec_flag, pes, expr) -> 
         pat_expr_list pes;
