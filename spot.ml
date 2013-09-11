@@ -952,12 +952,14 @@ module EXTRACT = struct
 
   let top_structure str = 
     clear_cache (); 
+    Hashtbl.clear tbl;
     match structure str with
     | AMod_structure str -> str, tbl
     | _ -> assert false
 
   let top_signature sg =  
     clear_cache (); 
+    Hashtbl.clear tbl;
     match signature sg with
     | AMod_structure str -> str, tbl
     | _ -> assert false
@@ -1379,6 +1381,7 @@ module File = struct
           | Partial_signature_item sgitem -> EXTRACT.signature_item sgitem
           | Partial_module_type mty -> down_to_sitems & EXTRACT.module_type mty
         in
+        Hashtbl.clear EXTRACT.tbl;
         let tbl = EXTRACT.tbl in (* CR jfuruse: this is global! *)
         let amods = List.concat_map part & Array.to_list parts in
         amods,
