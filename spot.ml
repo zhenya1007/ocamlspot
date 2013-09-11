@@ -663,13 +663,14 @@ module EXTRACT = struct
 
   and class_field 
       { cf_desc; (*  : class_field_desc; *)
-        cf_loc=loc0 } = match cf_desc with
+        cf_loc=_ } = match cf_desc with
       | Tcf_inher (_override_flag, clexpr, _nameopt (* ? *), inh_vars, inh_meths) -> 
+          let loc = clexpr.cl_loc in
           (* CR jfuruse: We should to have a way to seek the inherited var 
              into the super class... *)
-          List.iter (fun (_, id) -> record_def loc0 & AStr_value id) inh_vars;
+          List.iter (fun (_, id) -> record_def loc & AStr_value id) inh_vars;
           (* CR jfuruse: meths should be spotted ... *)
-          List.iter (fun (_, id) -> record_def loc0 & AStr_value id) inh_meths;
+          List.iter (fun (_, id) -> record_def loc & AStr_value id) inh_meths;
           class_expr clexpr
       | Tcf_val (_name (* ? *), {loc}, _mutable_flag, id, clfieldk, _bool) -> 
           record_def loc & AStr_value id;
