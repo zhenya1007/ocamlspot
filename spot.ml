@@ -216,7 +216,7 @@ module Annot = struct
     | Str_item          of Abstraction.structure_item
     | Module            of Abstraction.module_expr
     | Functor_parameter of Ident.t
-    | Non_expansive     of bool
+    | Non_expansive     of bool (* CR jfuruse: not used *)
 
   let _equal t1 t2 = match t1, t2 with
     | Type (t1, _, _), Type (t2, _, _) -> t1 == t2
@@ -263,17 +263,17 @@ module Annot = struct
   let summary ppf = function
     | Type (_typ, _env, at) ->
         (* CR jfuruse: not fancy having @. *)
-	fprintf ppf "Type: ...@ ";
-	fprintf ppf "XType: ...@ ";
+        fprintf ppf "Type: ...@ ";
+        fprintf ppf "XType: ...@ ";
         fprintf ppf "At: %s" (string_of_at at)
     | Mod_type _mty ->
-	fprintf ppf "Type: ...@ ";
-	fprintf ppf "XType: ..."
+        fprintf ppf "Type: ...@ ";
+        fprintf ppf "XType: ..."
     | Str_item _str ->
-	fprintf ppf "Str_item: ..."
+        fprintf ppf "Str_item: ..."
     | Use (use, path) ->
-	fprintf ppf "Use: %s, %s"
-	  (String.capitalize (Kind.name use)) (Path.name path)
+        fprintf ppf "Use: %s, %s"
+          (String.capitalize (Kind.name use)) (Path.name path)
     | Module _mexp ->
 	fprintf ppf "Module: ..."
     | Functor_parameter id ->
