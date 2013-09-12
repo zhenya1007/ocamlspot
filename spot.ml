@@ -562,6 +562,7 @@ module EXTRACT = struct
   and signature_item sitem =
     match sitem.sig_desc with
     | Tsig_value (id, {loc}, vdesc) -> 
+        record loc & Type (vdesc.val_desc.ctyp_type, vdesc.val_desc.ctyp_env, `Pattern (Some id));
         value_description vdesc;
         [ with_record_def loc & AStr_value id ]
     | Tsig_type typs -> 
@@ -571,6 +572,7 @@ module EXTRACT = struct
         exception_declaration excdecl;
         [ with_record_def loc & AStr_exception id ]
     | Tsig_module (id, {loc} , mty) ->
+        record loc & Mod_type mty.mty_type;
         [ with_record_def loc & AStr_module (id, module_type mty) ]
     | Tsig_recmodule lst ->
         List.map (fun (id, {loc}, mty) -> 
