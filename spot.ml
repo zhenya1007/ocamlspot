@@ -440,6 +440,7 @@ module EXTRACT = struct
       | Some v -> v
     with
     | Not_found ->
+        record mexp.mod_loc (Mod_type mexp.mod_type);
 	Module_expr.Table.replace cache_module_expr mexp None;
 	let res = module_expr_desc mexp.mod_desc in
 	Module_expr.Table.replace cache_module_expr mexp (Some res);
@@ -508,7 +509,7 @@ module EXTRACT = struct
         record_use loc' Kind.Exception path;
         [ with_record_def loc & AStr_exception id ]
     | Tstr_module (id, {loc}, mexp) ->
-        record loc (Mod_type mexp.mod_type);
+        record loc0 (Mod_type mexp.mod_type);
         [ with_record_def loc & AStr_module (id, module_expr mexp) ]
     | Tstr_recmodule (idmexps) ->
 	List.map (fun (id, {loc}, _, mexp) ->
