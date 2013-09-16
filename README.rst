@@ -93,6 +93,11 @@ Open the source code in your Emacs and move the cursor to an identifier
 usage, then type ``C-c ;``. If things are properly installed and set up,
 Emacs should display the definition of the identifier.
 
+Key listing in Emacs:
+
+* ``C-c ;`` Jump to definition   
+* 
+
 If something goes wrong
 ---------------------------------------------------------------------------
 

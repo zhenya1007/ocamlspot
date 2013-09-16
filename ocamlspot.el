@@ -589,12 +589,13 @@
 ; CR can be shared with ocamlspot-type
 (defun ocamlspot-query-uses ()
   (interactive)
-  (let ((dir (read-directory-name "Search directory: "
-				  (file-name-directory (buffer-file-name)))))
+  (let ((dir (expand-file-name 
+	      (read-directory-name "Search directory: "
+				   (file-name-directory (buffer-file-name))))))
     (ocamlspot-message-init (buffer-file-name))
     (ocamlspot-type-init)
     (ocamlspot-delete-overlays-now)
-    (ocamlspot-query-at-cursor (list "use" dir))
+    (ocamlspot-query-at-cursor (list "use") (list dir))
     (if (ocamlspot-find-tree)
 	(progn
 	 (ocamlspot-find-spot)
