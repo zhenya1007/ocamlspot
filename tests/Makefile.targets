@@ -8,6 +8,7 @@ capital_idents_include.cmo \
 class.cmo \
 class.cmi \
 class2.cmi \
+class_arg.cmo \
 class_tmp_let.cmo \
 exception.cmo \
 exception_alias.cmo \
@@ -23,6 +24,8 @@ functor_call.cmo \
 functor_expansion.cmo \
 functor_parameter.cmo \
 immediate_include.cmo \
+inc1.cmo \
+inc2.cmo \
 include.cmo \
 include_exception.cmo \
 include_functor_app.cmo \
@@ -40,6 +43,7 @@ including.cmo \
 inherit.cmo \
 inherit2.cmo \
 inherit3.cmo \
+inherited_val.cmo \
 interface.cmo \
 intermodule.cmo \
 issue15.cmo \
@@ -83,7 +87,6 @@ super.cmo \
 target.cmo \
 target_e.cmo \
 test.cmo \
-test1.cmo \
 test10.cmo \
 test11.cmo \
 test12.cmo \

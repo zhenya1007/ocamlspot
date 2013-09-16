@@ -68,6 +68,8 @@ end
 exception Finally of exn * exn
 
 val protect : f:('a -> 'b) -> 'a -> finally:('a -> unit) -> 'b
+val protect' : string -> ('a -> 'b) -> ('a -> 'b)
+val catch : f:('a -> 'b) -> 'a -> [> `Error of exn | `Ok of 'b ]
 val failwithf : ('a, unit, string, 'b) format4 -> 'a
 val invalid_argf : ('a, unit, string, 'b) format4 -> 'a
 val with_ref : 'a ref -> 'a -> (unit -> 'b) -> 'b
@@ -127,3 +129,5 @@ module Hashset : sig
   val of_list : int -> 'a list -> 'a t
   val to_list : 'a t -> 'a list
 end
+
+external (&) : ('a -> 'b) -> 'a -> 'b = "%apply"

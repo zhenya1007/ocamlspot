@@ -53,6 +53,7 @@ let is_opt cmt =
     | (_, ".cmx") -> true 
     | _ -> false) (Array.to_list cmt.cmt_args)
 
+(*
 (* CR jfuruse: This module should be removed once OCaml compilier-libs has the env restoration function *)
 module Envaux = struct (* copied from debugger/envaux.ml *)
   open Misc
@@ -112,6 +113,7 @@ module Envaux = struct (* copied from debugger/envaux.ml *)
         Hashtbl.add env_cache (sum, subst) env;
         env
 end 
+*)
 
 let reset_env_cache () = Envaux.reset_cache ()
 
