@@ -22,7 +22,7 @@
 ;        (add-hook 'tuareg-mode-hook
 ;              '(lambda ()
 ;                 (local-set-key "\C-c;" 'ocamlspot-query)
-;      	     (local-set-key "\C-c:" 'ocamlspot-query-interface)
+;                 (local-set-key "\C-c:" 'ocamlspot-query-interface)
 ;                 (local-set-key "\C-c'" 'ocamlspot-query-uses)
 ;                 (local-set-key "\C-c\C-t" 'ocamlspot-type)
 ;                 (local-set-key "\C-c\C-i" 'ocamlspot-xtype)
@@ -396,6 +396,15 @@
 	      (if err
 		  (ocamlspot-message-add (concat "Error: " err))
 		(ocamlspot-message-add "Error: no tree node found there")))
+
+	    (let ((err (ocamlspot-find-query-result "Uncaught exception")))
+	      (if err
+		  (ocamlspot-message-add (concat "Error: ocamlspot raised an exception!!: " err))))
+		
+	    (let ((err (ocamlspot-find-query-result "Fatal error")))
+	      (if err
+		  (ocamlspot-message-add (concat "Error: ocamlspot raised an exception!!: " err))))
+		
 	    nil))))))
 
 ;; Jump to [position] of [filename], with highlighting the spot overlay
@@ -580,12 +589,13 @@
 ; CR can be shared with ocamlspot-type
 (defun ocamlspot-query-uses ()
   (interactive)
-  (let ((dir (read-directory-name "Search directory: "
-				  (file-name-directory (buffer-file-name)))))
+  (let ((dir (expand-file-name 
+	      (read-directory-name "Search directory: "
+				   (file-name-directory (buffer-file-name))))))
     (ocamlspot-message-init (buffer-file-name))
     (ocamlspot-type-init)
     (ocamlspot-delete-overlays-now)
-    (ocamlspot-query-at-cursor (list "use" dir))
+    (ocamlspot-query-at-cursor (list "use") (list dir))
     (if (ocamlspot-find-tree)
 	(progn
 	 (ocamlspot-find-spot)

@@ -94,7 +94,6 @@ sub test {
 
 	my $message = "* $test_name: ocamlspot $file:$test_pos\n";
 
-	my $tested = 0;
 	my $succeed = 0;
 	if( -x "ocamlspot" ){
 	    $command = "./ocamlspot $file:b$test_pos";
@@ -109,7 +108,9 @@ sub test {
 	open(IN, "$command |");
 
 	$all_tests++;
+	$message = "";
 	while(<IN>){
+	    $tested = 0;
             my $result;
             if( /^Spot: <(.*):all>/ ){ # whole file
                 $tested = 1;
@@ -126,15 +127,16 @@ sub test {
                     print STDERR "$file:$test_pos:$test_name:\tOK!\n";
                     $succeed = 1;
 		    $all_succeeds ++;
+		    last;
                 } else {
-                    print STDERR "$file:$test_pos:$test_name:\tFAILED!\n$message\{ test_name=\"$test_name\"; result=\"$result\" \}\n";
-                }
-                last;
+		    $message = $messge . "$file:$test_pos:$test_name:\tFAILED!\n$message\{ test_name=\"$test_name\"; result=\"$result\" \}\n";
+		}
             }
 	}
 	while(<IN>){} # avoid Broken pipe
 	close IN;
-	if( ! $tested ){
+	if (!$succeed ){
+	    print STDERR $message;
 	    if( $test_name =~ /impos/ ){ # This is not a bug. Known impossible.
 		print STDERR "$file:$test_pos:$test_name:\tnot found, but a known issue\n";
 		$all_succeeds ++;
