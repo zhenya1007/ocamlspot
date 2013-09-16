@@ -35,7 +35,7 @@ INCLUDES_DEP=-I +compiler-libs
 COMPFLAGS= -g $(INCLUDES_DEP) -I +unix
 
 MODULES= utils checksum fileident filepath dotfile compdir xset treeset command typeexpand \
-	xlongident name xident xpath locident typeFix xprinttyp ext ttfold cmt spot spoteval spotconfig_intf spotconfig spotfile ocamlspot # pathreparse 
+	xlongident name xident xpath locident typeFix xprinttyp ext cmt spot spoteval spotconfig_intf spotconfig spotfile ocamlspot # pathreparse 
 
 OBJS=		$(addsuffix .cmo, $(MODULES))
 
@@ -79,9 +79,6 @@ clean:
 
 typedtreefold.cmo: typedtreefold.ml
 	$(OCAMLC) -I +compiler-libs -pp 'camlp4o Camlp4FoldGenerator.cmo' typedtreefold.ml
-
-ttfold.out.ml: typedtreefold.ml
-	camlp4o -printer Camlp4OCamlPrinter Camlp4FoldGenerator.cmo typedtreefold.ml > $@
 
 .ml.cmo:
 	$(OCAMLC) $(OCAMLPP) $(COMPFLAGS) -c $<

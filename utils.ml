@@ -136,6 +136,9 @@ let protect ~f x ~(finally : 'a -> unit) =
   res
 ;;
 
+let protect' name f v = try f v with e ->
+  Format.eprintf "Error: %s: %s@." name (Printexc.to_string e); raise e
+
 let catch ~f v = try `Ok (f v) with e -> `Error e;;
 
 let failwithf fmt = Printf.kprintf failwith fmt
@@ -331,4 +334,7 @@ module Hashset = struct
   
   let to_list set = fold (fun x y -> x::y) set []
 end
+
+external (&) : ('a -> 'b) -> 'a -> 'b = "%apply"
+
 

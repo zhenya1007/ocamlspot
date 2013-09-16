@@ -9,6 +9,6 @@ class nc = object
 end
 
 class nnc = object
-  inherit let _y = 1 in (* nc => *) nc (* <= nc *)
+  inherit (* nc => *) let _y = 1 in nc (* <= nc *) (* CR jfuruse: should point to nc *)
   method n = y (* ? nc *)
 end
