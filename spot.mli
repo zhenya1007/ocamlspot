@@ -27,6 +27,7 @@ module Kind : sig
     | Value | Type | Exception 
     | Module | Module_type 
     | Class | Class_type
+    | Constructor | Field
 
   val to_string : t -> string
   val from_string : string -> t
@@ -53,13 +54,15 @@ module Abstraction : sig
 
   and structure_item = 
     | AStr_value      of Ident.t
-    | AStr_type       of Ident.t
+    | AStr_type       of Ident.t * structure
     | AStr_exception  of Ident.t
     | AStr_module     of Ident.t * module_expr
     | AStr_modtype    of Ident.t * module_expr
     | AStr_class      of Ident.t
     | AStr_class_type of Ident.t
     | AStr_included   of Ident.t * module_expr * Kind.t * Ident.t
+    | AStr_constructor of Ident.t
+    | AStr_field       of Ident.t
 
   val ident_of_structure_item : structure_item -> (Kind.t * Ident.t)
 
@@ -86,7 +89,7 @@ module Annot : sig
 
   module Record : sig
     class fold : (Location.t, t list) Hashtbl.t -> object 
-      inherit Ttfold.fold
+      inherit Ttfold.ovisit
       method table : (Location.t, t list) Hashtbl.t 
       method size : int
       method report : unit

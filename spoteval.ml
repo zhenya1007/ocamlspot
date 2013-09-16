@@ -70,6 +70,7 @@ module Value : sig
     type t = binding
     val domain : t -> Ident.t list
     val find : t -> Ident.t -> (Kind.t * z) option
+(*    val find_first_name : t -> Kind.t -> string -> (Kind.t * z) option *)
     val override : t -> structure_item -> t
     val overrides : t -> structure -> t
     val set : t -> structure -> unit
@@ -130,6 +131,19 @@ end = struct
       | Some str -> f str
     let domain = with_check (List.map fst) 
     let find t id = try Some (with_check (List.assoc id) t) with Not_found -> None
+(*
+    let find_first_name t k name = 
+      let assoc name xs = 
+        match 
+          List.find_map_opt (fun (id, (k', _ as v)) ->
+            if Ident0.name id = name && k = k' then Some v
+            else None) xs
+        with
+        | None -> raise Not_found
+        | Some v -> v
+      in
+      try Some (with_check (assoc name) t) with Not_found -> None
+*)
     let override t v = ref (Some (with_check (fun t -> v :: t) t))
     let overrides t vs = ref (Some (with_check (fun t -> vs @ t) t))
     let invalid = ref None 
@@ -242,6 +256,7 @@ module Env = struct
   let format = Value.Format.env
   let domain t = Binding.domain t.binding
   let find t id = Binding.find t.binding id
+  (* let find_first_name t name = Binding.find_first_name t.binding name *)
   let override t v = { t with binding = Binding.override t.binding v }
   let overrides t vs = { t with binding = Binding.overrides t.binding vs }
   let predef = {
@@ -262,65 +277,81 @@ module Eval = struct
   let packed = ref (fun _ _ -> assert false : Env.t -> string -> Value.t)
 
   let rec find_path env (kind, p) : Value.z = 
-    match p with
-    | Path.Papply (p1, p2) -> 
-	let v1 = find_path env (kind, p1) in (* CR jfuruse: Kind.Module ? *)
-	let v2 = find_path env (kind, p2) in
+    match kind, p with
+    | _, Path.Papply (p1, p2) ->
+	let v1 = find_path env (Kind.Module, p1) in
+	let v2 = find_path env (Kind.Module, p2) in
 	apply v1 v2
-    | Path.Pident id -> 
+    | k, Path.Pident id ->
         (* predef check first (testing) *)
         begin match Env.find Env.predef id with
         | Some (_, v) -> v
-        | None -> 
-            if Ident.global id then
-              lazy begin try
-                let path, str = !str_of_global_ident ~cwd:env.cwd ~load_paths:env.load_paths id in
-                let str = Structure ( { PIdent.path = path; ident = None }, 
-                                      str,
-                                      None (* CR jfuruse: todo (read .mli *))
-                in
-                Debug.format "@[<2>LOAD SUCCESS %s =@ %a@]@."
-                  (Ident.name id)
-                  Value.Format.t str;
-                str
+        | None when Ident.global id -> 
+            (* This must be a module *)
+            assert (k = Kind.Module);
+            lazy begin try
+              let path, str = !str_of_global_ident ~cwd:env.cwd ~load_paths:env.load_paths id in
+              let str = Structure ( { PIdent.path = path; ident = None }, 
+                                    str,
+                                    None (* CR jfuruse: todo (read .mli) *) )
+              in
+              Debug.format "@[<2>LOAD SUCCESS %s =@ %a@]@."
+                (Ident.name id)
+                Value.Format.t str;
+              str
               with
               | e -> 
                   eprintf "LOAD FAILURE %s: %s@." (Ident.name id) (Printexc.to_string e);
                   Error e
-              end
-            else begin 
-              lazy begin
-                Debug.format "find_path %s:%s in { %s }@." 
-                  (Kind.name kind)
-                  (Path.name p)
-                  (String.concat "; " 
-                    (List.map Ident.name (Env.domain env)));
-                match Env.find env id with
-                | Some (_, lazy v) -> v
-                | None -> 
+            end
+        | None ->
+            lazy begin
+              Debug.format "find_path %s:%s in { %s }@." 
+                (Kind.name kind)
+                (Path.name p)
+                (String.concat "; " 
+                   (List.map Ident.name (Env.domain env)));
+              match Env.find env id with
+              | Some (_, lazy v) -> v
+              | None -> 
     (*
                   (* it may be a predefed thing *)
                   try !!(snd (Env.find Env.predef id)) with Not_found ->
     *)
-                    (* If it is a non-value object, it might be included with stamp = -1 *)
-                    let error id = 
-                      Error (Failure (Printf.sprintf "%s:%s not found in { %s }" 
-                                        (Kind.name kind)
-                                        (Ident.name id)
-                                        (String.concat "; " 
-                                           (List.map Ident.name (Env.domain env)))))
-                    in
-                    match kind with
-                    | Kind.Value | Kind.Module | Kind.Class | Kind.Exception -> error id
-                    | _ ->
-                        let gid = Ident.create_with_stamp (Ident0.name id) (-1) in
-                        match Env.find env gid with
-                        | Some (_, lazy v) -> v
-                        | None -> error id
+                  (* If it is a non-value object, it might be included with stamp = -1 *)
+                  let error id = 
+                    Error (Failure (Printf.sprintf "%s:%s not found in { %s }" 
+                                      (Kind.name kind)
+                                      (Ident.name id)
+                                      (String.concat "; " 
+                                         (List.map Ident.name (Env.domain env)))))
+                  in
+                  match kind with
+                  | Kind.Value | Kind.Module | Kind.Class | Kind.Exception -> error id
+                  | Constructor | Field -> assert false
+                  | _ ->
+                      (* CR jfuruse: is it really required? *)
+                      let gid = { id with stamp = -1 } in
+                      match Env.find env gid with
+                      | Some (_, lazy v) -> v
+                      | None -> error id
+            end
+        end
+    | (Kind.Constructor | Field ), Path.Pdot (p, name, pos) ->
+        assert (pos = -1);
+        lazy begin
+          match !!(find_path env (Kind.Type, p)) with
+          | Structure (pid, str, _ (* CR jfuruse *)) -> 
+              begin Debug.format "Type %s found (%a)@." (Path.name p) PIdent.format pid;
+              try
+                !!(find_name str (kind, name))
+              with
+              | Not_found -> Error (Failure (Printf.sprintf "Not_found %s:any" name))
               end
-            end
-            end
-    | Path.Pdot (p, name, pos) ->
+          | _ -> assert false
+        end
+
+    | _, Path.Pdot (p, name, pos) ->
         lazy begin
           match !!(find_path env (Kind.Module, p)) with
           | Ident _ -> (try assert false with e -> Error e)
@@ -346,6 +377,7 @@ module Eval = struct
 *)
       k = kind && Ident0.name id = name in
     (* CR jfuruse: double check by pos! *)
+    (* CR jfuruse: yes it can cause a bug if two x with the same kind exist in a stucture *)
     lazy begin
       try
         !!(snd (snd (List.find (fun id_value ->
@@ -357,6 +389,22 @@ module Eval = struct
             name
             Value.Format.structure str;
           Error (Failure (Printf.sprintf "Not found: %s__%d" name pos))
+    end
+
+  (* Used for finding constructor/field *)      
+  and find_name (str : Value.structure) (kind, name) : Value.z =
+    let name_filter = fun (id, (k,_)) -> k = kind && Ident0.name id = name in
+    lazy begin
+      try
+        !!(snd (snd (List.find (fun id_value ->
+          (* pos_filter id_value && *) name_filter id_value) str)))
+      with
+      | Not_found ->
+          Debug.format "Error: Not found %s %s in { @[%a@] }@."
+            (String.capitalize (Kind.to_string kind))
+            name
+            Value.Format.structure str;
+          Error (Failure (Printf.sprintf "Not found: %s__any" name))
     end
 
   and module_expr env idopt : module_expr -> Value.z = function
@@ -408,18 +456,21 @@ module Eval = struct
 
     List.fold_left (fun str sitem ->
       match sitem with
-      | AStr_value     id 
-      | AStr_type      id
-      | AStr_exception id
-      | AStr_class     id
-      | AStr_class_type    id ->
+      | AStr_value       id 
+      | AStr_constructor id 
+      | AStr_field       id 
+      | AStr_exception   id
+      | AStr_class       id
+      | AStr_class_type  id ->
           (* CR jfuruse: not sure *)
           let pident = { PIdent.path = env0.Env.path; ident = Some id } in
           let v = Ident pident in
           (* CR jfuruse: use ident_of_structure_item *)
           let kind = match sitem with
             | AStr_value      _ -> Kind.Value
-            | AStr_type       _ -> Kind.Type
+            | AStr_type       _ -> assert false
+            | AStr_constructor _ -> Kind.Constructor
+            | AStr_field      _ -> Kind.Field
             | AStr_exception  _ -> Kind.Exception
             | AStr_modtype    _ -> Kind.Module_type
             | AStr_class      _ -> Kind.Class
@@ -448,6 +499,17 @@ module Eval = struct
           end
           in
           (id, (Kind.Module, v)) :: str
+
+      | AStr_type (id, td) ->
+          let v = lazy begin
+            let pident = { PIdent.path = env0.Env.path; ident = Some id } in
+            try
+              Structure (pident, structure env0 td, None)
+            with
+            | exn -> Error exn
+          end
+          in
+          (id, (Kind.Type, v)) :: str
 
       | AStr_modtype (id, mexp) ->
           (* CR jfuruse: dup code *)

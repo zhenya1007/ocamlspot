@@ -68,6 +68,7 @@ end
 exception Finally of exn * exn
 
 val protect : f:('a -> 'b) -> 'a -> finally:('a -> unit) -> 'b
+val catch : f:('a -> 'b) -> 'a -> [> `Error of exn | `Ok of 'b ]
 val failwithf : ('a, unit, string, 'b) format4 -> 'a
 val invalid_argf : ('a, unit, string, 'b) format4 -> 'a
 val with_ref : 'a ref -> 'a -> (unit -> 'b) -> 'b
