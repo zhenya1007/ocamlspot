@@ -396,6 +396,11 @@
 	      (if err
 		  (ocamlspot-message-add (concat "Error: " err))
 		(ocamlspot-message-add "Error: no tree node found there")))
+
+	    (let ((err (ocamlspot-find-query-result "Uncaught exception")))
+	      (if err
+		  (ocamlspot-message-add (concat "Error: ocamlspot raised an exception!!: " err))))
+		
 	    nil))))))
 
 ;; Jump to [position] of [filename], with highlighting the spot overlay

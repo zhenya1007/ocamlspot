@@ -27,6 +27,7 @@ module Kind : sig
     | Value | Type | Exception 
     | Module | Module_type 
     | Class | Class_type
+    | Constructor | Field
 
   val to_string : t -> string
   val from_string : string -> t
@@ -53,20 +54,17 @@ module Abstraction : sig
 
   and structure_item = 
     | AStr_value      of Ident.t
-    | AStr_type       of Ident.t
+    | AStr_type       of Ident.t * structure
     | AStr_exception  of Ident.t
     | AStr_module     of Ident.t * module_expr
     | AStr_modtype    of Ident.t * module_expr
     | AStr_class      of Ident.t
     | AStr_class_type of Ident.t
     | AStr_included   of Ident.t * module_expr * Kind.t * Ident.t
+    | AStr_constructor of Ident.t
+    | AStr_field       of Ident.t
 
   val ident_of_structure_item : structure_item -> (Kind.t * Ident.t)
-
-  val top_structure : Typedtree.structure -> module_expr
-  val top_signature : Typedtree.signature -> module_expr
-
-  val clear_cache : unit -> unit
 
   open Format
   val format_module_expr : formatter -> module_expr -> unit
@@ -83,21 +81,6 @@ module Annot : sig
     | Module of Abstraction.module_expr
     | Functor_parameter of Ident.t
     | Non_expansive of bool
-
-  module Record : sig
-    class fold : (Location.t, t list) Hashtbl.t -> object 
-      inherit Ttfold.fold
-      method table : (Location.t, t list) Hashtbl.t 
-      method size : int
-      method report : unit
-    end
-  end
-
-  val structure : Record.fold -> Typedtree.structure -> unit
-  val signature : Record.fold -> Typedtree.signature -> unit
-
-  val record_structure : Typedtree.structure -> (Location.t, t list) Hashtbl.t
-  val record_signature : Typedtree.signature -> (Location.t, t list) Hashtbl.t
 
   val format : Format.formatter -> t -> unit
   val summary : Format.formatter -> t -> unit
