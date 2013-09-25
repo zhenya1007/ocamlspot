@@ -120,12 +120,22 @@ module Main = struct
   module FP = Filepath
   let print_query_result kind = function
     | None -> printf "Spot: no spot@."
-    | Some (pident, res) -> match res with
+    | Some (pident, res) -> 
+        let src_file path =
+          let path' = FP.wrap Compdir.src_file path in
+          if path = path' then path 
+          else
+            if not (Sys.file_exists path') then begin
+              Format.eprintf "Warning: this is a source file in a build directory. No original file found at %s@." path';
+              path
+            end else path' (* CR jfuruse: we must check path and path' have the same contents *)
+        in
+        match res with
 	| File.File_itself ->
-            let path = FP.to_string (Compdir.src_dir (FP.of_string pident.PIdent.path)) in
+            let path = src_file pident.PIdent.path in
             printf "Spot: <%s:all>@." path
 	| File.Found_at (path, region) ->
-            let path = FP.to_string (Compdir.src_dir (FP.of_string path)) in
+            let path = src_file path in
             printf "Spot: <%s:%s>@."
               path
               (Region.to_string region)

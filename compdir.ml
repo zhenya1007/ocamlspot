@@ -59,7 +59,7 @@ let comp_dir x =
 
 let comp_dir = Hashtbl.memoize (Hashtbl.create 107) comp_dir
 
-let src_dir fp0 =
+let src_file fp0 =
   if not (FP.is_absolute fp0) then fp0
   else
     match find_dot_ocamlspot fp0 with
@@ -71,10 +71,12 @@ let src_dir fp0 =
             (* CR jfuruse: inefficient *)
             FP.of_string (Filename.concats (FP.to_string dir :: postfixes))
 
-let src_dir x =
-  let y = src_dir x in
+let src_file x =
+  let y = src_file x in
   if not (FP.equal x y) then
-    Format.eprintf "src_dir: %s => %s@." (FP.to_string x) (FP.to_string y);
+    Format.eprintf "src_file: %s => %s@." (FP.to_string x) (FP.to_string y);
   y
 
-let src_dir = Hashtbl.memoize (Hashtbl.create 107) src_dir
+(* No need of memoize
+let src_file = Hashtbl.memoize (Hashtbl.create 107) src_file
+*)
