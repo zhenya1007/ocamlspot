@@ -107,6 +107,21 @@ let equal (b1,xs1) (b2,xs2) = b1 = b2 && xs1 == xs2
 
 let compare t1 t2 = if equal t1 t2 then 0 else compare t1 t2
 
+let contains_abs (b1,dir) (b2,f) =
+  assert (b1 && b2);
+  let dir = List.rev dir in
+  let f = List.rev f in
+  let rec loop dir f = match dir, f with
+    | [], fs -> Some fs
+    | d::ds, f::fs when d = f -> loop ds fs
+    | _::_, _ -> None
+  in
+  loop dir f
+
+let () = 
+  assert (contains_abs (true, ["c"; "b"; "a"]) (true, ["e"; "d"; "c"; "b"; "a"]) =
+      Some ["d"; "e"])
+
 let of_string path = 
   let abs, xs = split path in
   abs, rev_normalize [] abs xs
