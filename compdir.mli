@@ -14,7 +14,7 @@
 (** ocamlbuild compilation directory tweak *)
 
 val comp_dir : Filepath.t -> Filepath.t
-(** ocaml/camlp4/Camlp4Bin.ml => ocaml/_build/camlp4/Camlp4Bin.ml *)
+(** ocaml/camlp4/Camlp4 => ocaml/_build/camlp4/Camlp *)
 
-val src_dir : Filepath.t -> Filepath.t
+val src_file : Filepath.t -> Filepath.t
 (** ocaml/_build/camlp4/Camlp4Bin.ml => ocaml/camlp4/Camlp4Bin.ml *)

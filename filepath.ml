@@ -153,3 +153,4 @@ let parent = function
   | (true, []) -> (true, [])
   | (abs, (_::xs)) -> (abs, xs)
 
+let wrap f s = to_string (f (of_string s))

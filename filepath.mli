@@ -32,3 +32,4 @@ val is_root : t -> bool
 val dirbase : t -> t * string option
 val (^/) : t -> string -> t
 val parent : t -> t
+val wrap : (t -> t) -> string -> string
