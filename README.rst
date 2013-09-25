@@ -37,13 +37,43 @@ To compile OCamlSpotter::
 Setup
 ============================
 
-If you are Emacs user, see ``ocamlspot.el``. It explains how to set up
-and use it. ``M-x customiize-group`` => ``ocamlspot`` shows majour configurable
-options.
+Emacs users
+---------------
+
+Put ``ocamlspot.el`` somewhere, then edit your ``.emacs``::
+
+     ; load-path
+     (setq load-path (cons "WHERE-YOU-HAVE-INSTALLED-THIS-ELISP" load-path))
+     
+     (require 'ocamlspot)
+     
+     ; tuareg mode hook (use caml-mode-hook instead if you use caml-mode)
+     (add-hook 'tuareg-mode-hook
+       '(lambda ()
+         (local-set-key "\C-c;" 'ocamlspot-query)
+         (local-set-key "\C-c:" 'ocamlspot-query-interface)
+         (local-set-key "\C-c'" 'ocamlspot-query-uses)
+         (local-set-key "\C-c\C-t" 'ocamlspot-type)
+         (local-set-key "\C-c\C-i" 'ocamlspot-xtype)
+         (local-set-key "\C-c\C-y" 'ocamlspot-type-and-copy)
+         (local-set-key "\C-ct" 'caml-types-show-type)
+         (local-set-key "\C-cp" 'ocamlspot-pop-jump-stack)))
+     
+     ; set the path of the ocamlspot binary. If you did make opt, ocamlspot.opt is recommended.
+     (setq ocamlspot-command "WHERE-YOU-HAVE-INSTALLED-THE-BINARIES/ocamlspot")
+     
+     ; Optional: You can also change overlay colors as follows:
+     ;  (set-face-background 'ocamlspot-spot-face "#660000")
+     ;  (set-face-background 'ocamlspot-tree-face "#006600")
+
+
+``M-x customize-group`` => ``ocamlspot`` shows majour configurable options.
+
+Vim users
+-----------
 
 I have also written Vim script ``ocamlspot.vim``, but it is not tested at all.
 Sorry but I do not use Vim.
-
 
 How to use
 ===============================
@@ -89,9 +119,11 @@ Browsing your code
 Compile your OCaml source code with ``-bin-annot`` option, 
 then it should create ``*.cmt`` and ``*.cmti`` files.
 
-Open the source code in your Emacs and move the cursor to an identifier
+Emacs users: Open the source code in your Emacs and move the cursor to an identifier
 usage, then type ``C-c ;``. If things are properly installed and set up,
 Emacs should display the definition of the identifier.
+
+Vim users: ...
 
 If something goes wrong
 ---------------------------------------------------------------------------
@@ -110,6 +142,33 @@ Note for OPAM users
 * set OCAMLPARAM to enable ``-bin-annot`` option
 * set OPAMKEEPBUILDDIR to keep your source code and ``.cmt*`` files
 * use ``spotinstall`` to install ``.cmt*`` files along with other object files.
+
+OCamlSpotter with multiple OCaml versions
+---------------------------------------------------
+
+OCamlSpotter is compiler version dependent. So, each version of OCaml compiler,
+the corresponding OCamlSpotter is required.
+
+Changing automatically from one to another OCamlSpotter, OPAM users may want to
+specify the following shell script as a wrapper. Change the OCamlSpotter location
+of your favorite editor config to this.::
+
+    #!/bin/sh
+    
+    # This is a sample shell script which tries to call the corresponding OCamlSpotter
+    # with the current OPAM switch.
+    
+    DIR=`opam config var bin`
+    
+    if [ -x $DIR/ocamlspot.opt ]; then 
+      $DIR/ocamlspot.opt $*
+    else 
+      if [ -x $DIR/ocamlspot ]; then 
+        $DIR/ocamlspot $*
+      else 
+        echo "ERROR: No ocamlspot.opt or ocamlspot found at $DIR"
+      fi
+    fi
 
 Reporting bugs
 ==============================

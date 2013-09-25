@@ -117,12 +117,15 @@ module Main = struct
   (* CR jfuruse: In the case of a.mll => a.ml => a.cmt,
      a.ml often does not exist. ocamlspot should warn you when a.ml
      does not exist and propose creation of a.ml from a.mll. *)
+  module FP = Filepath
   let print_query_result kind = function
     | None -> printf "Spot: no spot@."
     | Some (pident, res) -> match res with
 	| File.File_itself ->
-            printf "Spot: <%s:all>@." pident.PIdent.path
+            let path = FP.to_string (Compdir.src_dir (FP.of_string pident.PIdent.path)) in
+            printf "Spot: <%s:all>@." path
 	| File.Found_at (path, region) ->
+            let path = FP.to_string (Compdir.src_dir (FP.of_string path)) in
             printf "Spot: <%s:%s>@."
               path
               (Region.to_string region)
@@ -180,7 +183,11 @@ module Main = struct
 
 	(* Tree is an older format. XTree is a newer which is the same as one for Spot *)
         printf "Tree: %s@." (Region.to_string r);
-        (* Beware, the search target and file.Unit.path may be different *)
+
+        (* Beware, the search target and file.Unit.path may be different.
+           If _build dir is used, XTree points source file copied inside _build dir. 
+           ocamlspot.el does not use XTree but Tree, so it is ok.
+        *)
         printf "XTree: <%s:%s>@." file.Unit.path (Region.to_string r);
 
 	(* Find the innermost module *)

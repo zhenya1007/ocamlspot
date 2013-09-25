@@ -18,6 +18,11 @@ type t
 val compare : t -> t -> int
 val equal : t -> t -> bool
 
+val contains_abs : t -> t -> string list option
+(** contains_abs /a/b/c /a/b/c/d/e = Some ["d"; "e"] 
+    Only works for absolute paths
+*)
+
 val of_string : string -> t
 val to_string : t -> string
 val is_absolute : t -> bool

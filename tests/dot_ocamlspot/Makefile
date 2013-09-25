@@ -1,4 +1,4 @@
-test: build/hello.cmo
+test: build/hello.cmo build/dir/dir2/bye.cmo
 	../../ocamlspot hello.ml:l5c8
 	../../ocamlspot dir/dir2/bye.ml:l2c12
 

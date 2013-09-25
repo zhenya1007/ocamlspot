@@ -42,13 +42,17 @@ locident.cmx : locident.cmi
 name.cmo : name.cmi
 name.cmx : name.cmi
 ocamlspot.cmo : utils.cmi typeexpand.cmi spotfile.cmi spoteval.cmi \
-    spotconfig.cmi spot.cmi ext.cmo command.cmi cmt.cmi
+    spotconfig.cmi spot.cmi filepath.cmi ext.cmo compdir.cmi command.cmi \
+    cmt.cmi
 ocamlspot.cmx : utils.cmx typeexpand.cmx spotfile.cmx spoteval.cmx \
-    spotconfig.cmx spot.cmx ext.cmx command.cmx cmt.cmx
+    spotconfig.cmx spot.cmx filepath.cmx ext.cmx compdir.cmx command.cmx \
+    cmt.cmx
 pathreparse.cmo : utils.cmi spot.cmi locident.cmi ext.cmo pathreparse.cmi
 pathreparse.cmx : utils.cmx spot.cmx locident.cmx ext.cmx pathreparse.cmi
-spot.cmo : spot.cmi
-spot.cmx : spot.cmi
+record.cmo :
+record.cmx :
+spot.cmo : utils.cmi treeset.cmi ext.cmo cmt.cmi checksum.cmo spot.cmi
+spot.cmx : utils.cmx treeset.cmx ext.cmx cmt.cmx checksum.cmx spot.cmi
 spotconfig.cmo : utils.cmi spot.cmi ext.cmo spotconfig.cmi
 spotconfig.cmx : utils.cmx spot.cmx ext.cmx spotconfig.cmi
 spotconfig_intf.cmo : spot.cmi ext.cmo
