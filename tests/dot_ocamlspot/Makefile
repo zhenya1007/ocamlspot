@@ -1,7 +1,7 @@
 test: build/hello.cmo build/dir/dir2/bye.cmo
 	../../ocamlspot hello.ml:l5c8
 	../../ocamlspot dir/dir2/bye.ml:l2c12
-        ../../ocamlspot hello.ml:l6c24
+	../../ocamlspot hello.ml:l6c24
 
 build/dir/dir2/bye.cmo: dir/dir2/bye.ml
 	ocamlc -c -bin-annot -I build/dir/dir2 -o build/dir/dir2/bye.cmo $<
