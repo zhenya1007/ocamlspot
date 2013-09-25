@@ -22,13 +22,11 @@
 ;        (add-hook 'tuareg-mode-hook
 ;              '(lambda ()
 ;                 (local-set-key "\C-c;" 'ocamlspot-query)
-;                 (local-set-key "\C-c:" 'ocamlspot-query-interface)
-;                 (local-set-key "\C-c'" 'ocamlspot-query-uses)
 ;                 (local-set-key "\C-c\C-t" 'ocamlspot-type)
 ;                 (local-set-key "\C-c\C-i" 'ocamlspot-xtype)
 ;                 (local-set-key "\C-c\C-y" 'ocamlspot-type-and-copy)
-;                 (local-set-key "\C-cx" 'ocamlspot-expand)
 ;                 (local-set-key "\C-c\C-u" 'ocamlspot-use)
+;                 (local-set-key "\C-cx" 'ocamlspot-expand)
 ;                 (local-set-key "\C-ct" 'caml-types-show-type)
 ;                 (local-set-key "\C-cp" 'ocamlspot-pop-jump-stack)))
 ;     

@@ -93,10 +93,14 @@ Open the source code in your Emacs and move the cursor to an identifier
 usage, then type ``C-c ;``. If things are properly installed and set up,
 Emacs should display the definition of the identifier.
 
-Key listing in Emacs:
+Available Emacs commands:
 
-* ``C-c ;`` Jump to definition   
-* 
+* ``ocamlspot-query``: Jump to definition   
+* ``ocamlspot-type``: Display the type. Same as ``caml-types-show-type`` with ``-annot``
+* ``ocamlspot-type-and-copy``: Display the type, then copy it to the kill buffer.
+* ``ocamlspot-xtype``: Display the type with id stamps
+* ``ocamlspot-use``: Display the identifier's stamps
+* ``ocamlspot-pop-jump-stack``: Go back to previous buffer layout. Useful when you are lost during browsing.
 
 If something goes wrong
 ---------------------------------------------------------------------------
