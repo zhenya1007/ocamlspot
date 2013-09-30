@@ -1,3 +1,30 @@
+4.01.0.2.2.0
+--------------
+
+- Big clean up of cmt file traversal, by removing quick hacks introduced in porting OCamlSpot from OCaml 3 to OCaml 4.
+- Bug fixes of build dir (_build and those specified by .ocamlspot) support
+
+4.01.0.2.1.3
+--------------
+
+- Quick port to OCaml 4.01.
+
+4.00.1.2.1.4
+--------------
+
+- Spot results now points to the real source files, not copied one to build directories like _build and those specified by .ocamlspot
+
+4.00.1.2.1.3
+--------------
+
+- Further bugfix around .ocamlspot file
+
+2.1.2
+--------------
+
+- Clean up
+- Some bug fixes around .ocamlspot file
+
 2.1.1
 --------------
 
