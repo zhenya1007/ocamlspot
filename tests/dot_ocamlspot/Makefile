@@ -16,6 +16,5 @@ build/dir/dir2/copied_before_build.ml: dir/dir2/copied_before_build.ml
 	cp $< $@
 
 clean:
-	rm build/hello.* build/dir/dir2/bye.*
-
+	find build -iname '*.cm*' | xargs rm
 
