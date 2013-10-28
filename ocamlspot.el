@@ -19,23 +19,23 @@
 ;      (require 'ocamlspot)
 ;     
 ;     ; tuareg mode hook (use caml-mode-hook instead if you use caml-mode)
-;        (add-hook 'tuareg-mode-hook
+;      (add-hook 'tuareg-mode-hook
 ;              '(lambda ()
 ;                 (local-set-key "\C-c;" 'ocamlspot-query)
+;      	     (local-set-key "\C-c:" 'ocamlspot-query-interface)
+;                 (local-set-key "\C-c'" 'ocamlspot-query-uses)
 ;                 (local-set-key "\C-c\C-t" 'ocamlspot-type)
 ;                 (local-set-key "\C-c\C-i" 'ocamlspot-xtype)
 ;                 (local-set-key "\C-c\C-y" 'ocamlspot-type-and-copy)
-;                 (local-set-key "\C-c\C-u" 'ocamlspot-use)
-;                 (local-set-key "\C-cx" 'ocamlspot-expand)
 ;                 (local-set-key "\C-ct" 'caml-types-show-type)
 ;                 (local-set-key "\C-cp" 'ocamlspot-pop-jump-stack)))
 ;     
 ;     ; set the path of the ocamlspot binary. If you did make opt, ocamlspot.opt is recommended.
 ;      (setq ocamlspot-command "WHERE-YOU-HAVE-INSTALLED-THE-BINARIES/ocamlspot")
 ;     
-;     ; You can also change overlay colors as follows:
-;      (set-face-background 'ocamlspot-spot-face "#660000")
-;      (set-face-background 'ocamlspot-tree-face "#006600")
+;     ; Optional: You can also change overlay colors as follows:
+;     ;  (set-face-background 'ocamlspot-spot-face "#660000")
+;     ;  (set-face-background 'ocamlspot-tree-face "#006600")
 ;
 ;
 ; # Setup
@@ -399,10 +399,6 @@
 	      (if err
 		  (ocamlspot-message-add (concat "Error: ocamlspot raised an exception!!: " err))))
 		
-	    (let ((err (ocamlspot-find-query-result "Fatal error")))
-	      (if err
-		  (ocamlspot-message-add (concat "Error: ocamlspot raised an exception!!: " err))))
-		
 	    nil))))))
 
 ;; Jump to [position] of [filename], with highlighting the spot overlay
@@ -587,13 +583,12 @@
 ; CR can be shared with ocamlspot-type
 (defun ocamlspot-query-uses ()
   (interactive)
-  (let ((dir (expand-file-name 
-	      (read-directory-name "Search directory: "
-				   (file-name-directory (buffer-file-name))))))
+  (let ((dir (read-directory-name "Search directory: "
+				  (file-name-directory (buffer-file-name)))))
     (ocamlspot-message-init (buffer-file-name))
     (ocamlspot-type-init)
     (ocamlspot-delete-overlays-now)
-    (ocamlspot-query-at-cursor (list "use") (list dir))
+    (ocamlspot-query-at-cursor (list "use" dir))
     (if (ocamlspot-find-tree)
 	(progn
 	 (ocamlspot-find-spot)
