@@ -30,8 +30,8 @@
 ;                 (local-set-key "\C-ct" 'caml-types-show-type)
 ;                 (local-set-key "\C-cp" 'ocamlspot-pop-jump-stack)))
 ;     
-;     ; set the path of the ocamlspot binary. If you did make opt, ocamlspot.opt is recommended.
-;      (setq ocamlspot-command "WHERE-YOU-HAVE-INSTALLED-THE-BINARIES/ocamlspot")
+;     ; set the path of the ocamlspot binary.
+;      (setq ocamlspot-command "WHERE-YOU-HAVE-INSTALLED-THE-BINARIES/ocamlspot.opt")
 ;     
 ;     ; Optional: You can also change overlay colors as follows:
 ;     ;  (set-face-background 'ocamlspot-spot-face "#660000")
