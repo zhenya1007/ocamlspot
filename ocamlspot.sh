@@ -8,9 +8,9 @@ DIR=`opam config var bin`
 if [ -x $DIR/ocamlspot.opt ]; then 
   $DIR/ocamlspot.opt $*
 else 
-  if [ -x $DIR/ocamlspot ]; then 
-    $DIR/ocamlspot $*
+  if [ -x $DIR/ocamlspot.byt ]; then 
+    $DIR/ocamlspot.byt $*
   else 
-    echo "ERROR: No ocamlspot.opt or ocamlspot found at $DIR"
+    echo "ERROR: No ocamlspot.opt or ocamlspot.byt found at $DIR"
   fi
 fi

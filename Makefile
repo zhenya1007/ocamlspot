@@ -41,35 +41,42 @@ OBJS=		$(addsuffix .cmo, $(MODULES))
 
 XOBJS=		$(addsuffix .cmx, $(MODULES))
 
-all: ocamlspot 
+WITH_OCAMLOPT=$(shell which ocamlopt)
 
-.PHONY: test
+ifeq ($(WITH_OCAMLOPT),)
+all: byt
+else
+all: byt opt
+endif
+
+byt: ocamlspot.byt ocamlspot
+
+opt: ocamlspot.opt ocamlspot
+
+
+.PHONY: test byt opt
 
 tests:
 	(cd tests; $(MAKE))
 
-ocamlspot: $(COMPOBJS) $(OBJS)
-	$(OCAMLC) -o $@ $(COMPFLAGS) $(COMPOBJS) unix.cma ocamlcommon.cma $(OBJS)
+# At install, we must do it differently.
+ifeq ($(WITH_OCAMLOPT),)
+ocamlspot: ocamlspot.opt
+	ln -s ocamlspot.byt ocamlspot
+else   
+ocamlspot: ocamlspot.byt
+	ln -s ocamlspot.opt ocamlspot
+endif
 
-opt.opt: ocamlspot.opt
+ocamlspot.byt: $(COMPOBJS) $(OBJS)
+	$(OCAMLC) -o $@ $(COMPFLAGS) $(COMPOBJS) unix.cma ocamlcommon.cma $(OBJS)
 
 ocamlspot.opt: $(COMPXOBJS) $(XOBJS)
 	$(OCAMLOPT) -o $@ $(COMPFLAGS) $(COMPXOBJS) unix.cmxa ocamlcommon.cmxa $(XOBJS)
 
-#	$(CAMLOPT) $(LINKFLAGS) -ccopt "$(BYTECCLINKOPTS)" -o ocamlc.opt \
-#	  $(COMPOBJS:.cmo=.cmx) \
-#	  asmrun/meta.o asmrun/dynlink.o -cclib "$(BYTECCLIBS)"
-#	@sed -e 's|@compiler@|$$topdir/ocamlc.opt|' \
-#	  driver/ocamlcomp.sh.in > ocamlcomp.sh
-#	@chmod +x ocamlcomp.sh
-
-
-opt: ocamlspot.opt
-
-.PHONY: opt opt.opt
 
 clean:
-	rm -f ocamlspot ocamlspot.opt *.cm* *.o *.annot *.sp*t 
+	rm -f ocamlspot ocamlspot.byt ocamlspot.opt *.cm* *.o *.annot *.sp*t 
 	(cd tests; $(MAKE) clean)
 
 # generic rules :
@@ -142,16 +149,30 @@ simple-install:
 	  cd $(EMACSDIR); $(EMACS) --batch --eval '$(COMPILECMD)'; \
 	fi
 
-install installopt::
-	cp ocamlspot $(BINDIR)/ocamlspot$(EXE)
-	if test -f ocamlspot.opt; \
-	  then cp ocamlspot.opt $(BINDIR)/ocamlspot.opt$(EXE); else :; fi
+install:: ocamlspot.byt
+	cp ocamlspot.byt $(BINDIR)/ocamlspot.byt$(EXE)
 	# The following is optional
 	# $(MAKE) install-elisp
 
-uninstall::
+ifneq ($(WITH_OCAMLOPT),)
+install:: ocamlspot.opt
+	cp ocamlspot.opt $(BINDIR)/ocamlspot.opt$(EXE)
+endif
+
+ifeq ($(WITH_OCAMLOPT),)
+install:: 
 	rm -f $(BINDIR)/ocamlspot$(EXE)
+	ln -s $(BINDIR)/ocamlspot.byt$(EXE) $(BINDIR)/ocamlspot$(EXE)
+else
+install:: 
+	rm -f $(BINDIR)/ocamlspot$(EXE)
+	ln -s $(BINDIR)/ocamlspot.opt$(EXE) $(BINDIR)/ocamlspot$(EXE)
+endif
+
+uninstall::
+	rm -f $(BINDIR)/ocamlspot.byt$(EXE)
 	rm -f $(BINDIR)/ocamlspot.opt$(EXE)
+	rm -f $(BINDIR)/ocamlspot$(EXE)
 
 test: ocamlspot ocamlspot.cmo
 	tests/auto-test.pl ocamlspot.ml treeset.ml xset.ml 
