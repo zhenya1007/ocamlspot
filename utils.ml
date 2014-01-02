@@ -62,6 +62,31 @@ end
 
 include Lazy.Open
 
+module String = struct
+  include String
+
+  (* split a string according to char_sep predicate *)
+  let split char_sep str =
+    let len = String.length str in
+    if len = 0 then [] else
+      let rec skip_sep cur =
+        if cur >= len then cur
+        else if char_sep str.[cur] then skip_sep (succ cur)
+        else cur  in
+      let rec split beg cur =
+        if cur >= len then 
+  	if beg = cur then []
+  	else [String.sub str beg (len - beg)]
+        else if char_sep str.[cur] 
+  	   then 
+  	     let nextw = skip_sep cur in
+  	      (String.sub str beg (cur - beg))
+  		::(split nextw nextw)
+  	   else split beg (succ cur) in
+      let wstart = skip_sep 0 in
+      split wstart wstart
+end
+
 module Filename = struct
   include Filename
       
@@ -75,12 +100,13 @@ module Filename = struct
     with
     | Invalid_argument _ -> s, ""
 
-  let concats xs = String.concat dir_sep xs
+  let concats = String.concat dir_sep
 
   module Open = struct
     let (^/) p1 p2 =
       if Filename.is_relative p2 then Filename.concat p1 p2 else p2
   end
+
 end
 
 include Filename.Open

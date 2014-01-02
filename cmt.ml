@@ -36,14 +36,14 @@ let of_path path =
             else find fps
       in
       find (match Filename.split_extension base with
-      | body, (".cmi" | ".cmti" | ".spit") -> [ FP.(^/) dir (body ^ ".cmti") ]
-      | body, (".cmo" | ".cmx" | ".cmt" | ".spot") -> [ FP.(^/) dir (body ^ ".cmt") ]
+      | body, (".cmi" | ".cmti" | ".spit") -> [ FP.(^/) dir (FP.of_string (body ^ ".cmti")) ]
+      | body, (".cmo" | ".cmx" | ".cmt" | ".spot") -> [ FP.(^/) dir (FP.of_string (body ^ ".cmt")) ]
       | body, ".mli" -> 
-          [ FP.(^/) (Compdir.comp_dir dir ) (body ^ ".cmti");
-            FP.(^/) dir (body ^ ".cmti"); ]
+          [ FP.(^/) (Compdir.comp_dir dir ) (FP.of_string (body ^ ".cmti"));
+            FP.(^/) dir (FP.of_string (body ^ ".cmti")); ]
       | body, _ (* .ml, mll, mly, or eliom *) -> 
-          [ FP.(^/) (Compdir.comp_dir dir ) (body ^ ".cmt");
-            FP.(^/) dir (body ^ ".cmt") ])
+          [ FP.(^/) (Compdir.comp_dir dir ) (FP.of_string (body ^ ".cmt"));
+            FP.(^/) dir (FP.of_string (body ^ ".cmt")) ])
 
 (* CR jfuruse: this is a dirty workaround. It should be nice if we could know cmt is created by opt or byte *)          
 let is_opt cmt = 
