@@ -35,10 +35,28 @@ module Lazy : sig
 end
 include module type of Lazy.Open
 
+module String : sig
+  include module type of String
+  val split : (char -> bool) -> string -> string list
+
+  val sub' : string -> int -> int -> string
+  (** Same as [String.sub] but even if the string shorter for [len] 
+      the function succeeds and returns a shorter substring. 
+  *)
+
+  val find : string -> int -> (char -> bool) -> int option
+
+  val replace_chars : char -> char -> string -> string
+
+  val test : unit -> unit
+end
+
 module Filename : sig
   include module type of Filename
   val split_extension : string -> string * string
-  val concats : string list -> string
+
+    val concats : string list -> string
+
   module Open : sig
     val (^/) : string -> string -> string
   end

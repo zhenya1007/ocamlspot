@@ -40,6 +40,7 @@ let print_interface        = ref false
 let type_expand            = ref false
 let rest_args_rev          = ref []
 let use_spot               = ref false
+let code_test              = ref false
 
 let _ = 
   Arg.parse (Arg.align
@@ -84,6 +85,9 @@ let _ =
 
       "--use-spot", 
       Arg.Set use_spot, " : use spot files instead of cmt, if exists";
+
+      "--code-test",
+      Arg.Set code_test, " : test some library functions";
     ])
     (fun s -> rev_anonargs := s :: !rev_anonargs)
     (Printf.sprintf 
@@ -127,6 +131,7 @@ let strict_time_stamp      = !strict_time_stamp
 let print_interface        = !print_interface
 let type_expand            = !type_expand
 let use_spot               = !use_spot
+let code_test              = !code_test
 
 let dump_any = 
   dump_file || dump_rannots || dump_tree || dump_top || dump_flat

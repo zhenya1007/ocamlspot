@@ -122,7 +122,7 @@ module Main = struct
     | None -> printf "Spot: no spot@."
     | Some (pident, res) -> 
         let src_file path =
-          let path' = FP.wrap Compdir.src_file path in
+          let path' = FP.wrap FP.os Compdir.src_file path in
           if path = path' then path 
           else
             if not (Sys.file_exists path') then begin
@@ -386,5 +386,7 @@ module Main = struct
     | `Typecheck _ | `Recheck _ -> assert false
 end
 
-let _ = Main.main ()
+let () = if C.code_test then Test.test ()
+
+let () = Main.main ()
 

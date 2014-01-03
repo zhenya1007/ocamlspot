@@ -23,7 +23,7 @@ let of_path path =
   let module FP = Filepath in
   (* CR jfuruse: we should create a function for this *)
   let path = if Filename.is_relative path then Unix.getcwd () ^/ path else path in
-  let fp = FP.of_string path in
+  let fp = FP.of_string FP.os path in
   match FP.dirbase fp with
   | _, None -> failwithf "Error: %s is not a normal file path" path
   | dir, Some base ->

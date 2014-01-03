@@ -62,6 +62,65 @@ end
 
 include Lazy.Open
 
+module String = struct
+  include String
+
+  (* split a string according to char_sep predicate *)
+  let split char_sep str =
+    let len = String.length str in
+    if len = 0 then [] else
+      let rec skip_sep cur =
+        if cur >= len then cur
+        else if char_sep str.[cur] then skip_sep (succ cur)
+        else cur  in
+      let rec split beg cur =
+        if cur >= len then 
+  	if beg = cur then []
+  	else [String.sub str beg (len - beg)]
+        else if char_sep str.[cur] 
+  	   then 
+  	     let nextw = skip_sep cur in
+  	      (String.sub str beg (cur - beg))
+  		::(split nextw nextw)
+  	   else split beg (succ cur) in
+      let wstart = skip_sep 0 in
+      split wstart wstart
+
+
+  (** Same as [String.sub] but even if the string shorter for [len] 
+      the function succeeds and returns a shorter substring. 
+  *)
+  let sub' s pos len =
+    let orig_len = length s in
+    let len = max (min (pos + len) orig_len - pos) 0 in
+    sub s pos len
+
+  let test () =
+    assert (sub' "hello" 0 4 = "hell");
+    assert (sub' "hello" 0 5 = "hello");
+    assert (sub' "hello" 0 6 = "hello");
+    assert (sub' "hello" 0 7 = "hello");
+    assert (sub' "hello" 3 2 = "lo");
+    assert (sub' "hello" 3 3 = "lo");
+    assert (sub' "hello" 3 4 = "lo");
+    assert (sub' "hello" 5 5 = "")
+    
+  let find s pos f =
+    let len = length s in
+    let rec scan pos =
+      if pos >= len then None
+      else if f (unsafe_get s pos) then Some pos else scan (pos + 1)
+    in
+    scan pos
+
+  let replace_chars from to_ s =
+    let s' = copy s in
+    iteri (fun p -> function
+      | c when c = from -> unsafe_set s' p to_
+      | _ -> ()) s';
+    s'
+end
+
 module Filename = struct
   include Filename
       
@@ -75,12 +134,13 @@ module Filename = struct
     with
     | Invalid_argument _ -> s, ""
 
-  let concats xs = String.concat dir_sep xs
+  let concats = String.concat dir_sep
 
   module Open = struct
     let (^/) p1 p2 =
       if Filename.is_relative p2 then Filename.concat p1 p2 else p2
   end
+
 end
 
 include Filename.Open

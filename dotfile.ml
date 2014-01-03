@@ -26,6 +26,7 @@ open Utils
 let name = ".ocamlspot"
 
 let rec find absdir =
+prerr_endline absdir;
   let path = absdir ^/ name in
   if Sys.file_exists path then Some (absdir, path)
   else if absdir = "/" then None

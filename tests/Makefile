@@ -4,11 +4,9 @@
 ##########################
 OCAMLC   = ocamlc -annot -bin-annot
 OCAMLOPT = ocamlopt -annot -bin-annot
-OCAMLDEP = ocamldep
+OCAMLDEP = ocamldep -slash
 OCAMLLEX = ocamllex
 OCAMLYACC= ocamlyacc
-OCAMLLIB = $(LIBDIR)
-OCAMLBIN = $(BINDIR)
 
 # Compilation
 #############
