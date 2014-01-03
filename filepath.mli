@@ -22,6 +22,7 @@ val os : os
 (** The actual OS the program is running on *)
 
 type t
+(** The type of path *)
 
 val is_prefix : t -> t -> string list option
 (** [is_prefix a b] checks [a] is a perfix of [b]. 
