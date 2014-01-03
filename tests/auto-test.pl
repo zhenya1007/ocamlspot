@@ -110,6 +110,9 @@ sub test {
 	$all_tests++;
 	$message = "";
 	while(<IN>){
+
+	    s/\r\n/\n/; # Fucking Windows
+
 	    $tested = 0;
             my $result;
             if( /^Spot: <(.*):all>/ ){ # whole file
