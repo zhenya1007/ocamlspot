@@ -386,5 +386,7 @@ module Main = struct
     | `Typecheck _ | `Recheck _ -> assert false
 end
 
-let _ = Main.main ()
+let () = if C.code_test then Test.test ()
+
+let () = Main.main ()
 

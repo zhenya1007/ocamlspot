@@ -35,7 +35,7 @@ INCLUDES_DEP=-I +compiler-libs
 COMPFLAGS= -g $(INCLUDES_DEP) -I +unix
 
 MODULES= utils checksum fileident copiedfilename filepath dotfile compdir xset treeset command typeexpand \
-	xlongident name xident xpath locident typeFix xprinttyp ext cmt spot spoteval spotconfig_intf spotconfig spotfile ocamlspot # pathreparse 
+	xlongident name xident xpath locident typeFix xprinttyp ext cmt spot spoteval spotconfig_intf spotconfig spotfile test ocamlspot # pathreparse 
 
 OBJS=		$(addsuffix .cmo, $(MODULES))
 

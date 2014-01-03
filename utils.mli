@@ -47,6 +47,8 @@ module String : sig
   val find : string -> int -> (char -> bool) -> int option
 
   val replace_chars : char -> char -> string -> string
+
+  val test : unit -> unit
 end
 
 module Filename : sig

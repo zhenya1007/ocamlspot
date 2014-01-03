@@ -90,12 +90,21 @@ module String = struct
   (** Same as [String.sub] but even if the string shorter for [len] 
       the function succeeds and returns a shorter substring. 
   *)
-  (* CR jfuruse: need tests *)
   let sub' s pos len =
     let orig_len = length s in
     let len = max (min (pos + len) orig_len - pos) 0 in
     sub s pos len
 
+  let test () =
+    assert (sub' "hello" 0 4 = "hell");
+    assert (sub' "hello" 0 5 = "hello");
+    assert (sub' "hello" 0 6 = "hello");
+    assert (sub' "hello" 0 7 = "hello");
+    assert (sub' "hello" 3 2 = "lo");
+    assert (sub' "hello" 3 3 = "lo");
+    assert (sub' "hello" 3 4 = "lo");
+    assert (sub' "hello" 5 5 = "")
+    
   let find s pos f =
     let len = length s in
     let rec scan pos =
@@ -107,7 +116,7 @@ module String = struct
   let replace_chars from to_ s =
     let s' = copy s in
     iteri (fun p -> function
-      | c when c = from -> unsafe_set s p to_
+      | c when c = from -> unsafe_set s' p to_
       | _ -> ()) s';
     s'
 end

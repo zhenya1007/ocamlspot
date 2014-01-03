@@ -45,16 +45,6 @@ module Unix : Filename = struct
   let is_network_drive _ = false
 end
 
-let () =
-  assert (String.sub' "hello" 0 4 = "hell");
-  assert (String.sub' "hello" 0 5 = "hello");
-  assert (String.sub' "hello" 0 6 = "hello");
-  assert (String.sub' "hello" 0 7 = "hello");
-  assert (String.sub' "hello" 3 2 = "lo");
-  assert (String.sub' "hello" 3 3 = "lo");
-  assert (String.sub' "hello" 3 4 = "lo");
-  assert (String.sub' "hello" 5 5 = "")
-
 module Win32 : Filename = struct
   include Filename.Win32
     
@@ -70,7 +60,7 @@ module Win32 : Filename = struct
     match drive_and_path s with
     | "", s ->
         begin match String.sub' s 0 2 with
-        | ("//" | "\\\\" as s) -> s, String.sub s 2 (String.length s - 2)
+        | ("//" | "\\\\" as p) -> p, String.sub s 2 (String.length s - 2)
         | _ -> "", s
         end
     | res -> res
@@ -145,7 +135,11 @@ let of_string os s =
   let f = of_os os in
   let drive, p = f#drive_and_path s in
   let drive = if drive = "" then None else Some drive in
-  let abs = drive <> None || f#is_absolute p in
+  let abs = match drive with
+    | None -> f#is_absolute p 
+    | Some d when f#is_network_drive d -> true
+    | _ -> f#is_absolute p 
+  in
   let rec splits st s =
     let d, b = f#dir_and_base s in
     if f#is_dir_sep d 0 && f#is_dir_sep b 0 then
@@ -155,7 +149,7 @@ let of_string os s =
       if s = d then s :: st
       else splits (b::st) d
   in
-  let revs = List.rev (splits [] s) in
+  let revs = List.rev (splits [] p) in
   { os; 
     op = f;
     drive;
@@ -194,13 +188,17 @@ let normalize t =
 let to_string t =
   let compos = List.rev t.revs in
   let concats = String.concat t.op#sep in
-  match t.drive, t.abs with
-  | None, true -> concats ("" :: compos)
-  | None, false -> concats compos
-  | Some d, true when t.op#is_network_drive d -> d ^ concats compos
-  | Some d, false when t.op#is_network_drive d -> assert false
-  | Some d, true -> d ^ concats ("" :: compos)
-  | Some d, false -> d ^ concats compos
+  match t.drive, t.abs, compos with
+  | None, true, [] -> t.op#sep
+  | None, true, _ -> concats ("" :: compos)
+  | None, false, [] -> t.op#current
+  | None, false, _ -> concats compos
+  | Some d, true, _ when t.op#is_network_drive d -> d ^ concats compos
+  | Some d, false, _ when t.op#is_network_drive d -> assert false
+  | Some d, true, [] -> d ^ t.op#sep
+  | Some d, true, _ -> d ^ concats ("" :: compos)
+  | Some d, false, [] -> d ^ t.op#current
+  | Some d, false, _ -> d ^ concats compos
       
 let is_absolute t = t.abs
 let is_relative t = not t.abs
@@ -241,29 +239,68 @@ let is_prefix x y =
     is_prefix (List.rev x.revs) (List.rev y.revs)
   else None
 
+let test () =
+  let norm os s eq = 
+    let res = wrap os (fun x -> x) s in
+    if res <> eq then begin
+      Format.eprintf "Filepath.test failed: %S => %S => %S@." s res eq;
+      assert false
+    end
+  in
+  List.iter (fun (os, s, eq) -> norm os s eq) 
+    [ Unix, "/a/b/c", "/a/b/c";
+
+      Unix, "a/b/c", "a/b/c";
+      
+      Unix, "//a/b/c", "/a/b/c";
+      
+      Unix, "///a/b/c", "/a/b/c";
+
+      Unix, "/", "/";
+
+      Unix, "//", "/";
+
+      Unix, "///", "/";
+
+      Unix, ".", ".";
+
+      Unix, "./", ".";
+
+      Unix, "/.", "/";
+
+      Unix, "/a/./b/./c/", "/a/b/c";
+
+      Unix, "/a/../b/../c/", "/c"; 
+
+      Unix, "../../a/../b", "../../b";
+
+      Unix, "..", "..";
+
+      Unix, "/..", "/";
+
+      Unix, "a/.", "a";
+
+      Unix, "a//b/.", "a/b";
+
+      Unix, "", "."; (* ??? *)
+      
+      Win32, "\\a\\b\\c", "\\a\\b\\c";
+
+      Win32, "c:\\a\\b\\c", "C:\\a\\b\\c";
+
+      Win32, "c:/a/b/c", "C:\\a\\b\\c";
+
+      Win32, "c:a/b/c", "C:a\\b\\c";
+
+      Win32, "c:", "C:.";
+
+      Win32, "//a/b", "\\\\a\\b";
+    ]
+  
 (*
 let get_component : string -> string = Hashtbl.memoize (Hashtbl.create 1023) (fun x -> x)
 
 let dotdot = get_component (parent_dir_name)
-
-let test s = 
-  let ss = split s in
-  (* Format.eprintf "%s => %s@." s (concats ss); *)
-  ss
-
-let () =
-  assert (test "" = ["."]);
-  assert (test "." = ["."]);
-  assert (test "a/b/c" = ["."; "a"; "b"; "c"]);
-  assert (test "/a/b/c" = ["/"; "a"; "b"; "c"]);
-  assert (test "//a//b//c" = ["/"; "a"; "b"; "c"]);
-  assert (test "/a/./b/./c/" = ["/"; "a"; "."; "b"; "."; "c"]);
-  
-  if Sys.os_type = "Win32" then begin
-    assert (test "\\a\\b\\c" = ["\\"; "a"; "b"; "c"]);
-    assert (test "c:\\a\\b\\c" = ["C:\\"; "a"; "b"; "c"]);
-    assert (test "c:/a/b/c" = ["C:\\"; "a"; "b"; "c"]);
-  end
 
 let hashcons_list = 
   let cache = Hashtbl.create 1023 in
@@ -272,67 +309,4 @@ let hashcons_list =
     | x::xs -> x :: f xs) xs
   in
   f
-
-let rec normalize' rev = function
-  | [] -> hashcons_list (List.rev rev)
-  | x::xs when x = current_dir_name -> normalize' rev xs
-  | x::xs when x = parent_dir_name -> 
-      begin match rev with
-      | r::_ when not (is_relative r) -> normalize' rev xs
-      | r::_ when r = parent_dir_name || r = current_dir_name -> normalize' (x::rev) xs
-      | _::rev -> normalize' rev xs
-      | [] -> normalize' [x] xs
-      end
-  | x::xs -> normalize' (x::rev) xs
-          
-let normalize = normalize' []
-
-let () =
-  let test s = 
-    let ss = split s in
-    let nss = normalize ss in
-    Format.eprintf "%s => %s => %s@." s (concats ss) (concats nss);
-    nss
-  in
-
-  assert (test "a/b/c" = ["a"; "b"; "c"]);
-  assert (test "/a/b/c" = ["/"; "a"; "b"; "c"]);
-  assert (test "//a//b//c" = ["/"; "a"; "b"; "c"]);
-  assert (test "/a/./b/./c/" = ["/"; "a"; "b"; "c"]);
-  assert (test "/a/../b/../c/" = ["/"; "c"]);
-  assert (test "../../a/../b" = [".."; ".."; "b"]);
-    
-      assert (test ""       = []);
-      assert (test "."      = []);
-      assert (test "/"      = ["/"]);
-      assert (test "/."     = ["/"]);
-      assert (test "./"     = [""]);
-      assert (test ".."     = [".."]);
-      assert (test "/.."    = ["/"]);
-      assert (test "//"     = ["/"]);
-      assert (test "///"    = ["/"]);
-      assert (test "a/"     = ["a"]);
-      assert (test "a/."    = ["a"]);
-      assert (test "a/b"    = ["a"; "b"]);
-      assert (test "a/b/"   = ["a"; "b"]);
-      assert (test "a/b/."  = ["a"; "b"]);
-      assert (test "a//b/." = ["a"; "b"]);
-
-  if Sys.os_type = "Win32" then begin
-    assert (test "\\a\\b\\c" = ["\\"; "a"; "b"; "c"]);
-    assert (test "c:\\a\\b\\c" = ["c:\\"; "a"; "b"; "c"]);
-    assert (test "c:/a/b/c" = ["c:/"; "a"; "b"; "c"]);
-    assert (test "\\a\\..\\\\b\\\\..\\c\\" = ["\\"; "c"]);
-    assert (test "c:a/../b" = ["c:."; "b"]);
-  end
-
-type t = string list
-
-let () = assert (is_prefix ["a"; "b"; "c"] ["a"; "b"; "c"; "d"; "e"] = Some ["d"; "e"])
-
-let of_string path = normalize (split path)
-
-let to_string = concats
-
-
 *)

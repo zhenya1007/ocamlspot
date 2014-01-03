@@ -26,7 +26,9 @@ module type S = sig
   val dump_flat              : bool
   val dump_any               : bool
   val eager_dump             : bool
-  
+
+  val code_test              : bool
+
   val no_definition_analysis : bool
   
   val strict_time_stamp      : bool

@@ -39,3 +39,4 @@ val concats : t -> string list -> t
 val parent : t -> t
 val wrap : os -> (t -> t) -> string -> string
 
+val test : unit -> unit
