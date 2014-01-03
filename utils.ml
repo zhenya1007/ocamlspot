@@ -85,6 +85,31 @@ module String = struct
   	   else split beg (succ cur) in
       let wstart = skip_sep 0 in
       split wstart wstart
+
+
+  (** Same as [String.sub] but even if the string shorter for [len] 
+      the function succeeds and returns a shorter substring. 
+  *)
+  (* CR jfuruse: need tests *)
+  let sub' s pos len =
+    let orig_len = length s in
+    let len = max (min (pos + len) orig_len - pos) 0 in
+    sub s pos len
+
+  let find s pos f =
+    let len = length s in
+    let rec scan pos =
+      if pos >= len then None
+      else if f (unsafe_get s pos) then Some pos else scan (pos + 1)
+    in
+    scan pos
+
+  let replace_chars from to_ s =
+    let s' = copy s in
+    iteri (fun p -> function
+      | c when c = from -> unsafe_set s p to_
+      | _ -> ()) s';
+    s'
 end
 
 module Filename = struct

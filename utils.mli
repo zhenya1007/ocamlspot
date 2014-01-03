@@ -38,6 +38,15 @@ include module type of Lazy.Open
 module String : sig
   include module type of String
   val split : (char -> bool) -> string -> string list
+
+  val sub' : string -> int -> int -> string
+  (** Same as [String.sub] but even if the string shorter for [len] 
+      the function succeeds and returns a shorter substring. 
+  *)
+
+  val find : string -> int -> (char -> bool) -> int option
+
+  val replace_chars : char -> char -> string -> string
 end
 
 module Filename : sig

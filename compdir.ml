@@ -20,9 +20,9 @@ module FP = Filepath
 let rec find_dot_ocamlspot fp = 
   let open FP in
   match
-    if Unix.is_dir (FP.to_string (fp ^/ FP.of_string "_build")) then Some (fp, "_build")
+    if Unix.is_dir FP.(to_string (fp ^/ "_build")) then Some (fp, "_build")
     else
-      let dot_ocamlspot = fp ^/ FP.of_string ".ocamlspot" in
+      let dot_ocamlspot = fp ^/ ".ocamlspot" in
       if Sys.file_exists (FP.to_string dot_ocamlspot) then
         match (Dotfile.load (FP.to_string dot_ocamlspot)).Dotfile.build_dir with
         | Some dir -> Some (fp, dir)
@@ -45,11 +45,9 @@ let comp_dir fp0 =
         match FP.is_prefix dir fp0 with
         | None -> fp0
         | Some postfixes ->
-            match FP.is_prefix (FP.(^/) dir (FP.of_string mv)) fp0 with
+            match FP.(is_prefix (dir ^/ mv) fp0) with
             | Some _ -> fp0 (* already in the comp dir *)
-            | None -> 
-                (* CR jfuruse: inefficient *)
-                FP.of_string (Filename.concats (FP.to_string dir :: mv :: FP.to_list postfixes))
+            | None -> FP.concats dir (mv :: postfixes)
 
 let comp_dir x =
   let y = comp_dir x in
@@ -65,9 +63,9 @@ let src_file fp0 =
     match find_dot_ocamlspot fp0 with
     | None -> fp0
     | Some (dir, mv) ->
-        match FP.is_prefix (FP.(^/) dir (FP.of_string mv)) fp0 with
+        match FP.(is_prefix (dir ^/ mv) fp0) with
         | None -> fp0
-        | Some postfixes -> FP.(^/) dir postfixes
+        | Some postfixes -> FP.concats dir postfixes
 
 let src_file x =
   let y = src_file x in

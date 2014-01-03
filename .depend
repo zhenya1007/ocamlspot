@@ -29,14 +29,16 @@ command.cmo : command.cmi
 command.cmx : command.cmi
 compdir.cmo : utils.cmi filepath.cmi dotfile.cmi compdir.cmi
 compdir.cmx : utils.cmx filepath.cmx dotfile.cmx compdir.cmi
+copiedfilename.cmo :
+copiedfilename.cmx :
 dotfile.cmo : utils.cmi dotfile.cmi
 dotfile.cmx : utils.cmx dotfile.cmi
 ext.cmo : xprinttyp.cmi xpath.cmi xlongident.cmi xident.cmi
 ext.cmx : xprinttyp.cmx xpath.cmx xlongident.cmx xident.cmx
 fileident.cmo : utils.cmi fileident.cmi
 fileident.cmx : utils.cmx fileident.cmi
-filepath.cmo : utils.cmi filepath.cmi
-filepath.cmx : utils.cmx filepath.cmi
+filepath.cmo : utils.cmi copiedfilename.cmo filepath.cmi
+filepath.cmx : utils.cmx copiedfilename.cmx filepath.cmi
 locident.cmo : locident.cmi
 locident.cmx : locident.cmi
 name.cmo : name.cmi
@@ -49,8 +51,6 @@ ocamlspot.cmx : utils.cmx typeexpand.cmx spotfile.cmx spoteval.cmx \
     cmt.cmx
 pathreparse.cmo : utils.cmi spot.cmi locident.cmi ext.cmo pathreparse.cmi
 pathreparse.cmx : utils.cmx spot.cmx locident.cmx ext.cmx pathreparse.cmi
-record.cmo :
-record.cmx :
 spot.cmo : utils.cmi treeset.cmi ext.cmo cmt.cmi checksum.cmo spot.cmi
 spot.cmx : utils.cmx treeset.cmx ext.cmx cmt.cmx checksum.cmx spot.cmi
 spotconfig.cmo : utils.cmi spot.cmi ext.cmo spotconfig.cmi
