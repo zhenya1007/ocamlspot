@@ -1,4 +1,9 @@
-4.01.0.2.2.0 (not yet)
+4.01.0.2.2.1
+--------------
+
+- Bug fix for Win32
+
+4.01.0.2.2.0
 --------------
 
 - Big clean up of cmt file traversal, by removing quick hacks introduced in porting OCamlSpot from OCaml 3 to OCaml 4.
