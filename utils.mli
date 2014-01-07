@@ -44,6 +44,9 @@ module String : sig
       the function succeeds and returns a shorter substring. 
   *)
 
+  val split_at : string -> int -> string * string
+  (** Get prefix and postfix. May raise an error when out of bound. *)
+
   val find : string -> int -> (char -> bool) -> int option
 
   val replace_chars : char -> char -> string -> string

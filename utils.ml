@@ -95,6 +95,8 @@ module String = struct
     let len = max (min (pos + len) orig_len - pos) 0 in
     sub s pos len
 
+  let split_at s pos = sub s 0 pos, sub s pos (length s - pos)
+
   let test () =
     assert (sub' "hello" 0 4 = "hell");
     assert (sub' "hello" 0 5 = "hello");

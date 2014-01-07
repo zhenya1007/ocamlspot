@@ -20,9 +20,9 @@ You need use the correct pairs of compiler and OCamlSpotter.
 
 https://bitbucket.org/camlspotter/ocamlspot provides OCamlSpotter branches for each OCaml versions:
 
-* For OCaml 4.01.0, use branch 4.01.0.2.2.0
-* For OCaml 4.00.1, use branch 4.00.1.2.1.2
-* For OCaml 4.00.0, use branch 4.00.0.2.1.1
+* For OCaml 4.01.0, use branch 4.01.0.2.x.y
+* For OCaml 4.00.1, use branch 4.00.1.2.x.y
+* For OCaml 4.00.0, use branch 4.00.0.2.x.y
 * default : Development version. Sometimes not compilable. Not for you.
 
 Installation
@@ -123,7 +123,16 @@ Emacs users: Open the source code in your Emacs and move the cursor to an identi
 usage, then type ``C-c ;``. If things are properly installed and set up,
 Emacs should display the definition of the identifier.
 
-Vim users: ...
+Available Emacs commands:
+
+* ``ocamlspot-query``: Jump to definition   
+* ``ocamlspot-type``: Display the type. Same as ``caml-types-show-type`` with ``-annot``
+* ``ocamlspot-type-and-copy``: Display the type, then copy it to the kill buffer.
+* ``ocamlspot-xtype``: Display the type with id stamps
+* ``ocamlspot-use``: Display the identifier's stamps
+* ``ocamlspot-pop-jump-stack``: Go back to previous buffer layout. Useful when you are lost during browsing.
+
+Vim users...
 
 If something goes wrong
 ---------------------------------------------------------------------------
