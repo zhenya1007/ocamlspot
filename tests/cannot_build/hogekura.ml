@@ -1,7 +1,7 @@
 module type S = sig end ;;
  
 module F (X : S) = struct
-  let v = 0 ;;
+  let v (* <= Checking the type of this fails *) = 0 ;;
   let () = 0 ;;
 end ;;
  

@@ -23,6 +23,7 @@ functor_app.cmo \
 functor_call.cmo \
 functor_expansion.cmo \
 functor_parameter.cmo \
+hogekura.cmo \
 immediate_include.cmo \
 inc1.cmo \
 inc2.cmo \
