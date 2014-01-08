@@ -1374,7 +1374,7 @@ module File = struct
         EXTRACT.clear_cache ();
         let down_to_sitems = function
           | Abstraction.AMod_structure str -> str
-          | _ -> assert false
+          | _ -> [] (* We cannot extract sitems from the others *)
         in
         let part = function
           | Partial_structure str -> down_to_sitems & EXTRACT.structure str

@@ -62,9 +62,11 @@ tests:
 # At install, we must do it differently.
 ifeq ($(WITH_OCAMLOPT),)
 ocamlspot: ocamlspot.byt
+	rm -f ocamlspot
 	ln -s ocamlspot.byt ocamlspot
 else   
 ocamlspot: ocamlspot.opt
+	rm -f ocamlspot
 	ln -s ocamlspot.opt ocamlspot
 endif
 
