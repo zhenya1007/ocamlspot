@@ -1271,12 +1271,15 @@ end = struct
       match fname with
       | "_none_" -> st
       | _ -> 
-          if path = builddir ^/ fname then
-            add st { Regioned.region; value = annots } 
+          if loc.Location.loc_ghost then st
           else begin
-            Format.eprintf "Call the Author: Guru meditation: path=%s fname=%s@." path fname;
-            add st { Regioned.region; value = annots } 
-      end)
+            if path = builddir ^/ fname then
+              add st { Regioned.region; value = annots } 
+            else begin
+              Format.eprintf "Call the Author: Guru meditation: path=%s fname=%s@." path fname;
+              add st { Regioned.region; value = annots } 
+            end
+          end)
       loc_annots empty
 
   let iter = iter_elem
