@@ -72,8 +72,12 @@ Put ``ocamlspot.el`` somewhere, then edit your ``.emacs``::
 Vim users
 -----------
 
-I have also written Vim script ``ocamlspot.vim``, but it is not tested at all.
-Sorry but I do not use Vim.
+The author does not use Vim, so there is no official OCamlSpot support for Vim,
+but there are several Vim plugins are available:
+
+* https://github.com/simonjbeaumont/vim-ocamlspot
+* https://github.com/cohama/the-ocamlspot.vim
+* https://github.com/MarcWeber/vim-addon-ocaml/blob/master/autoload/vim_addon_ocaml.vim#L167 This is a part of other OCaml related addons
 
 How to use
 ===============================
