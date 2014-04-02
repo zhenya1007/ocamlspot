@@ -240,12 +240,12 @@ module Annot = struct
 	Printtyp.reset ();
 	Printtyp.mark_loops typ;
         (* CR jfuruse: not fancy having @. *)
-	fprintf ppf "Type: %a;@ " (Printtyp.type_scheme ~with_pos:false) typ;
-	fprintf ppf "XType: %a;@ " (Printtyp.type_scheme ~with_pos:true) typ;
-        fprintf ppf "At: %s;" (string_of_at at)
+	fprintf ppf "Type: %a@ " (Printtyp.type_scheme ~with_pos:false) typ;
+	fprintf ppf "XType: %a@ " (Printtyp.type_scheme ~with_pos:true) typ;
+        fprintf ppf "At: %s" (string_of_at at)
     | Mod_type mty ->
-	fprintf ppf "Type: %a;@ " (Printtyp.modtype ~with_pos:false) mty;
-	fprintf ppf "XType: %a;" (Printtyp.modtype ~with_pos:true) mty
+	fprintf ppf "Type: %a@ " (Printtyp.modtype ~with_pos:false) mty;
+	fprintf ppf "XType: %a" (Printtyp.modtype ~with_pos:true) mty
     | Str_item str ->
 	fprintf ppf "Str_item: %a"
 	  Abstraction.format_structure_item str
