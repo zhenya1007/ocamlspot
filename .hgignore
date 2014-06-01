@@ -4,6 +4,3 @@ ocamlspot$
 tests/ocamlbuild/_build
 tests/a\.out$
 tests/ocamlbuild/hello\.native$
-
-
-

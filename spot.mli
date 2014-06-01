@@ -42,7 +42,7 @@ module Abstraction : sig
     | AMod_packed     of string (* full path *)
         (* -pack overrides load paths: ocamlc -pack dir1/dir2/dir3/x.cmo *)
     | AMod_structure  of structure (* module M = struct ... end *)
-    | AMod_functor    of Ident.t * Types.module_type * module_expr (* module M(I:S) = *)
+    | AMod_functor    of Ident.t * Types.module_type option * module_expr (* module M(I:S) = *)
     | AMod_apply      of module_expr * module_expr (* module M = N(O) *)
     | AMod_constraint of module_expr * Types.module_type
     | AMod_unpack     of module_expr
@@ -56,8 +56,8 @@ module Abstraction : sig
     | AStr_value      of Ident.t
     | AStr_type       of Ident.t * structure
     | AStr_exception  of Ident.t
-    | AStr_module     of Ident.t * module_expr
-    | AStr_modtype    of Ident.t * module_expr
+    | AStr_module     of Ident.t * module_expr option
+    | AStr_modtype    of Ident.t * module_expr option
     | AStr_class      of Ident.t
     | AStr_class_type of Ident.t
     | AStr_included   of Ident.t * module_expr * Kind.t * Ident.t
