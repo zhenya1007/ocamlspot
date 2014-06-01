@@ -508,13 +508,7 @@ module EXTRACT = struct
     | Tstr_type id_descs -> 
         List.map (fun ({ typ_id= id; typ_name= {loc} } as td) -> 
           with_record_def loc & type_declaration id td) id_descs
-    | Tstr_exception { ext_id= id; ext_name= {loc}; ext_type; ext_kind= kind } ->
-        begin match kind with
-        | Text_decl (* of core_type list * core_type option *) _ -> ()
-        | Text_rebind (p, {loc}) -> record_use loc Kind.Exception p
-        end;
-        ignore & extension_constructor ext_type;
-	[ with_record_def loc & AStr_exception id ]
+    | Tstr_exception ec -> extension_constructor ec
     | Tstr_typext _ -> assert false (* not yet *)
     | Tstr_attribute _ -> assert false (* not yet *)
     | Tstr_module { mb_id=id; mb_name= {loc}; mb_expr= mexp } ->
@@ -542,7 +536,21 @@ module EXTRACT = struct
           with_record_def loc0 & AStr_included (id_includer, m, k, id_included)
         ) idmap
 
-  and extension_constructor _ = assert false (* CR jfuruse: todo *)
+  and extension_constructor 
+      { ext_id= id;
+        ext_name= {loc};
+        (* ext_type : Types.extension_constructor; *)
+        ext_kind (* : extension_constructor_kind; *)
+        (* ext_loc : Location.t; *)
+        (* ext_attributes: attributes; *)
+      } =
+    begin match ext_kind with
+    | Text_decl (cty, ctyo) -> 
+        List.iter core_type cty;
+        Option.iter ~f:core_type ctyo
+    | Text_rebind (p, {loc}) ->  record_use loc Kind.Exception p
+    end;
+    [ with_record_def loc & AStr_exception id ]
 
   (* CR jfuruse: TODO: caching like module_expr_sub *)
   and module_type mty = module_type_desc mty.mty_desc
@@ -580,9 +588,7 @@ module EXTRACT = struct
     | Tsig_type typs -> 
         List.map (fun ({ typ_id=id; typ_name= {loc} } as td) -> 
           with_record_def loc & type_declaration id td) typs
-    | Tsig_exception { ext_id= id; ext_name= {loc}; ext_type } -> 
-        extension_constructor ext_type;
-        [ with_record_def loc & AStr_exception id ]
+    | Tsig_exception ec -> extension_constructor ec
     | Tsig_module { md_id= id; md_name= {loc}; md_type= mty } ->
         record loc & Mod_type mty.mty_type;
         [ with_record_def loc & AStr_module (id, Some (module_type mty)) ]
@@ -608,12 +614,7 @@ module EXTRACT = struct
           (* AStr_class_type cls.ci_id_class)  *)
     | Tsig_typext _ | Tsig_attribute _ -> assert false (* not yet *)
 
-  and class_declaration cd = 
-    List.map (with_record_def cd.ci_loc)
-      [ AStr_class cd.ci_id_class;
-        AStr_class_type cd.ci_id_class_type;
-        AStr_type (cd.ci_id_object, []);
-        AStr_type (cd.ci_id_typesharp, []) ]
+  and class_declaration cd = class_infos class_expr cd
 
   and class_description cd = class_infos class_type cd
 
@@ -929,14 +930,6 @@ module EXTRACT = struct
         ()
 
   and value_description { Typedtree.val_desc } = core_type val_desc
-
-(*
-  and exception_declaration 
-      { exn_params; (* core_type list; *)
-        exn_exn=_; (* : Types.exception_declaration; *)
-        exn_loc=_ } =
-    List.iter core_type exn_params
-*)
 
   and core_type 
       { ctyp_desc;
