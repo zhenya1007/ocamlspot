@@ -26,7 +26,7 @@ module Value : sig
   type t =
     | Ident of PIdent.t
     | Structure of PIdent.t * structure * structure option
-    | Closure of PIdent.t * env * Ident.t * Types.module_type * Abstraction.module_expr
+    | Closure of PIdent.t * env * Ident.t * Types.module_type option * Abstraction.module_expr
     | Parameter of PIdent.t
     | Error of exn
 

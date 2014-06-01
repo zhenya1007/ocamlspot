@@ -29,7 +29,7 @@ module EnvSummary = struct
     | Env_type (sum, id, _tdesc) ->
         fprintf ppf "Type %s@ " (Ident.name id);
         format ppf sum
-    | Env_exception (sum, id, _) ->
+    | Env_extension (sum, id, _) ->
         fprintf ppf "Exc %s@ " (Ident.name id);
         format ppf sum
     | Env_module (sum, id, _) ->
@@ -47,6 +47,9 @@ module EnvSummary = struct
     | Env_open (sum, p) ->
         fprintf ppf "open %s@ " (Path.name p);
         format ppf sum
+    | Env_functor_arg (sum, id) ->
+        fprintf ppf "Functor arg %s@ " (Ident.name id);
+        format ppf sum
 
   let format ppf sum = fprintf ppf "@[<v>%a@]" format sum
 end
@@ -54,10 +57,11 @@ end
 type t =
   | Function of (label * type_expr) list * type_expr
   | Tuple of type_expr list
-  | Variant of Path.t option * (Ident.t * Types.type_expr list * Types.type_expr option) list
+  | Variant of Path.t option * Types.constructor_declaration list
   | Record of Path.t option * (Ident.t * type_expr) list
   | Polyvar of (label * row_field) list
   | Abstract
+  | Open
 
 let constructor_with_path name = function
   | None -> Ident.name name
@@ -76,9 +80,9 @@ let format_as_expr ppf = function
       fprintf ppf "(assert false (* @[%a@] *))" 
         (Format.list "@ | " (fun ppf -> 
           function
-            | (name, [_; _], _) when Ident.name name = "::" -> fprintf ppf "(_ :: _)"
-            | (name, [], _) -> fprintf ppf "%s" (constructor_with_path name pathopt)
-            | (name, args, _) -> 
+            | { cd_id=name; cd_args= [_; _] } when Ident.name name = "::" -> fprintf ppf "(_ :: _)"
+            | { cd_id=name; cd_args= [] } -> fprintf ppf "%s" (constructor_with_path name pathopt)
+            | { cd_id=name; cd_args=args } -> 
                 fprintf ppf "%s (@[%a@])"
                   (constructor_with_path name pathopt)
                   (Format.list ", " (fun ppf _ -> fprintf ppf "assert false" )) args))
@@ -108,6 +112,7 @@ let format_as_expr ppf = function
           | Reither (false, _, false, _) -> fprintf ppf "`%s (* ??? *)" name))
         l_field_list
   | Abstract -> fprintf ppf "(assert false (* abstract *))"
+  | Open -> fprintf ppf "(assert false (* open *))"
 
 let format_as_pattern ppf = function
   | Function (_label_typ_list, _) -> fprintf ppf "_ (* function *)"
@@ -117,10 +122,10 @@ let format_as_pattern ppf = function
       fprintf ppf "( @[%a@] )" 
         (Format.list "@ | " (fun ppf -> 
           function
-            | (name, [_; _], _) when Ident.name name = "::" -> fprintf ppf "(_ :: _)"
-            | (name, [], _) -> fprintf ppf "%s" (constructor_with_path name pathopt)
-            | (name, [_arg], _) -> fprintf ppf "%s _" (constructor_with_path name pathopt)
-            | (name, args, _) -> 
+            | { cd_id=name; cd_args= [_; _] } when Ident.name name = "::" -> fprintf ppf "(_ :: _)"
+            | { cd_id=name; cd_args= [] } -> fprintf ppf "%s" (constructor_with_path name pathopt)
+            | { cd_id=name; cd_args= [_arg] } -> fprintf ppf "%s _" (constructor_with_path name pathopt)
+            | { cd_id=name; cd_args= args } -> 
                 fprintf ppf "%s (@[%a@])"
                   (constructor_with_path name pathopt)
                   (Format.list ", " (fun ppf _ -> fprintf ppf "_" )) args))
@@ -150,6 +155,7 @@ let format_as_pattern ppf = function
           | Reither (false, _, false, _) -> fprintf ppf "`%s (* ??? *)" name))
         l_field_list
   | Abstract -> fprintf ppf "_ (* abstract *)"
+  | Open -> fprintf ppf "_ (* open *)"
 
 (** get_path:  Foo.t => Foo *)
 let get_path = function
@@ -170,7 +176,8 @@ let rec expand env typ = match (Ctype.repr typ).desc with
         match tdesc.type_kind with
         | Type_variant label_args -> Variant (get_path path, label_args)
         | Type_record (fields, _) -> 
-            Record (get_path path, List.map (fun (name, _, ty) -> (name, ty)) fields)
+            Record (get_path path, List.map (fun { ld_id= name; ld_type= ty } -> (name, ty)) fields)
+        | Type_open -> Open
         | Type_abstract ->
             match tdesc.type_manifest with
             | None -> Abstract

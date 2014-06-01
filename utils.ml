@@ -116,11 +116,12 @@ module String = struct
     scan pos
 
   let replace_chars from to_ s =
-    let s' = copy s in
+    let open Bytes in
+    let s' = copy (of_string s) in
     iteri (fun p -> function
       | c when c = from -> unsafe_set s' p to_
       | _ -> ()) s';
-    s'
+    to_string s'
 end
 
 module Filename = struct
