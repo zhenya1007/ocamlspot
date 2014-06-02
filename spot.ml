@@ -508,9 +508,9 @@ module EXTRACT = struct
     | Tstr_type id_descs -> 
         List.map (fun ({ typ_id= id; typ_name= {loc} } as td) -> 
           with_record_def loc & type_declaration id td) id_descs
-    | Tstr_exception ec -> extension_constructor ec
-    | Tstr_typext _ -> assert false (* not yet *)
-    | Tstr_attribute _ -> assert false (* not yet *)
+    | Tstr_exception ec -> [ extension_constructor ec ]
+    | Tstr_typext text -> type_extension text
+    | Tstr_attribute _ -> []
     | Tstr_module { mb_id=id; mb_name= {loc}; mb_expr= mexp } ->
         record loc0 (Mod_type mexp.mod_type);
         [ with_record_def loc & AStr_module (id, Some (module_expr mexp)) ]
@@ -550,7 +550,14 @@ module EXTRACT = struct
         Option.iter ~f:core_type ctyo
     | Text_rebind (p, {loc}) ->  record_use loc Kind.Exception p
     end;
-    [ with_record_def loc & AStr_exception id ]
+    with_record_def loc & AStr_exception id
+
+  and type_extension { tyext_path = path;
+                       tyext_txt = {loc};
+                       tyext_constructors;
+                     } =
+    record_use loc Kind.Type path;
+    List.map extension_constructor tyext_constructors
 
   (* CR jfuruse: TODO: caching like module_expr_sub *)
   and module_type mty = module_type_desc mty.mty_desc
@@ -588,7 +595,7 @@ module EXTRACT = struct
     | Tsig_type typs -> 
         List.map (fun ({ typ_id=id; typ_name= {loc} } as td) -> 
           with_record_def loc & type_declaration id td) typs
-    | Tsig_exception ec -> extension_constructor ec
+    | Tsig_exception ec -> [ extension_constructor ec ]
     | Tsig_module { md_id= id; md_name= {loc}; md_type= mty } ->
         record loc & Mod_type mty.mty_type;
         [ with_record_def loc & AStr_module (id, Some (module_type mty)) ]
@@ -612,7 +619,8 @@ module EXTRACT = struct
     | Tsig_class_type clstydecls -> 
         List.concat_map class_type_declaration clstydecls
           (* AStr_class_type cls.ci_id_class)  *)
-    | Tsig_typext _ | Tsig_attribute _ -> assert false (* not yet *)
+    | Tsig_typext text -> type_extension text
+    | Tsig_attribute _ -> []
 
   and class_declaration cd = class_infos class_expr cd
 
@@ -741,7 +749,7 @@ module EXTRACT = struct
         AStr_type (id, List.map (fun { ld_id=id; ld_name= {loc}; ld_type= cty } -> 
           core_type cty;
           with_record_def loc & AStr_field id) lst)
-    | Ttype_open -> assert false (* not yet *)
+    | Ttype_open -> AStr_type (id, [])
 
   and value_binding_list xs = xs |> List.iter (fun { vb_pat=pat; vb_expr= expr } -> 
     ignore & pattern pat;

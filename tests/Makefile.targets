@@ -1,5 +1,8 @@
 TARGETS= \
+applicative_functor.cmo \
 applied_sig.cmo \
+attributes.cmo \
+attributes_mli.cmi \
 bigmodtest.cmi \
 bug_private_row.cmo \
 camlp4_path.cmo \
@@ -13,6 +16,8 @@ class_tmp_let.cmo \
 exception.cmo \
 exception_alias.cmo \
 exception_module.cmo \
+extension.cmo \
+extension_mli.cmi \
 external.cmo \
 external_include.cmo \
 fstclassmodule.cmo \
