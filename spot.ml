@@ -11,18 +11,13 @@
 (*                                                                     *)
 (***********************************************************************)
 
-(* Annotations
-
-   Annotations are stored in .spot with their locations
-*)
-
 open Utils
 open Ext
 open Format
 
 let magic_number = "OCamlSpot"
-let ocaml_version = "4.01.0"
-let version = "2.1.0"
+let ocaml_version = "4.02.0"
+let version = "2.2.0"
 
 (** Kind of ``object`` *)
 module Kind = struct
@@ -184,28 +179,28 @@ module Abstraction = struct
     module M = struct
       type t = structure_item
       let equal s1 s2 =
-	match s1, s2 with
-	| AStr_value id1, AStr_value id2
-	| AStr_exception id1, AStr_exception id2
-	| AStr_class id1, AStr_class id2
-	| AStr_class_type id1, AStr_class_type id2 -> id1 = id2
-	| AStr_module (id1, mexp1) , AStr_module (id2, mexp2) ->
-	    id1 = id2 && Module_expr.equal mexp1 mexp2
-	| AStr_modtype (id1, mty1), AStr_modtype (id2, mty2) ->
+        match s1, s2 with
+        | AStr_value id1, AStr_value id2
+        | AStr_exception id1, AStr_exception id2
+        | AStr_class id1, AStr_class id2
+        | AStr_class_type id1, AStr_class_type id2 -> id1 = id2
+        | AStr_module (id1, mexp1) , AStr_module (id2, mexp2) ->
+            id1 = id2 && Module_expr.equal mexp1 mexp2
+        | AStr_modtype (id1, mty1), AStr_modtype (id2, mty2) ->
             id1 = id2 && Module_expr.equal mty1 mty2
-	| AStr_included (id1, mexp1, kind1, id1'), AStr_included (id2, mexp2, kind2, id2') ->
+        | AStr_included (id1, mexp1, kind1, id1'), AStr_included (id2, mexp2, kind2, id2') ->
             id1 = id2 && kind1 = kind2 && id1' = id2'
             && Module_expr.equal mexp1 mexp2
-	| AStr_type (id1, td1), AStr_type (id2, td2) ->
+        | AStr_type (id1, td1), AStr_type (id2, td2) ->
             id1 = id2 && td1 = td2
         | AStr_constructor id1, AStr_constructor id2 -> id1 = id2
         | AStr_field id1, AStr_field id2 -> id1 = id2
-	| (AStr_value _ | AStr_type _ | AStr_exception _ | AStr_modtype _
-	  | AStr_class _ | AStr_class_type _ | AStr_module _ | AStr_included _
-          | AStr_constructor _ | AStr_field _),
+        | (AStr_value _ | AStr_type _ | AStr_exception _ | AStr_modtype _
+	   | AStr_class _ | AStr_class_type _ | AStr_module _ | AStr_included _
+           | AStr_constructor _ | AStr_field _),
 	  (AStr_value _ | AStr_type _ | AStr_exception _ | AStr_modtype _
-	  | AStr_class _ | AStr_class_type _ | AStr_module _ | AStr_included _
-          | AStr_constructor _ | AStr_field _) -> false
+	   | AStr_class _ | AStr_class_type _ | AStr_module _ | AStr_included _
+           | AStr_constructor _ | AStr_field _) -> false
 
       let hash = Hashtbl.hash
     end
@@ -238,7 +233,7 @@ module Annot = struct
           | Mod_type _) -> false
 
   let string_of_at = function
-    | `Expr _ -> "Expr"
+    | `Expr _    -> "Expr"
     | `Pattern _ -> "Pattern"
 
   let format ppf = function
@@ -437,16 +432,15 @@ module EXTRACT = struct
     | _ -> (* strange.. *) assert false
 
   let rec module_expr mexp =
-    try
-      match Module_expr.Table.find cache_module_expr mexp with
-      | None ->
-          (* When a module definition finds itself in itself.
-             Impossible to happen, so far. *)
-          assert false
-      | Some v -> v
-    with
-    | Not_found ->
+    match Module_expr.Table.find cache_module_expr mexp with
+    | None ->
+        (* When a module definition finds itself in itself.
+           Impossible to happen, so far. *)
+        assert false
+    | Some v -> v
+    | exception Not_found ->
         record mexp.mod_loc (Mod_type mexp.mod_type);
+        (* for recursive module *)
 	Module_expr.Table.replace cache_module_expr mexp None;
 	let res = module_expr_desc mexp.mod_desc in
 	Module_expr.Table.replace cache_module_expr mexp (Some res);
@@ -467,16 +461,16 @@ module EXTRACT = struct
 	AMod_functor(id, Option.map mtyo ~f:(fun mty -> mty.mty_type), module_expr mexp)
     | Tmod_apply (mexp1, mexp2, _mcoercion) -> (* CR jfuruse ? *)
 	AMod_apply (module_expr mexp1, module_expr mexp2)
-    | Tmod_constraint (mexp, mty_, cstraint, _mcoercion) ->
+    | Tmod_constraint (mexp, mty, cstraint, _mcoercion) ->
         module_type_constraint cstraint;
-	AMod_constraint (module_expr mexp, mty_)
-    | Tmod_unpack (expr, mty_) ->
+	AMod_constraint (module_expr mexp, mty)
+    | Tmod_unpack (expr, mty) ->
         ignore & expression expr;
-        AMod_unpack (T.module_type mty_) (* CR jfuruse: need to unpack, really? *)
+        AMod_unpack (T.module_type mty) (* CR jfuruse: need to unpack, really? *)
 
   and module_type_constraint = function
-      | Tmodtype_implicit -> ()
-      | Tmodtype_explicit mty -> ignore & module_type mty
+    | Tmodtype_implicit -> ()
+    | Tmodtype_explicit mty -> ignore & module_type mty
 
   and structure str = AMod_structure (List.concat_map structure_item str.str_items)
 
@@ -624,9 +618,9 @@ module EXTRACT = struct
     | Tsig_typext text -> type_extension text
     | Tsig_attribute _ -> []
 
-  and class_declaration cd = class_infos class_expr cd
+  and class_declaration      cd = class_infos class_expr cd
 
-  and class_description cd = class_infos class_type cd
+  and class_description      cd = class_infos class_type cd
 
   and class_type_declaration cd = class_infos class_type cd
 
@@ -658,7 +652,7 @@ module EXTRACT = struct
         | None -> ()
 
   and class_values xs =
-    (* I guess it is a info of class creation variables as class members *)
+    (* I guess it is an info of class creation variables as class members *)
     List.iter (fun (id, {loc}, expr) ->
       record_def loc & AStr_value id;
       expression expr) xs
@@ -700,37 +694,31 @@ module EXTRACT = struct
     List.iter class_field cstr_fields
 
   and class_field 
-      { cf_desc; (*  : class_field_desc; *)
-        cf_loc=_ } = match cf_desc with
-      | Tcf_inherit (_override_flag, clexpr, _nameopt (* ? *), inh_vars, inh_meths) -> 
-          let loc = clexpr.cl_loc in
-          (* CR jfuruse: We should to have a way to seek the inherited var 
-             into the super class... *)
-          List.iter (fun (_, id) -> record_def loc & AStr_value id) inh_vars;
-          (* CR jfuruse: meths should be spotted ... *)
-          List.iter (fun (_, id) -> record_def loc & AStr_value id) inh_meths;
-          class_expr clexpr
-      | Tcf_val ({loc}, _mutable_flag, id, clfieldk, _bool) -> 
-          record_def loc & AStr_value id;
-          class_field_kind clfieldk
-      | Tcf_method ({loc=_loc}, _private_flag, clfieldk) ->
-          class_field_kind clfieldk
-      | Tcf_constraint (cty1, cty2) ->
-          core_type cty1; 
-          core_type cty2
-      | Tcf_initializer expr -> expression expr
-      | Tcf_attribute _ -> ()
-
+        { cf_desc; (*  : class_field_desc; *)
+          cf_loc=_ } = 
+        match cf_desc with
+        | Tcf_inherit (_override_flag, clexpr, _nameopt (* ? *), inh_vars, inh_meths) -> 
+            let loc = clexpr.cl_loc in
+            (* CR jfuruse: We should to have a way to seek the inherited var 
+               into the super class... *)
+            List.iter (fun (_, id) -> record_def loc & AStr_value id) inh_vars;
+            (* CR jfuruse: meths should be spotted ... *)
+            List.iter (fun (_, id) -> record_def loc & AStr_value id) inh_meths;
+            class_expr clexpr
+        | Tcf_val ({loc}, _mutable_flag, id, clfieldk, _bool) -> 
+            record_def loc & AStr_value id;
+            class_field_kind clfieldk
+        | Tcf_method ({loc=_loc}, _private_flag, clfieldk) ->
+            class_field_kind clfieldk
+        | Tcf_constraint (cty1, cty2) ->
+            core_type cty1; 
+            core_type cty2
+        | Tcf_initializer expr -> expression expr
+        | Tcf_attribute _ -> ()
 
   and class_field_kind = function
     | Tcfk_virtual cty -> core_type cty
     | Tcfk_concrete (_override_flag, expr) -> expression expr
-
-(* no more used?
-  and modtype_declaration = function
-    | Tmodtype_abstract -> AMod_abstract
-    | Tmodtype_manifest mty -> module_type mty
-*)
 
   and type_declaration id 
       { typ_params=_; (* CR jfuruse ? : string loc option list; *)
@@ -753,14 +741,16 @@ module EXTRACT = struct
           with_record_def loc & AStr_field id) lst)
     | Ttype_open -> AStr_type (id, [])
 
-  and value_binding_list xs = xs |> List.iter (fun { vb_pat=pat; vb_expr= expr } -> 
-    ignore & pattern pat;
-    expression expr)
+  and value_binding_list xs = 
+    xs |> List.iter (fun { vb_pat=pat; vb_expr= expr } -> 
+      ignore & pattern pat;
+      expression expr)
 
-  and case_list cases = cases |> List.iter (fun case ->
-    ignore & pattern case.c_lhs;
-    ignore & Option.map ~f:expression case.c_guard;
-    expression case.c_rhs)
+  and case_list cases = 
+    cases |> List.iter (fun case ->
+      ignore & pattern case.c_lhs;
+      ignore & Option.map ~f:expression case.c_guard;
+      expression case.c_rhs)
 
   and label_description loc p ldesc =
     record_use_construct loc Kind.Field p ldesc.lbl_name
@@ -778,10 +768,8 @@ module EXTRACT = struct
     record loc0 (Type (exp_type, exp_env, `Expr popt)); (* `Expr is required? *)
     List.iter (fun (eextra, _loc, _) -> exp_extra eextra) eextras;
     match exp_desc with
-    | Texp_ident (p, {loc=_loc}, _) -> 
-        (* CamlP4 has a bug: if p = X.x, loc only points to x. So we use loc0 instead of loc 
-           PR#6170 *)
-        record_use loc0 Kind.Value p
+    | Texp_ident (p, {loc}, _) -> 
+        record_use loc Kind.Value p
     | Texp_constant _constant -> ()
     | Texp_let (_rec_flag, vbs, expr) -> 
         value_binding_list vbs;
@@ -963,14 +951,6 @@ module EXTRACT = struct
       | Ttyp_variant (row_fields, _bool, _labels) -> List.iter row_field row_fields
       | Ttyp_poly (_vars (* ? *), cty) -> core_type cty
       | Ttyp_package pty -> package_type pty
-
-(* unused
-  and core_field_type 
-      { field_desc;
-        field_loc=_ } = match field_desc with
-      | Tcfield (_name, cty) -> core_type cty
-      | Tcfield_var -> ()
-*)
 
   and row_field = function
     | Ttag (_label, _atrs, _bool, ctys) -> List.iter core_type ctys
