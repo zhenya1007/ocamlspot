@@ -21,8 +21,8 @@ open Ext
 open Format
 
 let magic_number = "OCamlSpot"
-let ocaml_version = "4.01.0"
-let version = "2.1.0"
+let ocaml_version = "4.02.0"
+let version = "2.2.0"
 
 (** Kind of ``object`` *)
 module Kind = struct
