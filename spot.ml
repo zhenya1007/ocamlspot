@@ -582,7 +582,9 @@ module EXTRACT = struct
                           , path)));
         module_type mty (* CR jfuruse: ?? *)
     | Tmty_typeof mexp -> module_expr mexp
-    | Tmty_alias _ -> assert false (* not yet *)
+    | Tmty_alias (p, {loc}) ->
+        record_use loc Kind.Module_type p;
+        AMod_ident p
 
   and signature sg = AMod_structure (List.concat_map signature_item sg.sig_items)
 
@@ -687,7 +689,7 @@ module EXTRACT = struct
     | Tctf_constraint (ctype1, ctype2) -> 
         core_type ctype1;
         core_type ctype2
-    | Tctf_attribute _ -> assert false (* not yet *)
+    | Tctf_attribute _ -> ()
 
   and class_structure
       { cstr_self; (* : pattern; *)
@@ -717,7 +719,7 @@ module EXTRACT = struct
           core_type cty1; 
           core_type cty2
       | Tcf_initializer expr -> expression expr
-      | Tcf_attribute _ -> assert false (* not yet *)
+      | Tcf_attribute _ -> ()
 
 
   and class_field_kind = function

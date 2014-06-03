@@ -64,6 +64,7 @@ module_alias_ext.cmo \
 module_and_modtype.cmo \
 module_and_modtype2.cmo \
 module_type.cmo \
+module_type_alias.cmo \
 module_use.cmo \
 multiple_definition.cmo \
 object.cmo \
