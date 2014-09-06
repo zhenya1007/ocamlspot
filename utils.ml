@@ -46,18 +46,16 @@ module Lazy = struct
 
   module Open = struct
     let (!!) = Lazy.force 
-    let eager = Lazy.lazy_from_val
+    let eager = Lazy.from_val
   end
 
   open Open
 
-  let peek v = if lazy_is_val v then Some (!!v) else None
+  let peek v = if Lazy.is_val v then Some (!!v) else None
       
   let apply f v = 
-    if lazy_is_val v then eager (f !!v)
+    if Lazy.is_val v then eager (f !!v)
     else lazy (f !!v)
-
-  let is_val = lazy_is_val
 end
 
 include Lazy.Open
