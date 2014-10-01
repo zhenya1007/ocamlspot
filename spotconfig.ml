@@ -176,8 +176,9 @@ end
 let _rest_args = List.rev !rest_args_rev (* CR jfuruse: unused?! *)
 let anonargs = List.rev !rev_anonargs
 
-let mode = 
-  if dump_any then begin 
+let mode =
+  if code_test then `CodeTest
+  else if dump_any then begin 
     match anonargs with
     | [ spec ] -> `Dump spec
     | _ -> failwith "You cannot specify mode with --dump"
