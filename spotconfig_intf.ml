@@ -27,8 +27,6 @@ module type S = sig
   val dump_any               : bool
   val eager_dump             : bool
 
-  val code_test              : bool
-
   val no_definition_analysis : bool
   
   val strict_time_stamp      : bool
@@ -44,7 +42,8 @@ module type S = sig
     val to_string : t -> string
   end
   
-  val mode : [ `Dump      of string
+  val mode : [ `CodeTest
+             | `Dump      of string
              | `Info      of string
              | `Spot      of string
              | `Query     of string * SearchSpec.t
