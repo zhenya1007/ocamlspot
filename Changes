@@ -1,3 +1,9 @@
+4.02.0.2.3.0
+--------------
+
+- Port to 4.02.0
+- ocamlspot.el now has a boolean config ocamlspot-use-cygpath for Cygwin Emacs + MinGW/VC OCaml
+
 4.01.0.2.2.1
 --------------
 
