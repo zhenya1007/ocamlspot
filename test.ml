@@ -10,7 +10,9 @@
 (*   described in file LICENSE.                                        *)
 (*                                                                     *)
 (***********************************************************************)
-let test () =
 
+let test () = ()
+(*
   Utils.String.test ();
   Filepath.test ()
+*)
