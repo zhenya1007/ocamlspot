@@ -90,6 +90,10 @@
   "Use current window to show the spot."
   :type 'boolean :group 'ocamlspot)
 
+(defcustom ocamlspot-use-cygpath nil
+  "Perform necessary Windows/Cygwin path name conversions if you use Cygwin Emacs and MinGW/MSVC OCaml."
+  :type 'boolean :group 'ocamlspot)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Constants
 
 ;; Buffer names
@@ -105,6 +109,9 @@
 
 (defconst ocamlspot-type-buffer "*ocamlspot-type*"
   "The name of ocamlspot type buffer")
+
+(defconst ocamlspot-cygpath-buffer "*ocamlspot-cygpath*"
+  "The name of ocamlspot cygpath communication buffer")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; column chars => column bytes
 
@@ -316,7 +323,18 @@
   (goto-char (point-min))
   (ocamlspot-warnings-rev ""))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; File access
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Windows <=> Cygwin path conversion
+
+(defun encode-path (path)
+  (if ocamlspot-use-cygpath
+      (progn
+	(with-current-buffer (get-buffer-create ocamlspot-cygpath-buffer)
+	  (erase-buffer)
+	  (call-process "cygpath" nil ocamlspot-cygpath-buffer nil "-w" path)
+	  (replace-regexp-in-string "\r?\n" "" (buffer-string))))
+    path))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; File access
 
 ;; Open the file, if exists
 (defun ocamlspot-find-file-existing (path)
@@ -345,7 +363,7 @@
 ;; Creates the query location string of the point
 (defun ocamlspot-query-string-at-cursor ()
   (format "%s:l%dc%d"
-	  (buffer-file-name)
+	  (encode-path (buffer-file-name))
 	  (ocamlspot-lines-of-point)
 	  (ocamlspot-bytes-of-line-to-point)))
 
@@ -366,9 +384,10 @@
     (set-buffer (get-buffer-create ocamlspot-process-buffer))
     (goto-char (point-min))
     (if (re-search-forward (concat "^" pattern ": \\(.*\\(\n +.*\\)*\\)") nil t)
-	(let ((the-match (match-string 1)))
+	;; We got \r here with Cygwin Emacs + MinGW/VS OCaml 
+	(let ((the-match (replace-regexp-in-string "\r" "" (match-string 1))))
 	  (if to-kill (kill-new the-match))
-	  the-match))))
+	     the-match))))
 
 ;; Scan the ocamlspot process output and search a Tree tag.
 ;; If there is a Tree result, highlight it and returns the position string
