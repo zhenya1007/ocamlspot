@@ -10,33 +10,34 @@ OCamlSpotter is a tool for OCaml source code browsing.
 
 OCamlSpotter 2.x uses \*.cmt and \*.cmti files created by OCaml compiler 4.00.0 or newer with -bin-annot option.
 
-Unlike OCamlSpotter 1.x, OCamlSpotter 2.x is a standalone application. You NO LONGER need compiler patching. Just make, make install, and configure ocamlspot.el.
+Installation via OPAM
+============================
+
+The easiest way to install OCamlSpotter for your compiler is to use OPAM. If an OCamlSpotter package is prepared for your compiler set, it should be installed by
+
+```shell
+$ opam install ocamlspot
+```
+
+Installation by hand
+============================
 
 Dependency
-=====================
+-------------------
 
 OCamlSpotter strongly depends on OCaml compiler implementation and its compiler-libs library.
 You need use the correct pairs of compiler and OCamlSpotter.
 
 https://bitbucket.org/camlspotter/ocamlspot provides OCamlSpotter branches for each OCaml versions:
 
-* ocaml-<version-name> : compilable against the given OCaml version
-    * ocaml-4.00.0 : the latest "stable" version
-    * ocaml-4.00.1 : the latest "stable" version
+* For OCaml x.yy.z, use branch x.yy.z.v.w
 * default : Development version. Sometimes not compilable. Not for you.
 
-Versions
-================
 
-OCamlSpotter is always under development and there is no clear release versions.
-If you want to use the latest stable version of OCamlSpotter, choose the tip of the branch 
-with the name of your OCaml compiler version. 
-When you report bugs, please note the revision hash with your issue description please.
+Compilation
+---------------
 
-Installation
-============================
-
-To compile OCamlSpotter::
+To compile OCamlSpotter:
 
    % make
    % make opt           (This is optional but recommended)
@@ -45,36 +46,155 @@ To compile OCamlSpotter::
 Setup
 ============================
 
-If you are Emacs user, see ``ocamlspot.el``. It explains how to set up
-and use it.
+Emacs users
+---------------
 
-I have also written Vim script ``ocamlspot.vim``, but it is not tested at all.
-Sorry but I do not use Vim.
+Put `ocamlspot.el` somewhere, then edit your `.emacs`:
 
+```elisp
+; load-path
+(setq load-path (cons "WHERE-YOU-HAVE-INSTALLED-THIS-ELISP" load-path))
+
+(require 'ocamlspot)
+
+; tuareg mode hook (use caml-mode-hook instead if you use caml-mode)
+(add-hook 'tuareg-mode-hook
+  '(lambda ()
+    (local-set-key "\C-c;" 'ocamlspot-query)
+    (local-set-key "\C-c:" 'ocamlspot-query-interface)
+    (local-set-key "\C-c'" 'ocamlspot-query-uses)
+    (local-set-key "\C-c\C-t" 'ocamlspot-type)
+    (local-set-key "\C-c\C-i" 'ocamlspot-xtype)
+    (local-set-key "\C-c\C-y" 'ocamlspot-type-and-copy)
+    (local-set-key "\C-ct" 'caml-types-show-type)
+    (local-set-key "\C-cp" 'ocamlspot-pop-jump-stack)))
+
+; set the path of the ocamlspot binary. If you did make opt, ocamlspot.opt is recommended.
+(setq ocamlspot-command "WHERE-YOU-HAVE-INSTALLED-THE-BINARIES/ocamlspot")
+
+; Optional: You can also change overlay colors as follows:
+;  (set-face-background 'ocamlspot-spot-face "#660000")
+;  (set-face-background 'ocamlspot-tree-face "#006600")
+```
+
+`M-x customize-group` => `ocamlspot` shows majour configurable options.
+
+Vim users
+-----------
+
+The author does not use Vim, so there is no official OCamlSpot support for Vim,
+but there are several Vim plugins are available:
+
+* https://github.com/simonjbeaumont/vim-ocamlspot
+* https://github.com/cohama/the-ocamlspot.vim
+* https://github.com/MarcWeber/vim-addon-ocaml/blob/master/autoload/vim_addon_ocaml.vim#L167 This is a part of other OCaml related addons
 
 How to use
 ===============================
 
-Before using, it is better to know what to do if something goes wrong
----------------------------------------------------------------------------
+Make `.cmt*` files: compile OCaml code with -bin-annot option
+-------------------------------------------------------------------------
 
-* Use the correct ``ocamlspot`` matching with your OCaml compiler version.
-* Compile OCaml modules with ``-bin-annot`` ocaml compiler option.
-* Keep the source code and produced cmt/cmti files.
-* Install cmt/cmti files along with cmi/cma/cmxa files.
-* Use ``ocamlspot.opt`` if you have done ``make opt``. It is much faster than ``ocamlspot``.
-* CamlP4 has lots of location issues. In many cases, OCamlSpotter cannot workaround them.
-* OCamlSpotter has its own bugs.
+OCamlSpot uses `.cmt` and `.cmti` files for browsing and they must be created
+by OCaml compiler adding `-bin-annot` option. There are several ways to make them:
+
+* Add `-bin-annot` option to the build script (Makefile, OMakefile, etc)
+* or OCaml 4.01.0 or later, use OCAMLPARAM to override OCaml compiler switches:
+  in bash, `export OCAMLPARAM="_,bin-annot=1"`.
+
+Use of `OCAMLPARAM` with OCaml compiler newer than 4.01.0 is strongly recommended, 
+since it is very an easy way to compile 3rd party softwares with `.cmt*` files 
+without modifying their build scripts.
+
+Install `.cmt*` files along with the other object files
+-------------------------------------------------------------------------
+
+As far as you are working only in the directory you develop, having `.cmt*` files there is enough for source browsing.
+
+But once you want to browse other install library source code, you have to install the generated `.cmt*` files along with the other object files and `.mli` files. You need:
+
+* Fix the build scripts to install `.cmt*` files,
+* or use SpotInstall tool to copy these files later SpotInstall( https://bitbucket.org/camlspotter/spotinstall ).
+
+Keep `.cmt*` and source files
+-------------------------------------------------------------------------
+
+Do not remove `.cmt*` and source files. They are required for browsing.
+
+For OPAM packages, set `OPAMKEEPBUILDDIR` environment variable with non-empty string,
+then built files are not removed automatically including `.cmt*` files.
 
 Browsing your code
 -------------------------------------------------
 
-Compile your OCaml source code with ``-bin-annot`` option, 
-then it should create ``\*.cmt`` and ``\*.cmti`` files.
+Compile your OCaml source code with `-bin-annot` option, 
+then it should create `*.cmt` and `*.cmti` files.
 
-Open the source code in your Emacs and move the cursor to an identifier
-usage, then type ``C-c ;``. If things are properly installed and set up,
+Emacs users: Open the source code in your Emacs and move the cursor to an identifier
+usage, then type `C-c ;`. If things are properly installed and set up,
 Emacs should display the definition of the identifier.
+
+Available Emacs commands:
+
+* `ocamlspot-query`: Jump to definition   
+* `ocamlspot-type`: Display the type. Same as `caml-types-show-type` with `-annot`
+* `ocamlspot-type-and-copy`: Display the type, then copy it to the kill buffer.
+* `ocamlspot-xtype`: Display the type with id stamps
+* `ocamlspot-use`: Display the identifier's stamps
+* `ocamlspot-pop-jump-stack`: Go back to previous buffer layout. Useful when you are lost during browsing.
+
+Vim users: Please refer to the corresponding document of vim interface.
+
+If something goes wrong
+---------------------------------------------------------------------------
+
+* Use the correct `ocamlspot` matching with your OCaml compiler version.
+* Compile OCaml modules with `-bin-annot` ocaml compiler option.
+* Keep the source code and produced cmt/cmti files.
+* Install cmt/cmti files along with cmi/cma/cmxa files.
+* Use `ocamlspot.opt` if you have done `make opt`. It is much faster than `ocamlspot`.
+* CamlP4 has lots of location issues. In many cases, OCamlSpotter cannot workaround them.
+* In Windows, OCamlSpot *may be very* slow because of your bad anti-virus software, or cost of fork+exec in Cygwin environment.
+* OCamlSpotter may have its own bugs. You can report problems at https://bitbucket.org/camlspotter/ocamlspot/issues?status=new&status=open .
+    * Please attach the smallest reproducible example as possible.
+    * Explain which version of OCamlSpot you use. i.e. OPAM version or Repo fingerprint.
+    * If your code is compiled with CamlP4 and ocamlspot shows you strange locations, probably it is due to CamlP4 location bugs. Check the P4-expanded version whether it is a bug of P4 or OCamlSpotter.
+
+Note for OPAM users
+-----------------------------------------------------
+
+* set OCAMLPARAM to enable `-bin-annot` option
+* set OPAMKEEPBUILDDIR to keep your source code and `.cmt*` files
+* use `spotinstall` to install `.cmt*` files along with other object files.
+
+OCamlSpotter with multiple OCaml versions
+---------------------------------------------------
+
+OCamlSpotter is compiler version dependent. So, each version of OCaml compiler,
+the corresponding OCamlSpotter is required.
+
+Changing automatically from one to another OCamlSpotter, OPAM users may want to
+specify the following shell script as a wrapper. Change the OCamlSpotter location
+of your favorite editor config to this.:
+
+```shell
+#!/bin/sh
+
+# This is a sample shell script which tries to call the corresponding OCamlSpotter
+# with the current OPAM switch.
+
+DIR=`opam config var bin`
+
+if [ -x $DIR/ocamlspot.opt ]; then 
+  $DIR/ocamlspot.opt $*
+else 
+  if [ -x $DIR/ocamlspot ]; then 
+    $DIR/ocamlspot $*
+  else 
+    echo "ERROR: No ocamlspot.opt or ocamlspot found at $DIR"
+  fi
+fi
+```
 
 Browsing libraries and packages
 ----------------------------------------------
@@ -87,10 +207,12 @@ This requires little modifications to their build script (Makefile/OMakefile/...
 Basically, you need:
 
 * Add -bin-annot to the compiler switch. For example OCAMLCFLAGS += -bin-annot
-* Copy cmt and cmti files at installation. For example::
+* Copy cmt and cmti files at installation. For example:
 
-     install::
-        cp \*.mli \*.cmi \*.cma \*.cmt \*.cmti \*.cmxa $(INSTALLDIR)
+```Makefile
+install::
+	cp \*.mli \*.cmi \*.cma \*.cmt \*.cmti \*.cmxa $(INSTALLDIR)
+```
 
 * Do not remove the original source files, otherwise browsing cannot work.
 
@@ -99,14 +221,5 @@ Browsing OCaml stdlib and otherlibs
 
 If you want to browse OCaml's standard library (stdlib and otherlibs), 
 you must recompile those modules with -bin-annot option to create cmt/cmti files. 
-It should require some Makefile changes and reinstallation of the compiler.
-
-Automation
-------------------------------------
-
-Recompilation of libraries and compiler with fixing their build scripts is very lousy. To facilitate these you may want to use SpotInstall( https://bitbucket.org/camlspotter/spotinstall ). SpotInstall provides:
-
-* A small OCaml compiler patch to automatically enable -bin-annot by the existence of OCAML_ANNOT environment variable; no need to fix build scripts.
-* An automatic cmt/cmti post installation command, spotinstall.
-
-Even with SpotInstall, you have to still recompile the compiler and the libraries. But you do no longer need to fix the build scripts.
+From OCaml 4.01.0, you can use `export OCAMLPARAM="_,bin-annot=1"`.
+For the older versions, you require some Makefile changes and reinstallation of the compiler.
