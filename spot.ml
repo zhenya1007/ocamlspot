@@ -1103,8 +1103,10 @@ module Region : sig
   val to_string : t -> string
   val of_parsing : Location.t -> string * t
   val split : t -> by:t -> (t * t) option
+
   val point_by_byte : int -> t
-    (** works only if bytes are available *)
+  (** works only if bytes are available *)
+
   val point : Position.t -> t
   val length_in_bytes : t -> int
   val is_complete : t -> bool

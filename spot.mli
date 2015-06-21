@@ -118,7 +118,8 @@ module Region : sig
   val of_parsing : Location.t -> string * t
   val split : t -> by:t -> (t * t) option
   val point_by_byte : int -> t  
-    (** works only if bytes are available *)
+  (** works only if bytes are available *)
+    
   val point : Position.t -> t
   val length_in_bytes : t -> int
   val is_complete : t -> bool
@@ -205,7 +206,9 @@ module Unit : sig
     rannots        : Annot.t list FileRegioned.t list lazy_t;
     tree           : Tree.t lazy_t;
   }
+
   val dump : t -> unit (** just same as File.dump. Ignores the added fields *)
+    
   val of_file : File.t -> t
   val to_file : t -> File.t
 end
