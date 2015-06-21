@@ -139,8 +139,13 @@ module Hashset : sig
   val add : 'a t -> 'a -> unit
   val remove : 'a t -> 'a -> unit
   val mem : 'a t -> 'a -> bool
-  val find : 'a t -> 'a -> 'a (** good for hash consing *)
-  val find_opt : 'a t -> 'a -> 'a option (** good for hash consing *)
+
+  val find : 'a t -> 'a -> 'a
+  (** good for hash consing *)
+
+  val find_opt : 'a t -> 'a -> 'a option
+  (** good for hash consing *)
+
   val iter : ('a -> unit) -> 'a t -> unit
   val fold : ('a -> 'b -> 'b) -> 'a t -> 'b -> 'b
   val elements : 'a t -> int
