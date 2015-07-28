@@ -330,6 +330,7 @@
       (progn
 	(with-current-buffer (get-buffer-create ocamlspot-cygpath-buffer)
 	  (erase-buffer)
+	  (message "calling cygpath...")
 	  (call-process "cygpath" nil ocamlspot-cygpath-buffer nil "-w" path)
 	  (replace-regexp-in-string "\r?\n" "" (buffer-string))))
     path))
@@ -357,6 +358,7 @@
     ;; chdir is required
     (if chdir (cd chdir))
     (let ((args (if ocamlspot-debug (cons "--debug" args) args)))
+      (message "calling ocamlspot...")
       (print (append '(call-process ocamlspot-command nil t nil) args))
       (eval (append '(call-process ocamlspot-command nil t nil) args)))))
 
