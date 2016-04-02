@@ -4,7 +4,7 @@
 (*                                                                     *)
 (*                             Jun FURUSE                              *)
 (*                                                                     *)
-(*   Copyright 2008-2012 Jun Furuse. All rights reserved.              *)
+(*   Copyright 2008-2014 Jun Furuse. All rights reserved.              *)
 (*   This file is distributed under the terms of the GNU Library       *)
 (*   General Public License, with the special exception on linking     *)
 (*   described in file LICENSE.                                        *)
@@ -1103,8 +1103,10 @@ module Region : sig
   val to_string : t -> string
   val of_parsing : Location.t -> string * t
   val split : t -> by:t -> (t * t) option
+
   val point_by_byte : int -> t
-    (** works only if bytes are available *)
+  (** works only if bytes are available *)
+
   val point : Position.t -> t
   val length_in_bytes : t -> int
   val is_complete : t -> bool
