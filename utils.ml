@@ -4,7 +4,7 @@
 (*                                                                     *)
 (*                             Jun FURUSE                              *)
 (*                                                                     *)
-(*   Copyright 2008-2012 Jun Furuse. All rights reserved.              *)
+(*   Copyright 2008-2014 Jun Furuse. All rights reserved.              *)
 (*   This file is distributed under the terms of the GNU Library       *)
 (*   General Public License, with the special exception on linking     *)
 (*   described in file LICENSE.                                        *)
@@ -51,11 +51,12 @@ module Lazy = struct
 
   open Open
 
-  let peek v = if Lazy.is_val v then Some (!!v) else None
+  let peek v = if is_val v then Some (!!v) else None
       
   let apply f v = 
-    if Lazy.is_val v then eager (f !!v)
+    if is_val v then eager (f !!v)
     else lazy (f !!v)
+
 end
 
 include Lazy.Open
@@ -95,16 +96,6 @@ module String = struct
 
   let split_at s pos = sub s 0 pos, sub s pos (length s - pos)
 
-  let test () =
-    assert (sub' "hello" 0 4 = "hell");
-    assert (sub' "hello" 0 5 = "hello");
-    assert (sub' "hello" 0 6 = "hello");
-    assert (sub' "hello" 0 7 = "hello");
-    assert (sub' "hello" 3 2 = "lo");
-    assert (sub' "hello" 3 3 = "lo");
-    assert (sub' "hello" 3 4 = "lo");
-    assert (sub' "hello" 5 5 = "")
-    
   let find s pos f =
     let len = length s in
     let rec scan pos =
@@ -120,6 +111,33 @@ module String = struct
       | c when c = from -> unsafe_set s' p to_
       | _ -> ()) s';
     to_string s'
+
+  let rec index_rec s lim i c =
+    if i >= lim then None else
+      if String.unsafe_get s i = c then Some i else index_rec s lim (i +
+    1) c
+  ;;
+    
+(*
+  let index_from_to s from to_ c =
+    let l = String.length s in
+    if from < 0 || from > to_ || to_ >= l then 
+      invalid_arg "Xstring.index_from_to" 
+    else
+      index_rec s (to_+1) from c
+  ;;
+  
+  let chop_eols s =
+    let len = length s in
+    if len > 1 then
+      match s.[len-1] with
+      | '\n' -> 
+          if len > 2 && s.[len-2] = '\r' then sub s 0 (len-2)
+          else sub s 0 (len-1)
+      | '\r' -> sub s 0 (len-1)
+      | _ -> s
+    else s
+*)
 end
 
 module Filename = struct
