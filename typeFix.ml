@@ -79,7 +79,12 @@ let type_declaration tdecl =
   { tdecl with type_params = List.map type_expr tdecl.type_params;
     type_manifest = Option.map ~f:type_expr tdecl.type_manifest }
 
-let exception_declaration edecl = { edecl with ext_args = List.map type_expr edecl.ext_args }
+let constructor_arguments = function
+  | Cstr_tuple tys -> Cstr_tuple (List.map type_expr tys)
+  | Cstr_record _lds -> assert false (* CR jfuruse: not yet *)
+
+let exception_declaration edecl = 
+  { edecl with ext_args = constructor_arguments edecl.ext_args }
 
 let rec class_type = function
   | Cty_constr (p, tys, clty) ->

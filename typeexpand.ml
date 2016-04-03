@@ -55,7 +55,7 @@ module EnvSummary = struct
 end
 
 type t =
-  | Function of (label * type_expr) list * type_expr
+  | Function of (arg_label * type_expr) list * type_expr
   | Tuple of type_expr list
   | Variant of Path.t option * Types.constructor_declaration list
   | Record of Path.t option * (Ident.t * type_expr) list
@@ -70,9 +70,10 @@ let constructor_with_path name = function
 let format_as_expr ppf = function
   | Function (label_typ_list, _) ->
       fprintf ppf "(fun @[%a@] -> assert false)"
-        (Format.list " " (fun ppf (l, _typ) -> 
-          if l = "" then fprintf ppf "_"
-          else fprintf ppf "%s" (if l.[0] = '?' then l else "~" ^ l)))
+        (Format.list " " (fun ppf (l, _typ) -> match l with
+        | Nolabel -> fprintf ppf "_"
+        | Labelled l -> fprintf ppf "~%s" l
+        | Optional l -> fprintf ppf "?%s" l))
         label_typ_list
   | Tuple typs ->
       fprintf ppf "(@[%a@])" (Format.list ", " (fun ppf _ -> fprintf ppf "assert false")) typs
@@ -80,12 +81,16 @@ let format_as_expr ppf = function
       fprintf ppf "(assert false (* @[%a@] *))" 
         (Format.list "@ | " (fun ppf -> 
           function
-            | { cd_id=name; cd_args= [_; _] } when Ident.name name = "::" -> fprintf ppf "(_ :: _)"
-            | { cd_id=name; cd_args= [] } -> fprintf ppf "%s" (constructor_with_path name pathopt)
-            | { cd_id=name; cd_args=args } -> 
+            | { cd_id=name; cd_args= Cstr_tuple [_; _] } when Ident.name name = "::" -> fprintf ppf "(_ :: _)"
+            | { cd_id=name; cd_args= Cstr_tuple [] } -> fprintf ppf "%s" (constructor_with_path name pathopt)
+            | { cd_id=name; cd_args= Cstr_tuple args } -> 
                 fprintf ppf "%s (@[%a@])"
                   (constructor_with_path name pathopt)
-                  (Format.list ", " (fun ppf _ -> fprintf ppf "assert false" )) args))
+                  (Format.list ", " (fun ppf _ -> fprintf ppf "assert false" )) args
+            | { cd_id=_name; cd_args= Cstr_record _lds } -> 
+                (* CR jfuruse: not yet *)
+                assert false
+         ))
         args
   | Record (None, label_typ_list) -> 
       fprintf ppf "{ @[%a@] }"
@@ -122,13 +127,15 @@ let format_as_pattern ppf = function
       fprintf ppf "( @[%a@] )" 
         (Format.list "@ | " (fun ppf -> 
           function
-            | { cd_id=name; cd_args= [_; _] } when Ident.name name = "::" -> fprintf ppf "(_ :: _)"
-            | { cd_id=name; cd_args= [] } -> fprintf ppf "%s" (constructor_with_path name pathopt)
-            | { cd_id=name; cd_args= [_arg] } -> fprintf ppf "%s _" (constructor_with_path name pathopt)
-            | { cd_id=name; cd_args= args } -> 
+            | { cd_id=name; cd_args= Cstr_tuple [_; _] } when Ident.name name = "::" -> fprintf ppf "(_ :: _)"
+            | { cd_id=name; cd_args= Cstr_tuple [] } -> fprintf ppf "%s" (constructor_with_path name pathopt)
+            | { cd_id=name; cd_args= Cstr_tuple [_arg] } -> fprintf ppf "%s _" (constructor_with_path name pathopt)
+            | { cd_id=name; cd_args= Cstr_tuple args } -> 
                 fprintf ppf "%s (@[%a@])"
                   (constructor_with_path name pathopt)
-                  (Format.list ", " (fun ppf _ -> fprintf ppf "_" )) args))
+                  (Format.list ", " (fun ppf _ -> fprintf ppf "_" )) args
+            | { cd_id=_name; cd_args= Cstr_record _ } -> assert false (* CR jfuruse: not yet *)
+         ))
         args
   | Record (None, label_typ_list) -> 
       fprintf ppf "{ @[%a@] }"
