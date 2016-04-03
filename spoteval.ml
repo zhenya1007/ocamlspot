@@ -238,7 +238,7 @@ end = struct
       fprintf ppf "{ @[<v>%a@] }"
         (Format.list ";@ " (fun ppf (id, (kind, t)) ->
             fprintf ppf "@[<2>%s %s =@ %a@]" 
-              (String.capitalize (Kind.to_string kind))
+              (String.capitalize_ascii (Kind.to_string kind))
             (Ident.name id) z t))
         
     and z ppf = Format.lazy_ t ppf
@@ -322,7 +322,7 @@ module Eval = struct
     *)
                   (* If it is a non-value object, it might be included with stamp = -1 *)
                   let error id = 
-                    Error (Failure (Printf.sprintf "%s:%s not found in { %s }" 
+                    Value.Error (Failure (Printf.sprintf "%s:%s not found in { %s }" 
                                       (Kind.name kind)
                                       (Ident.name id)
                                       (String.concat "; " 
@@ -387,7 +387,7 @@ module Eval = struct
       with
       | Not_found ->
           Debug.format "Error: Not found %s %s in { @[%a@] }@."
-            (String.capitalize (Kind.to_string kind))
+            (String.capitalize_ascii (Kind.to_string kind))
             name
             Value.Format.structure str;
           Error (Failure (Printf.sprintf "Not found: %s__%d" name pos))
@@ -403,7 +403,7 @@ module Eval = struct
       with
       | Not_found ->
           Debug.format "Error: Not found %s %s in { @[%a@] }@."
-            (String.capitalize (Kind.to_string kind))
+            (String.capitalize_ascii (Kind.to_string kind))
             name
             Value.Format.structure str;
           Error (Failure (Printf.sprintf "Not found: %s__any" name))
@@ -412,7 +412,7 @@ module Eval = struct
   and module_expr env idopt : module_expr -> Value.z = function
     | AMod_functor_parameter -> 
         eager (Parameter { PIdent.path= env.path; ident = idopt })
-    | AMod_abstract -> eager (Error (Failure "abstract"))
+    | AMod_abstract -> eager (Value.Error (Failure "abstract"))
     | AMod_ident p -> find_path env (Kind.Module, p)
     | AMod_packed s -> lazy (!packed env s)
     | AMod_structure str -> 

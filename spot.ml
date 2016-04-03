@@ -252,7 +252,7 @@ module Annot = struct
 	  Abstraction.format_structure_item str
     | Use (use, path) ->
 	fprintf ppf "Use: %s, %s"
-	  (String.capitalize (Kind.name use)) (Path.name path)
+	  (String.capitalize_ascii (Kind.name use)) (Path.name path)
     | Module mexp ->
 	fprintf ppf "Module: %a"
           Abstraction.format_module_expr mexp
@@ -274,7 +274,7 @@ module Annot = struct
         fprintf ppf "Str_item: ..."
     | Use (use, path) ->
         fprintf ppf "Use: %s, %s"
-          (String.capitalize (Kind.name use)) (Path.name path)
+          (String.capitalize_ascii (Kind.name use)) (Path.name path)
     | Module _mexp ->
 	fprintf ppf "Module: ..."
     | Functor_parameter id ->
@@ -499,7 +499,7 @@ module EXTRACT = struct
     | Tstr_primitive ({ val_id= id; val_name= {loc} } as vdesc) ->
         value_description vdesc;
         [ with_record_def loc & AStr_value id ]
-    | Tstr_type id_descs -> 
+    | Tstr_type (_rf, id_descs) -> 
         List.map (fun ({ typ_id= id; typ_name= {loc} } as td) -> 
           with_record_def loc & type_declaration id td) id_descs
     | Tstr_exception ec -> [ extension_constructor ec ]
@@ -516,9 +516,9 @@ module EXTRACT = struct
     | Tstr_open { open_path= path; open_txt= {loc} } -> 
         record_use loc Kind.Module path;
         []
-    | Tstr_class classdescs ->
-	List.concat_map (fun (clsdecl, _names, _) -> 
-          class_declaration clsdecl) classdescs
+    | Tstr_class xs ->
+	List.concat_map (fun (clsdecl, _names) -> 
+          class_declaration clsdecl) xs
     | Tstr_class_type iddecls ->
 	List.concat_map (fun (id, {loc}, clstydecl) -> 
           with_record_def loc (AStr_class_type id)
@@ -539,12 +539,16 @@ module EXTRACT = struct
         (* ext_attributes: attributes; *)
       } =
     begin match ext_kind with
-    | Text_decl (cty, ctyo) -> 
-        List.iter core_type cty;
+    | Text_decl (cargs, ctyo) -> 
+        constructor_arguments cargs;
         Option.iter ~f:core_type ctyo
     | Text_rebind (p, {loc}) ->  record_use loc Kind.Exception p
     end;
     with_record_def loc & AStr_exception id
+
+  and constructor_arguments = function
+    | Cstr_tuple ctys -> List.iter core_type ctys
+    | Cstr_record _lds -> assert false (* CR jfuruse: not yet *)
 
   and type_extension { tyext_path = path;
                        tyext_txt = {loc};
@@ -588,7 +592,7 @@ module EXTRACT = struct
         record loc & Type (val_val.val_type, sitem.sig_env, `Pattern (Some id));
         value_description vdesc;
         [ with_record_def loc & AStr_value id ]
-    | Tsig_type typs -> 
+    | Tsig_type (_rf, typs) -> 
         List.map (fun ({ typ_id=id; typ_name= {loc} } as td) -> 
           with_record_def loc & type_declaration id td) typs
     | Tsig_exception ec -> [ extension_constructor ec ]
@@ -635,7 +639,7 @@ module EXTRACT = struct
         class_expr clexpr
     | Tcl_apply (clexpr, args) ->
         class_expr clexpr;
-        List.iter (fun (_label, expropt, _optional) ->
+        List.iter (fun (_label, expropt) ->
           match expropt with
           | None -> ()
           | Some expr -> expression expr) args
@@ -732,8 +736,8 @@ module EXTRACT = struct
     match typ_kind with
     | Ttype_abstract -> AStr_type (id, [])
     | Ttype_variant lst -> 
-        AStr_type (id, List.map (fun { cd_id=id; cd_name= {loc}; cd_args= ctys; } ->
-          List.iter core_type ctys;
+        AStr_type (id, List.map (fun { cd_id=id; cd_name= {loc}; cd_args } ->
+          constructor_arguments cd_args;
           with_record_def loc & AStr_constructor id) lst)
     | Ttype_record lst -> 
         AStr_type (id, List.map (fun { ld_id=id; ld_name= {loc}; ld_type= cty } -> 
@@ -778,7 +782,7 @@ module EXTRACT = struct
         case_list cases
     | Texp_apply (expr, leos) ->
         expression expr;
-        leos |> List.iter (fun (_label, expropt, _optional) ->
+        leos |> List.iter (fun (_label, expropt) ->
           match expropt with
           | None -> ()
           | Some expr -> expression expr)
@@ -854,6 +858,7 @@ module EXTRACT = struct
     | Texp_lazy e -> expression e
     | Texp_object (clstr, _names) -> class_structure clstr
     | Texp_pack mexp -> ignore & module_expr mexp
+    | (Texp_unreachable|Texp_extension_constructor (_, _)) -> assert false (* CR jfuruse: Not yet *)
 
   and exp_extra = function
     | Texp_constraint cty -> core_type cty
@@ -1377,7 +1382,7 @@ module File = struct
         (List.map (fun file ->
           let fullpath = if Filename.is_relative file then cmt.cmt_builddir ^/ file else file in
           let modname = match Filename.split_extension (Filename.basename file) with
-            | modname, (".cmo" | ".cmx" | ".cmi") -> String.capitalize modname
+            | modname, (".cmo" | ".cmx" | ".cmi") -> String.capitalize_ascii modname
             | _ -> Format.eprintf "packed module with strange name: %s@." file; assert false
           in
           Abstraction.AStr_module (Ident.create modname (* stamp is bogus *),

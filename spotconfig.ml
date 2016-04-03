@@ -169,7 +169,7 @@ module SearchSpec = struct
     | Pos pos -> ":" ^ Position.to_string pos
     | Kind (k, path) -> 
         Printf.sprintf ":%s:%s"
-          (String.capitalize (Kind.to_string k))
+          (String.capitalize_ascii (Kind.to_string k))
           (Path.name path)
 end
 
