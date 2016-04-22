@@ -13,8 +13,6 @@
 
 open Spot
 open Spoteval
-open Cmt_format
-open Spoteval
 
 exception Old_cmt of string * string
 val load : load_paths:string list -> string -> Unit.t
