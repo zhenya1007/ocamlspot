@@ -130,7 +130,6 @@ let no_definition_analysis = !no_definition_analysis
 let strict_time_stamp      = !strict_time_stamp
 let print_interface        = !print_interface
 let type_expand            = !type_expand
-let use_spot               = !use_spot
 let code_test              = !code_test
 
 let dump_any = 

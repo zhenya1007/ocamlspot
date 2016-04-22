@@ -112,32 +112,6 @@ module String = struct
       | _ -> ()) s';
     to_string s'
 
-  let rec index_rec s lim i c =
-    if i >= lim then None else
-      if String.unsafe_get s i = c then Some i else index_rec s lim (i +
-    1) c
-  ;;
-    
-(*
-  let index_from_to s from to_ c =
-    let l = String.length s in
-    if from < 0 || from > to_ || to_ >= l then 
-      invalid_arg "Xstring.index_from_to" 
-    else
-      index_rec s (to_+1) from c
-  ;;
-  
-  let chop_eols s =
-    let len = length s in
-    if len > 1 then
-      match s.[len-1] with
-      | '\n' -> 
-          if len > 2 && s.[len-2] = '\r' then sub s 0 (len-2)
-          else sub s 0 (len-1)
-      | '\r' -> sub s 0 (len-1)
-      | _ -> s
-    else s
-*)
 end
 
 module Filename = struct
