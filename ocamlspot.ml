@@ -4,7 +4,7 @@
 (*                                                                     *)
 (*                             Jun FURUSE                              *)
 (*                                                                     *)
-(*   Copyright 2008-2012 Jun Furuse. All rights reserved.              *)
+(*   Copyright 2008-2014 Jun Furuse. All rights reserved.              *)
 (*   This file is distributed under the terms of the GNU Library       *)
 (*   General Public License, with the special exception on linking     *)
 (*   described in file LICENSE.                                        *)
@@ -374,6 +374,7 @@ module Main = struct
 
   let main () = 
     match C.mode with
+    | `CodeTest                    -> Test.test ()
     | `Dump path                   -> ignore (load path)
     | `Info path                   -> info path
     | `Spot path                   -> write_spot path
@@ -386,7 +387,6 @@ module Main = struct
     | `Typecheck _ | `Recheck _ -> assert false
 end
 
-let () = if C.code_test then Test.test ()
 
 let () = Main.main ()
 

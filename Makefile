@@ -18,8 +18,8 @@ include $(OCAMLDIR)/Makefile.config
 # Various commands and dir
 ##########################
 CAMLRUN= ocamlrun
-OCAMLC   = ocamlc -annot -bin-annot -w A-4-9-40-42-44 -warn-error A-4-9-32-33-34-40-42-44
-OCAMLOPT = ocamlopt -annot -bin-annot -w A-4-9-40-42-44 -warn-error A-4-9-32-33-34-40-42-44
+OCAMLC   = ocamlc -annot -bin-annot -w A-4-9-40-42-44-45 -warn-error A-4-9-34-40-42-44-45-58
+OCAMLOPT = ocamlopt -annot -bin-annot -w A-4-9-40-42-44-45 -warn-error A-4-9-34-40-42-44-45-58
 OCAMLDEP = ocamldep
 OCAMLLEX = ocamllex
 OCAMLYACC= ocamlyacc
