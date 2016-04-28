@@ -4,7 +4,7 @@
 (*                                                                     *)
 (*                             Jun FURUSE                              *)
 (*                                                                     *)
-(*   Copyright 2008-2012 Jun Furuse. All rights reserved.              *)
+(*   Copyright 2008-2014 Jun Furuse. All rights reserved.              *)
 (*   This file is distributed under the terms of the GNU Library       *)
 (*   General Public License, with the special exception on linking     *)
 (*   described in file LICENSE.                                        *)
@@ -27,8 +27,6 @@ module type S = sig
   val dump_any               : bool
   val eager_dump             : bool
 
-  val code_test              : bool
-
   val no_definition_analysis : bool
   
   val strict_time_stamp      : bool
@@ -44,7 +42,8 @@ module type S = sig
     val to_string : t -> string
   end
   
-  val mode : [ `Dump      of string
+  val mode : [ `CodeTest
+             | `Dump      of string
              | `Info      of string
              | `Spot      of string
              | `Query     of string * SearchSpec.t

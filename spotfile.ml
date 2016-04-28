@@ -4,7 +4,7 @@
 (*                                                                     *)
 (*                             Jun FURUSE                              *)
 (*                                                                     *)
-(*   Copyright 2008-2012 Jun Furuse. All rights reserved.              *)
+(*   Copyright 2008-2014 Jun Furuse. All rights reserved.              *)
 (*   This file is distributed under the terms of the GNU Library       *)
 (*   General Public License, with the special exception on linking     *)
 (*   described in file LICENSE.                                        *)
@@ -45,24 +45,6 @@ end = struct
         *)
         eprintf "Warning: source %s does not exist. Time stamp check was skipped.@." source;
         true
-
-  let find_alternative_source ~cmt source =
-      (* if [source] is not found, we try finding files with the same basename in
-         - the directory of [cmt]
-         - the directory of [cmt] points to (if [cmt] is symlink)
-       *)
-    let source_base = Filename.basename source in
-    let source_dirs =
-        Filename.dirname cmt ::
-        begin 
-          let stat_cmt = try Unix.lstat cmt with _ -> assert false in
-          if stat_cmt.Unix.st_kind = Unix.S_LNK then
-            [ Filename.dirname (try Unix.readlink cmt with _ -> assert false) ]
-          else []
-        end
-    in
-    List.find Sys.file_exists 
-      (List.map (fun d -> d ^/ source_base) source_dirs)
 
   let load_cmt_file file = snd (Cmt_format.read file)
 

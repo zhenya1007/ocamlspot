@@ -1,6 +1,7 @@
 cmt.cmi :
 command.cmi :
 compdir.cmi : filepath.cmi
+cygwin.cmi :
 dotfile.cmi :
 fileident.cmi :
 filepath.cmi :
@@ -14,6 +15,7 @@ spotfile.cmi : spoteval.cmi spot.cmi
 treeset.cmi : xset.cmi
 typeFix.cmi :
 typeexpand.cmi :
+unixCommand.cmi :
 utils.cmi :
 xident.cmi : name.cmi
 xlongident.cmi :
@@ -31,6 +33,8 @@ compdir.cmo : utils.cmi filepath.cmi dotfile.cmi compdir.cmi
 compdir.cmx : utils.cmx filepath.cmx dotfile.cmx compdir.cmi
 copiedfilename.cmo :
 copiedfilename.cmx :
+cygwin.cmo : cygwin.cmi
+cygwin.cmx : cygwin.cmi
 dotfile.cmo : utils.cmi dotfile.cmi
 dotfile.cmx : utils.cmx dotfile.cmi
 ext.cmo : xprinttyp.cmi xpath.cmi xlongident.cmi xident.cmi
@@ -63,14 +67,16 @@ spotfile.cmo : utils.cmi spoteval.cmi spotconfig.cmi spot.cmi dotfile.cmi \
     cmt.cmi spotfile.cmi
 spotfile.cmx : utils.cmx spoteval.cmx spotconfig.cmx spot.cmx dotfile.cmx \
     cmt.cmx spotfile.cmi
-test.cmo : utils.cmi filepath.cmi
-test.cmx : utils.cmx filepath.cmx
+test.cmo : utils.cmi filepath.cmi cygwin.cmi
+test.cmx : utils.cmx filepath.cmx cygwin.cmx
 treeset.cmo : xset.cmi treeset.cmi
 treeset.cmx : xset.cmx treeset.cmi
 typeFix.cmo : utils.cmi name.cmi typeFix.cmi
 typeFix.cmx : utils.cmx name.cmx typeFix.cmi
 typeexpand.cmo : utils.cmi typeexpand.cmi
 typeexpand.cmx : utils.cmx typeexpand.cmi
+unixCommand.cmo : utils.cmi unixCommand.cmi
+unixCommand.cmx : utils.cmx unixCommand.cmi
 utils.cmo : utils.cmi
 utils.cmx : utils.cmi
 xident.cmo : name.cmi xident.cmi

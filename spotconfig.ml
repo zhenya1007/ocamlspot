@@ -4,7 +4,7 @@
 (*                                                                     *)
 (*                             Jun FURUSE                              *)
 (*                                                                     *)
-(*   Copyright 2008-2012 Jun Furuse. All rights reserved.              *)
+(*   Copyright 2008-2014 Jun Furuse. All rights reserved.              *)
 (*   This file is distributed under the terms of the GNU Library       *)
 (*   General Public License, with the special exception on linking     *)
 (*   described in file LICENSE.                                        *)
@@ -130,7 +130,6 @@ let no_definition_analysis = !no_definition_analysis
 let strict_time_stamp      = !strict_time_stamp
 let print_interface        = !print_interface
 let type_expand            = !type_expand
-let use_spot               = !use_spot
 let code_test              = !code_test
 
 let dump_any = 
@@ -169,15 +168,16 @@ module SearchSpec = struct
     | Pos pos -> ":" ^ Position.to_string pos
     | Kind (k, path) -> 
         Printf.sprintf ":%s:%s"
-          (String.capitalize (Kind.to_string k))
+          (String.capitalize_ascii (Kind.to_string k))
           (Path.name path)
 end
 
 let _rest_args = List.rev !rest_args_rev (* CR jfuruse: unused?! *)
 let anonargs = List.rev !rev_anonargs
 
-let mode = 
-  if dump_any then begin 
+let mode =
+  if code_test then `CodeTest
+  else if dump_any then begin 
     match anonargs with
     | [ spec ] -> `Dump spec
     | _ -> failwith "You cannot specify mode with --dump"
