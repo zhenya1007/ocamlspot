@@ -10,10 +10,8 @@ OCamlSpotter is a tool for OCaml source code browsing.
 
 OCamlSpotter 2.x uses \*.cmt and \*.cmti files created by OCaml compiler 4.00.0 or newer with -bin-annot option.
 
-Unlike OCamlSpotter 1.x, OCamlSpotter 2.x is a standalone application. You NO LONGER need compiler patching. Just make, make opt, make install, and configure ocamlspot.el.
-
-Dependency
-=====================
+Versions: Use the correct version for your OCaml compiler
+================================================================
 
 OCamlSpotter strongly depends on OCaml compiler implementation and its compiler-libs library.
 You need use the correct pairs of compiler and OCamlSpotter.
@@ -23,6 +21,7 @@ https://bitbucket.org/camlspotter/ocamlspot provides OCamlSpotter branches for e
 * For OCaml 4.01.0, use branch 4.01.0.2.x.y
 * For OCaml 4.00.1, use branch 4.00.1.2.x.y
 * For OCaml 4.00.0, use branch 4.00.0.2.x.y
+* For incoming OCaml 4.02.0, use branch 4.02.0. It is still unstable.
 * default : Development version. Sometimes not compilable. Not for you.
 
 Installation
