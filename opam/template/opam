@@ -1,5 +1,8 @@
 build: [
-  [make "all" "opt" "install" "BINDIR=%{bin}%" "PREFIX=%{prefix}%"]
+  [make "all" "opt" "BINDIR=%{bin}%" "PREFIX=%{prefix}%"]
+]
+install: [
+  [make "install" "BINDIR=%{bin}%" "PREFIX=%{prefix}%"]
 ]
 remove: [
   [make "uninstall" "BINDIR=%{bin}%" "PREFIX=%{prefix}%"]
