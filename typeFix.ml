@@ -4,7 +4,7 @@
 (*                                                                     *)
 (*                             Jun FURUSE                              *)
 (*                                                                     *)
-(*   Copyright 2008-2012 Jun Furuse. All rights reserved.              *)
+(*   Copyright 2008-2014 Jun Furuse. All rights reserved.              *)
 (*   This file is distributed under the terms of the GNU Library       *)
 (*   General Public License, with the special exception on linking     *)
 (*   described in file LICENSE.                                        *)
@@ -79,21 +79,26 @@ let type_declaration tdecl =
   { tdecl with type_params = List.map type_expr tdecl.type_params;
     type_manifest = Option.map ~f:type_expr tdecl.type_manifest }
 
-let exception_declaration edecl = { edecl with exn_args = List.map type_expr edecl.exn_args }
+let constructor_arguments = function
+  | Cstr_tuple tys -> Cstr_tuple (List.map type_expr tys)
+  | Cstr_record _lds -> assert false (* CR jfuruse: not yet *)
+
+let exception_declaration edecl = 
+  { edecl with ext_args = constructor_arguments edecl.ext_args }
 
 let rec class_type = function
   | Cty_constr (p, tys, clty) ->
       Cty_constr (path p, List.map type_expr tys, class_type clty)
   | Cty_signature clsig -> Cty_signature (class_signature clsig)
-  | Cty_fun (l, ty, clty) -> Cty_fun (l, type_expr ty, class_type clty)
+  | Cty_arrow (l, ty, clty) -> Cty_arrow (l, type_expr ty, class_type clty)
 
 and class_signature clsig = 
-  { clsig with cty_self = type_expr clsig.cty_self;
-    cty_vars = 
-      Vars.map (fun (f1,f2,ty) -> (f1,f2, type_expr ty)) clsig.cty_vars;
-    cty_inher = 
+  { clsig with csig_self = type_expr clsig.csig_self;
+    csig_vars = 
+      Vars.map (fun (f1,f2,ty) -> (f1,f2, type_expr ty)) clsig.csig_vars;
+    csig_inher = 
       List.map (fun (p, tys) -> path p, List.map type_expr tys)
-        clsig.cty_inher }
+        clsig.csig_inher }
 
 let class_declaration cldecl = 
   { cldecl with cty_params = List.map type_expr cldecl.cty_params;
@@ -110,7 +115,8 @@ let rec module_type = function
   | Mty_ident p -> Mty_ident (path p)
   | Mty_signature sg -> Mty_signature (signature sg)
   | Mty_functor (id, mty, mty') ->
-      Mty_functor (ident id, module_type mty, module_type mty')
+      Mty_functor (ident id, Option.map ~f:module_type mty, module_type mty')
+  | Mty_alias p -> Mty_alias (path p)
 
 and signature sg = List.map signature_item sg
 
@@ -118,10 +124,10 @@ and signature_item = function
   | Sig_value (id, vdesc) -> Sig_value (ident id, value_description vdesc)
   | Sig_type (id, tdecl, rec_status) -> 
       Sig_type (ident id, type_declaration tdecl, rec_status)
-  | Sig_exception (id, edecl) ->
-      Sig_exception (ident id, exception_declaration edecl)
-  | Sig_module (id, mty, rec_status) ->
-      Sig_module (ident id, module_type mty, rec_status)
+  | Sig_typext (id, edecl, ext_status) -> 
+      Sig_typext (ident id, exception_declaration edecl, ext_status)
+  | Sig_module (id, mod_decl, rec_status) ->
+      Sig_module (ident id, module_declaration mod_decl, rec_status)
   | Sig_modtype (id, mty_decl) -> 
       Sig_modtype (ident id, modtype_declaration mty_decl)
   | Sig_class (id, cldecl, rec_status) ->
@@ -129,6 +135,12 @@ and signature_item = function
   | Sig_class_type (id, cltdecl, rec_status) ->
       Sig_class_type (ident id, class_type_declaration cltdecl, rec_status)
 
-and modtype_declaration = function
-  | Modtype_abstract -> Modtype_abstract
-  | Modtype_manifest mty -> Modtype_manifest (module_type mty)
+and module_declaration md =
+  { md with 
+    md_type = module_type md.md_type;
+  }
+
+and modtype_declaration mtd = 
+  { mtd with
+    mtd_type = Option.map ~f:module_type mtd.mtd_type
+  }

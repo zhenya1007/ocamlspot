@@ -4,7 +4,7 @@
 (*                                                                     *)
 (*                             Jun FURUSE                              *)
 (*                                                                     *)
-(*   Copyright 2008-2012 Jun Furuse. All rights reserved.              *)
+(*   Copyright 2008-2014 Jun Furuse. All rights reserved.              *)
 (*   This file is distributed under the terms of the GNU Library       *)
 (*   General Public License, with the special exception on linking     *)
 (*   described in file LICENSE.                                        *)
@@ -12,7 +12,7 @@
 (***********************************************************************)
 
 module List : sig
-  include module type of List
+  include module type of struct include List end
   val find_map_opt : ('a -> 'b option) -> 'a list -> 'b option
   val filter_map : ('a -> 'b option) -> 'a list -> 'b list
   val concat_map : ('a -> 'b list) -> 'a list -> 'b list
@@ -24,7 +24,7 @@ module Debug : sig
 end
 
 module Lazy : sig
-  include module type of Lazy
+  include module type of struct include Lazy end
   module Open : sig 
     val ( !! ) : 'a Lazy.t -> 'a 
     val eager : 'a -> 'a Lazy.t 
@@ -33,10 +33,10 @@ module Lazy : sig
   val apply : ('a -> 'b) -> 'a t -> 'b Lazy.t
   val is_val : 'a t -> bool
 end
-include module type of Lazy.Open
+include module type of struct include Lazy.Open end
 
 module String : sig
-  include module type of String
+  include module type of struct include String end
   val split : (char -> bool) -> string -> string list
 
   val sub' : string -> int -> int -> string
@@ -50,12 +50,10 @@ module String : sig
   val find : string -> int -> (char -> bool) -> int option
 
   val replace_chars : char -> char -> string -> string
-
-  val test : unit -> unit
 end
 
 module Filename : sig
-  include module type of Filename
+  include module type of struct include Filename end
   val split_extension : string -> string * string
 
     val concats : string list -> string
@@ -64,10 +62,10 @@ module Filename : sig
     val (^/) : string -> string -> string
   end
 end
-include module type of Filename.Open
+include module type of struct include Filename.Open end
 
 module Format : sig
-  include module type of Format with type formatter = Format.formatter
+  include module type of struct include Format end
   val list :
     (unit, formatter, unit) format (* seprator *)
     -> (formatter -> 'a -> unit) -> formatter -> 'a list -> unit
@@ -96,7 +94,7 @@ val invalid_argf : ('a, unit, string, 'b) format4 -> 'a
 val with_ref : 'a ref -> 'a -> (unit -> 'b) -> 'b
 
 module Unix : sig
-  include module type of Unix
+  include module type of struct include Unix end
   val kind : string -> file_kind option
   val is_dir : string -> bool
   val gen_timed : (unit -> 't) -> ('t -> 't -> 't) -> ('a -> 'b) -> 'a -> 'b * 't
@@ -126,7 +124,7 @@ module Find : sig
 end
 
 module Hashtbl : sig
-  include module type of Hashtbl with type ('a,'b) t = ('a, 'b) Hashtbl.t
+  include module type of struct include Hashtbl end
   val of_list : int -> ('a * 'b) list -> ('a, 'b) Hashtbl.t
   val memoize : ('a, 'b) Hashtbl.t -> ('a -> 'b) -> 'a -> 'b
   val find_default : 'b -> ('a, 'b) Hashtbl.t -> 'a -> 'b
@@ -141,8 +139,13 @@ module Hashset : sig
   val add : 'a t -> 'a -> unit
   val remove : 'a t -> 'a -> unit
   val mem : 'a t -> 'a -> bool
-  val find : 'a t -> 'a -> 'a (** good for hash consing *)
-  val find_opt : 'a t -> 'a -> 'a option (** good for hash consing *)
+
+  val find : 'a t -> 'a -> 'a
+  (** good for hash consing *)
+
+  val find_opt : 'a t -> 'a -> 'a option
+  (** good for hash consing *)
+
   val iter : ('a -> unit) -> 'a t -> unit
   val fold : ('a -> 'b -> 'b) -> 'a t -> 'b -> 'b
   val elements : 'a t -> int
