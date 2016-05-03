@@ -4,7 +4,7 @@
 (*                                                                     *)
 (*                             Jun FURUSE                              *)
 (*                                                                     *)
-(*   Copyright 2008-2012 Jun Furuse. All rights reserved.              *)
+(*   Copyright 2008-2014 Jun Furuse. All rights reserved.              *)
 (*   This file is distributed under the terms of the GNU Library       *)
 (*   General Public License, with the special exception on linking     *)
 (*   described in file LICENSE.                                        *)
@@ -46,18 +46,17 @@ module Lazy = struct
 
   module Open = struct
     let (!!) = Lazy.force 
-    let eager = Lazy.lazy_from_val
+    let eager = Lazy.from_val
   end
 
   open Open
 
-  let peek v = if lazy_is_val v then Some (!!v) else None
+  let peek v = if is_val v then Some (!!v) else None
       
   let apply f v = 
-    if lazy_is_val v then eager (f !!v)
+    if is_val v then eager (f !!v)
     else lazy (f !!v)
 
-  let is_val = lazy_is_val
 end
 
 include Lazy.Open
@@ -97,16 +96,6 @@ module String = struct
 
   let split_at s pos = sub s 0 pos, sub s pos (length s - pos)
 
-  let test () =
-    assert (sub' "hello" 0 4 = "hell");
-    assert (sub' "hello" 0 5 = "hello");
-    assert (sub' "hello" 0 6 = "hello");
-    assert (sub' "hello" 0 7 = "hello");
-    assert (sub' "hello" 3 2 = "lo");
-    assert (sub' "hello" 3 3 = "lo");
-    assert (sub' "hello" 3 4 = "lo");
-    assert (sub' "hello" 5 5 = "")
-    
   let find s pos f =
     let len = length s in
     let rec scan pos =
@@ -116,11 +105,13 @@ module String = struct
     scan pos
 
   let replace_chars from to_ s =
-    let s' = copy s in
+    let open Bytes in
+    let s' = copy (of_string s) in
     iteri (fun p -> function
       | c when c = from -> unsafe_set s' p to_
       | _ -> ()) s';
-    s'
+    to_string s'
+
 end
 
 module Filename = struct

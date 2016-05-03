@@ -146,7 +146,8 @@ let
     )
 # 148 "lex.ml"
 
-  | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf; __ocaml_lex_exp_rec st lexbuf __ocaml_lex_state
+  | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf; 
+      __ocaml_lex_exp_rec st lexbuf __ocaml_lex_state
 
 ;;
 
@@ -158,4 +159,4 @@ let
 let from_string s = exp empty (* ? empty *) (Lexing.from_string s)
 
 
-# 162 "lex.ml"
+# 163 "lex.ml"

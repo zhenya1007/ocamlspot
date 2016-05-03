@@ -4,7 +4,7 @@
 (*                                                                     *)
 (*                             Jun FURUSE                              *)
 (*                                                                     *)
-(*   Copyright 2008-2012 Jun Furuse. All rights reserved.              *)
+(*   Copyright 2008-2014 Jun Furuse. All rights reserved.              *)
 (*   This file is distributed under the terms of the GNU Library       *)
 (*   General Public License, with the special exception on linking     *)
 (*   described in file LICENSE.                                        *)
@@ -47,7 +47,7 @@ module Value : sig
   type t = 
     | Ident of PIdent.t
     | Structure of PIdent.t * structure * structure option (* sig part *)
-    | Closure of PIdent.t * env * Ident.t * Types.module_type * Abstraction.module_expr
+    | Closure of PIdent.t * env * Ident.t * Types.module_type option * Abstraction.module_expr
     | Parameter of PIdent.t
     | Error of exn 
 
@@ -103,7 +103,7 @@ end = struct
   type t = 
     | Ident     of PIdent.t
     | Structure of PIdent.t * structure * structure option (* sig part *)
-    | Closure   of PIdent.t * env * Ident.t * Types.module_type * Abstraction.module_expr
+    | Closure   of PIdent.t * env * Ident.t * Types.module_type option * Abstraction.module_expr
     | Parameter of PIdent.t
     | Error     of exn 
 
@@ -157,16 +157,18 @@ end = struct
                                  ident = Some id })))
           :: !items
       in
-      Predef.build_initial_env 
+      let (), () = Predef.build_initial_env 
         (fun id decl _ -> 
           add_predefined Kind.Type id;
           match decl.Types.type_kind with
           | Types.Type_abstract -> ()
-          | Types.Type_record (l, _) -> List.iter (fun (id, _, _) -> add_predefined Kind.Type id) l
-          | Types.Type_variant l     -> List.iter (fun (id, _, _) -> add_predefined Kind.Type id) l
+          | Types.Type_record (l, _) -> List.iter (fun {Types.ld_id=id} -> add_predefined Kind.Type id) l
+          | Types.Type_variant l     -> List.iter (fun {Types.cd_id=id} -> add_predefined Kind.Type id) l
+          | Types.Type_open -> () (* CR jfuruse: not sure *)
         )
         (fun id _ _ -> add_predefined Kind.Exception id) 
         ();
+      in
       List.iter (fun (_, id) -> add_predefined Kind.Value id) Predef.builtin_values;
       ref (Some !items)
     let set b str = b := Some str
@@ -236,7 +238,7 @@ end = struct
       fprintf ppf "{ @[<v>%a@] }"
         (Format.list ";@ " (fun ppf (id, (kind, t)) ->
             fprintf ppf "@[<2>%s %s =@ %a@]" 
-              (String.capitalize (Kind.to_string kind))
+              (String.capitalize_ascii (Kind.to_string kind))
             (Ident.name id) z t))
         
     and z ppf = Format.lazy_ t ppf
@@ -320,7 +322,7 @@ module Eval = struct
     *)
                   (* If it is a non-value object, it might be included with stamp = -1 *)
                   let error id = 
-                    Error (Failure (Printf.sprintf "%s:%s not found in { %s }" 
+                    Value.Error (Failure (Printf.sprintf "%s:%s not found in { %s }" 
                                       (Kind.name kind)
                                       (Ident.name id)
                                       (String.concat "; " 
@@ -385,7 +387,7 @@ module Eval = struct
       with
       | Not_found ->
           Debug.format "Error: Not found %s %s in { @[%a@] }@."
-            (String.capitalize (Kind.to_string kind))
+            (String.capitalize_ascii (Kind.to_string kind))
             name
             Value.Format.structure str;
           Error (Failure (Printf.sprintf "Not found: %s__%d" name pos))
@@ -401,7 +403,7 @@ module Eval = struct
       with
       | Not_found ->
           Debug.format "Error: Not found %s %s in { @[%a@] }@."
-            (String.capitalize (Kind.to_string kind))
+            (String.capitalize_ascii (Kind.to_string kind))
             name
             Value.Format.structure str;
           Error (Failure (Printf.sprintf "Not found: %s__any" name))
@@ -410,7 +412,7 @@ module Eval = struct
   and module_expr env idopt : module_expr -> Value.z = function
     | AMod_functor_parameter -> 
         eager (Parameter { PIdent.path= env.path; ident = idopt })
-    | AMod_abstract -> eager (Error (Failure "abstract"))
+    | AMod_abstract -> eager (Value.Error (Failure "abstract"))
     | AMod_ident p -> find_path env (Kind.Module, p)
     | AMod_packed s -> lazy (!packed env s)
     | AMod_structure str -> 
@@ -418,12 +420,12 @@ module Eval = struct
           let str = structure env str in
           Structure ({ PIdent.path= env.path; ident = idopt }, str, None)
         end
-    | AMod_functor (id, mty, mexp) -> 
+    | AMod_functor (id, mtyo, mexp) -> 
         Debug.format "creating a closure of a functor (fun %s -> ...) under %s@."
           (Ident.name id)
           (String.concat "; " (List.map Ident.name (Env.domain env)));
         eager (Closure ({ PIdent.path = env.path; ident = idopt }, 
-                        env, id, mty, mexp))
+                        env, id, mtyo, mexp))
     | AMod_constraint (mexp, _mty) -> 
         (* [mty] may not be a simple signature but an ident which is
            hard to get its definition at this point. 
@@ -481,14 +483,14 @@ module Eval = struct
           (id, (kind, eager v)) :: str
 
       (* CR: very ad-hoc rule for functor parameter *)      
-      | AStr_module (id, AMod_ident (Path.Pdot (Path.Pident _id, 
-                                                "parameter", 
-                                                -2))) ->
+      | AStr_module (id, Some (AMod_ident (Path.Pdot (Path.Pident _id, 
+                                                      "parameter", 
+                                                      -2)))) ->
           (* id = id_ *)
           let pident = { PIdent.path = env0.Env.path; ident = Some id } in
           (id, (Kind.Module, eager (Parameter pident))) :: str
           
-      | AStr_module (id, mexp) ->
+      | AStr_module (id, Some (mexp)) ->
           let v = lazy begin
             try
               (* create it lazily for recursiveness of flat *)
@@ -511,7 +513,7 @@ module Eval = struct
           in
           (id, (Kind.Type, v)) :: str
 
-      | AStr_modtype (id, mexp) ->
+      | AStr_modtype (id, Some mexp) ->
           (* CR jfuruse: dup code *)
           let v = lazy begin
             try
@@ -523,6 +525,9 @@ module Eval = struct
           end
           in
           (id, (Kind.Module_type, v)) :: str
+
+      | AStr_module (_, None) 
+      | AStr_modtype (_, None) -> assert false (* not yet *)
 
       | AStr_included (id', mexp, k, id) ->
           (* shared include should share the result of mexp *)

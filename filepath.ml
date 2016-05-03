@@ -4,7 +4,7 @@
 (*                                                                     *)
 (*                             Jun FURUSE                              *)
 (*                                                                     *)
-(*   Copyright 2008-2012 Jun Furuse. All rights reserved.              *)
+(*   Copyright 2008-2014 Jun Furuse. All rights reserved.              *)
 (*   This file is distributed under the terms of the GNU Library       *)
 (*   General Public License, with the special exception on linking     *)
 (*   described in file LICENSE.                                        *)
@@ -65,7 +65,7 @@ module Win32 : Filename = struct
         end
     | res -> res
 
-  let normalize_drive s = String.replace_chars '/' '\\' (String.uppercase s)
+  let normalize_drive s = String.replace_chars '/' '\\' (String.uppercase_ascii s)
 
   let is_network_drive = function
     | "//" | "\\\\" -> true
@@ -76,7 +76,7 @@ module Cygwin : Filename = struct
   include Filename.Cygwin
   let has_drive = Win32.has_drive
   let drive_and_path = Win32.drive_and_path
-  let normalize_drive s = String.replace_chars '\\' '/' (String.lowercase s)
+  let normalize_drive s = String.replace_chars '\\' '/' (String.lowercase_ascii s)
   let is_network_drive = Win32.is_network_drive
 end
 

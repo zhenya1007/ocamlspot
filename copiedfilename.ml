@@ -1,13 +1,13 @@
 (***********************************************************************)
 (*                                                                     *)
-(*                                OCaml                                *)
+(*                            OCamlSpotter                             *)
 (*                                                                     *)
-(*          Xavier Leroy and Damien Doligez, INRIA Rocquencourt        *)
+(*                             Jun FURUSE                              *)
 (*                                                                     *)
-(*  Copyright 1996 Institut National de Recherche en Informatique et   *)
-(*  en Automatique.  All rights reserved.  This file is distributed    *)
-(*  under the terms of the GNU Library General Public License, with    *)
-(*  the special exception on linking described in file ../LICENSE.     *)
+(*   Copyright 2008-2014 Jun Furuse. All rights reserved.              *)
+(*   This file is distributed under the terms of the GNU Library       *)
+(*   General Public License, with the special exception on linking     *)
+(*   described in file LICENSE.                                        *)
 (*                                                                     *)
 (***********************************************************************)
 
@@ -107,7 +107,7 @@ module Win32 = struct
    String.length name >= String.length suff &&
    (let s = String.sub name (String.length name - String.length suff)
                             (String.length suff) in
-    String.lowercase s = String.lowercase suff)
+    String.lowercase_ascii s = String.lowercase_ascii suff)
   let temp_dir_name =
     try Sys.getenv "TEMP" with Not_found -> "."
   let quote s =
