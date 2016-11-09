@@ -50,6 +50,12 @@ module EnvSummary = struct
     | Env_functor_arg (sum, id) ->
         fprintf ppf "Functor arg %s@ " (Ident.name id);
         format ppf sum
+    | Env_constraints (sum, (tdpm : type_declaration PathMap.t)) ->
+        fprintf ppf "Constraints @[";
+        PathMap.iter (fun k _ -> fprintf ppf "%s@," (Path.name k)) tdpm;
+        fprintf ppf "@]";
+        format ppf sum
+        
 
   let format ppf sum = fprintf ppf "@[<v>%a@]" format sum
 end

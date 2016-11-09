@@ -378,7 +378,7 @@ module EXTRACT = struct
       | Mty_ident p -> AMod_ident p
       | Mty_signature sg -> signature sg
       | Mty_functor (id, mty1, mty2) -> AMod_functor(id, mty1, module_type mty2)
-      | Mty_alias p -> AMod_ident p (* CR jfuruse: need to check *)
+      | Mty_alias (_alias_presence, p) -> AMod_ident p (* CR jfuruse: need to check *)
 
     and module_declaration md = module_type md.md_type
       
@@ -414,7 +414,7 @@ module EXTRACT = struct
                       ci_id_class; (* : Ident.t; *)
                       ci_id_class_type; (*  : Ident.t; *)
                       ci_id_object; (*  : Ident.t; *)
-                      ci_id_typesharp; (*  : Ident.t; *)
+                      ci_id_typehash; (*  : Ident.t; *)
                       ci_expr; (* : 'a; *)
                       ci_decl=_; (* : Types.class_declaration; *)
                       ci_type_decl=_; (*  : Types.class_type_declaration; *)
@@ -424,7 +424,7 @@ module EXTRACT = struct
         [ AStr_class ci_id_class;
           AStr_class_type ci_id_class_type;
           AStr_type (ci_id_object, []);
-          AStr_type (ci_id_typesharp, []) ]
+          AStr_type (ci_id_typehash, []) ]
 
   let get_constr_path typ = 
     match (Ctype.repr typ).desc with
@@ -756,8 +756,8 @@ module EXTRACT = struct
       ignore & Option.map ~f:expression case.c_guard;
       expression case.c_rhs)
 
-  and label_description loc p ldesc =
-    record_use_construct loc Kind.Field p ldesc.lbl_name
+  and label_description loc p {lbl_name } =
+    record_use_construct loc Kind.Field p lbl_name
 
   and expression 
       { exp_desc; (* : expression_desc; *)
@@ -806,13 +806,16 @@ module EXTRACT = struct
         List.iter expression exprs
     | Texp_variant (_name, None) -> ()
     | Texp_variant (_name, Some e) -> expression e
-    | Texp_record (fields, expropt) ->
+    | Texp_record { fields; extended_expression= expropt } ->
         let p = get_constr_path exp_type in
         record loc0 (Use (Kind.Type, p));
         Option.iter ~f:expression expropt;
-        fields |> List.iter (fun ({loc}, ldesc, expr) ->
-          expression expr;
-          label_description loc p ldesc)
+        fields |> Array.iter (fun (ld, rld) ->
+          match rld with
+          | Kept _ -> ()
+          | Overridden ({loc},e) ->
+              label_description loc p ld;
+              expression e)
 
     | Texp_field (expr, {loc}, ldesc) ->
         expression expr;
@@ -859,6 +862,9 @@ module EXTRACT = struct
     | Texp_object (clstr, _names) -> class_structure clstr
     | Texp_pack mexp -> ignore & module_expr mexp
     | (Texp_unreachable|Texp_extension_constructor (_, _)) -> assert false (* CR jfuruse: Not yet *)
+    | Texp_letexception (ext_con, e) ->
+        ignore (extension_constructor ext_con); (* XXX correct? *)
+        expression e
 
   and exp_extra = function
     | Texp_constraint cty -> core_type cty
@@ -923,6 +929,7 @@ module EXTRACT = struct
     | Tpat_constraint cty -> core_type cty
     | Tpat_type (p, {loc}) -> record_use loc Kind.Type p
     | Tpat_unpack -> ()
+    | Tpat_open (p, {loc}, _env) -> record_use loc Kind.Module p
 
   and meth _loc = function
     | Tmeth_name _name -> ()
