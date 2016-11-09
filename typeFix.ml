@@ -116,7 +116,7 @@ let rec module_type = function
   | Mty_signature sg -> Mty_signature (signature sg)
   | Mty_functor (id, mty, mty') ->
       Mty_functor (ident id, Option.map ~f:module_type mty, module_type mty')
-  | Mty_alias p -> Mty_alias (path p)
+  | Mty_alias (alias_presence, p) -> Mty_alias (alias_presence, path p)
 
 and signature sg = List.map signature_item sg
 
