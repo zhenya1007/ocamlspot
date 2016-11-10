@@ -19,7 +19,7 @@ open Utils
 
 open Spot
 
-let app_version = "2.1.2" (* CR jfuruse: dup *)
+let app_version = Spot.version
 
 let version =
   Printf.sprintf "%s for ocaml %s" app_version Spot.ocaml_version
