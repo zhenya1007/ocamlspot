@@ -7,4 +7,4 @@ install: [
 remove: [
   [make "uninstall" "BINDIR=%{bin}%" "PREFIX=%{prefix}%"]
 ]
-ocaml-version: [>= "4.05.0" & < "4.06.0" ]
+available: [ ocaml-version >= "4.05.0" & ocaml-version < "4.06.0" ]
