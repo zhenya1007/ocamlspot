@@ -778,7 +778,7 @@ module EXTRACT = struct
     | Texp_let (_rec_flag, vbs, expr) -> 
         value_binding_list vbs;
         expression expr
-    | Texp_function (_label, cases, _partial) -> 
+    | Texp_function { arg_label=_; param=_; cases; partial=_ } -> 
         case_list cases
     | Texp_apply (expr, leos) ->
         expression expr;
