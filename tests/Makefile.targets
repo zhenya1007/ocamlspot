@@ -60,7 +60,6 @@ lex.cmo \
 localvar.cmo \
 module.cmo \
 module_alias.cmo \
-module_alias.cmi \
 module_alias_ext.cmo \
 module_and_modtype.cmo \
 module_and_modtype2.cmo \

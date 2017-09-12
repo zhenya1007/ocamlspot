@@ -3,8 +3,7 @@ version: "4.05.0.2.3.2"
 maintainer: "jun.furuse@gmail.com"
 authors: "Jun Furuse"
 homepage: "https://bitbucket.org/camlspotter/ocamlspot/"
-bug-reports:
-  "https://bitbucket.org/camlspotter/ocamlspot/issues?status=new&status=open"
+bug-reports: "https://bitbucket.org/camlspotter/ocamlspot/issues?status=new&status=open"
 dev-repo: "hg://https://bitbucket.org/camlspotter/ocamlspot"
 build: [make "all" "opt" "BINDIR=%{bin}%" "PREFIX=%{prefix}%"]
 install: [make "install" "BINDIR=%{bin}%" "PREFIX=%{prefix}%"]
