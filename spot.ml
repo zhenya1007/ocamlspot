@@ -1372,10 +1372,10 @@ module File = struct
     let ic = open_in path in
     let buf = Bytes.create 4 in
     really_input ic buf 0 4;
-    if buf <> "spot" then failwithf "file %s is not a spot file" path;
+    if Bytes.to_string buf <> "spot" then failwithf "file %s is not a spot file" path;
     let buf = Bytes.create 16 in
     really_input ic buf 0 16;
-    if buf <> Checksum.char16 then failwithf "file %s has an incompatible checksum" path;
+    if Bytes.to_string buf <> Checksum.char16 then failwithf "file %s has an incompatible checksum" path;
     let v = input_value ic in
     close_in ic;
     v
