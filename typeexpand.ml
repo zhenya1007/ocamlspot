@@ -55,7 +55,9 @@ module EnvSummary = struct
         PathMap.iter (fun k _ -> fprintf ppf "%s@," (Path.name k)) tdpm;
         fprintf ppf "@]";
         format ppf sum
-        
+    | Env_copy_types (sum, ts) ->
+        fprintf ppf "Copy_types %s" (String.concat " " ts);
+        format ppf sum
 
   let format ppf sum = fprintf ppf "@[<v>%a@]" format sum
 end

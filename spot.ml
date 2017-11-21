@@ -651,9 +651,13 @@ module EXTRACT = struct
         class_expr clexpr
     | Tcl_constraint (clexpr, cltypeopt, _names, _names2, _concr) ->
         class_expr clexpr;
-        match cltypeopt with
+        begin match cltypeopt with
         | Some cltyp -> class_type cltyp
         | None -> ()
+        end
+    | Tcl_open (_, p, lid, _env, clexp) ->
+        record_use lid.loc Kind.Module p;
+        class_expr clexp
 
   and class_values xs =
     (* I guess it is an info of class creation variables as class members *)
@@ -670,6 +674,9 @@ module EXTRACT = struct
     | Tcty_arrow (_label, ctype, cltype) ->
         core_type ctype;
         class_type cltype
+    | Tcty_open (_, p, lid, _env, clty) ->
+        record_use lid.loc Kind.Module p;
+        class_type clty
 
   and class_signature { csig_self;
                         csig_fields;
@@ -955,7 +962,10 @@ module EXTRACT = struct
           record_use loc Kind.Type p;
           List.iter core_type ctys
       | Ttyp_object (l_a_core_type_list, _close_flag) -> 
-          List.iter (fun (_, _, cty) -> core_type cty) l_a_core_type_list
+          List.iter (function
+              | OTtag (_, _, cty) -> core_type cty
+              | OTinherit cty -> core_type cty
+            ) l_a_core_type_list
       | Ttyp_class (p, {loc}, ctys) ->
           record_use loc Kind.Class p;
           List.iter core_type ctys
