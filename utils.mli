@@ -128,6 +128,7 @@ module Hashtbl : sig
   val of_list : int -> ('a * 'b) list -> ('a, 'b) Hashtbl.t
   val memoize : ('a, 'b) Hashtbl.t -> ('a -> 'b) -> 'a -> 'b
   val find_default : 'b -> ('a, 'b) Hashtbl.t -> 'a -> 'b
+  val find_opt : ('a, 'b) Hashtbl.t -> 'a -> 'b option
   val multi_add : ('a, 'b list) Hashtbl.t -> 'a -> 'b -> unit
 end
 

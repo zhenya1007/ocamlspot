@@ -20,8 +20,15 @@
       is searched in $DIR/dirname/subdir/.
 *)
 
+val name : string (** .ocamlspot *)
+
+val find : string -> (int * string * string) option
+
+val load' : string -> (string, string option) Hashtbl.t
+
 type t = {
   build_dir : string option;
+  module_prefix : string option;
 }
 
 val load : string -> t

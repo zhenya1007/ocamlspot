@@ -34,7 +34,7 @@ module List = struct
 end
 
 module Debug = struct
-  let on = ref false
+  let on = ref true
 
   let format fmt = 
     if !on then eprintf fmt
@@ -359,6 +359,10 @@ module Hashtbl = struct
         v
 
   let find_default def tbl k = try find tbl k with Not_found -> def
+
+  let find_opt tbl k = match find tbl k with
+    | exception Not_found -> None
+    | x -> Some x
 
   let multi_add tbl k v =
     let vs = v :: find_default [] tbl k in

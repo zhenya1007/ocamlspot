@@ -169,33 +169,33 @@ module Tree : sig
   val dump2 : t -> unit
 end
 
-module File : sig
+module SpotFile : sig
   type t = {
     modname    : string;
     builddir   : string;
     loadpath   : string list;
     args       : string array;
     path       : string;
+    virtual_path       : string;
     top        : Abstraction.structure;
     loc_annots : (Location.t, Annot.t list) Utils.Hashtbl.t;
   }
 
   val dump : t -> unit
-  val save : string -> t -> unit
-  val load : string -> t
 
-  val of_cmt 
-    : string (* the cmt file path name *)
-      -> Cmt_format.cmt_infos -> t
+  val of_cmt :
+    string (* the cmt file path name *)
+    -> Cmt_format.cmt_infos -> t
 end
 
-module Unit : sig
+module SpotUnit : sig
   type t = {
     modname    : string;
     builddir   : string;
     loadpath   : string list;
     args       : string array;
     path       : string;
+    virtual_path       : string;
     top        : Abstraction.structure;
     loc_annots : (Location.t, Annot.t list) Hashtbl.t;
 

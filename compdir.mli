@@ -18,3 +18,5 @@ val comp_dir : Filepath.t -> Filepath.t
 
 val src_file : Filepath.t -> Filepath.t
 (** ocaml/_build/camlp4/Camlp4Bin.ml => ocaml/camlp4/Camlp4Bin.ml *)
+
+val cmfile_location : string -> string

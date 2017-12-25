@@ -101,9 +101,6 @@ Synopsis:\n\
 \tUse query:\n\
 \t\tocamlspot use <search> <targets>\n\
 \n\
-\tWrite spot/spit file:\n\
-\t\tocamlspot spot <file>\n\
-\n\
 \tType check and spot creation:\n\
 \t\tocamlspot typecheck <args>\n\
 \n\
@@ -188,7 +185,6 @@ let mode =
     match anonargs with
     | [ "query"; spec ]        -> `Query (SearchSpec.parse spec)
     | [ "info"; file ]         -> `Info file
-    | [ "spot"; file ]         -> `Spot file
     | "use" :: spec :: targets -> `Use (SearchSpec.parse spec, targets)
     | "typecheck" :: rest      -> `Typecheck rest
     | "recheck" :: rest        -> `Recheck rest

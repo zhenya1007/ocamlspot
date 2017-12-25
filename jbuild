@@ -2,7 +2,7 @@
 
 (executable
  ((name ocamlspot)
-  (libraries (compiler-libs.common unix))))
+  (libraries (compiler-libs.common unix camlon))))
 
 (install
  ((section bin)

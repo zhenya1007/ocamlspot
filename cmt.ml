@@ -30,22 +30,19 @@ let of_path path =
   | dir, Some base ->
       let rec find = function
         | [] -> assert false
-        | [fp] -> FP.to_string fp
-        | fp::fps -> 
-            let path = FP.to_string fp in
+        | [path] -> path
+        | path::fps -> 
             if Sys.file_exists path then  path
             else find fps
       in
+      let loc = Compdir.cmfile_location (FP.to_string fp) in
       find (match Filename.split_extension base with
-        | body, (".cmi" | ".cmti" | ".spit") -> [ FP.(^/) dir (body ^ ".cmti") ]
-        | body, (".cmo" | ".cmx" | ".cmt" | ".spot") -> [ FP.(^/) dir (body ^ ".cmt") ]
-        | body, ".mli" -> 
-            [ FP.(^/) (Compdir.comp_dir dir ) (body ^ ".cmti");
-              FP.(^/) dir (body ^ ".cmti"); ]
-        | body, _ (* .ml, mll, mly, or eliom *) -> 
-            [ FP.(^/) (Compdir.comp_dir dir ) (body ^ ".cmt");
-              FP.(^/) dir (body ^ ".cmt") ])
-
+          | _, (".cmi" | ".cmti" | ".spit") -> [ loc ^ ".cmti" ]
+          | _, (".cmo" | ".cmx" | ".cmt" | ".spot") -> [ loc ^ ".cmt" ]
+          | _, ".mli" -> [ loc ^ ".cmti" ]
+          | _ -> [ loc ^ ".cmt" ])
+  
+    
 (* CR jfuruse: this is a dirty workaround. It should be nice if we could know cmt is created by opt or byte *)          
 let is_opt cmt = 
   (* We cannot guess this simply by the compiler name "ocamlc" or "ocamlopt", 
