@@ -2,7 +2,7 @@ build: [
   [make "all" "opt" "BINDIR=%{bin}%" "PREFIX=%{prefix}%"]
 ]
 install: [
-  [make "install" "BINDIR=%{bin}%" "PREFIX=%{prefix}%"]
+  [make "install" "install-elisp" "BINDIR=%{bin}%" "PREFIX=%{prefix}%" "EMACSDIR=%{share}%/emacs/site-lisp"]
 ]
 remove: [
   [make "uninstall" "BINDIR=%{bin}%" "PREFIX=%{prefix}%"]

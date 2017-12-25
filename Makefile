@@ -139,9 +139,27 @@ install-elisp:
           $(MAKE) simple-install; \
         fi
 
+uninstall-elisp:
+	@if test "$(EMACSDIR)" = ""; then \
+          set xxx `($(EMACS) --batch --eval "(mapcar 'print load-path)") \
+                   2>/dev/null | \
+                   sed -n -e '/\/site-lisp/s/"//gp'`; \
+          if test "$$2" = ""; then \
+            echo "Cannot determine Emacs site-lisp directory"; \
+            exit 2; \
+          else \
+            $(MAKE) EMACSDIR="$$2" simple-uninstall; \
+	  fi; \
+        else \
+          $(MAKE) simple-uninstall; \
+        fi
+
 # install the .el files, but do not compile them.
 install-el:
 	$(MAKE) NOCOMPILE=true install-elisp
+
+uninstall-el:
+	$(MAKE) install-elisp
 
 simple-install:
 	@echo "Installing in $(EMACSDIR)..."
@@ -150,6 +168,10 @@ simple-install:
 	if [ -z "$(NOCOMPILE)" ]; then \
 	  cd $(EMACSDIR); $(EMACS) --batch --eval '$(COMPILECMD)'; \
 	fi
+
+simple-uninstall:
+	@echo "Unistalling from $(EMACSDIR)..."
+	rm -f $(EMACSDIR)/ocamlspot.el $(EMACSDIR)/ocamlspot.elc
 
 install:: ocamlspot.byt
 	cp ocamlspot.byt $(BINDIR)/ocamlspot.byt$(EXE)
