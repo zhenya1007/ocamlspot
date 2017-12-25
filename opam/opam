@@ -7,6 +7,6 @@ bug-reports:
   "https://bitbucket.org/camlspotter/ocamlspot/issues?status=new&status=open"
 dev-repo: "https://bitbucket.org/camlspotter/ocamlspot"
 build: [make "all" "opt" "BINDIR=%{bin}%" "PREFIX=%{prefix}%"]
-install: [make "install" "BINDIR=%{bin}%" "PREFIX=%{prefix}%"]
+install: [make "install" "install-elisp" "BINDIR=%{bin}%" "PREFIX=%{prefix}%" "EMACSDIR=%{share}%/emacs/site-lisp"]
 remove: [make "uninstall" "BINDIR=%{bin}%" "PREFIX=%{prefix}%"]
 available: [ocaml-version >= "4.06.0" & ocaml-version < "4.07.0"]
