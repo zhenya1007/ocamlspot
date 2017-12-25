@@ -51,7 +51,7 @@ end = struct
   let load_directly path : Unit.t =
     Debug.format "cmt loading from %s@." path;
     match load_cmt_file path with
-    | Some cmt -> Spot.Unit.of_file (Spot.File.of_cmt path cmt)
+    | Some cmt -> Spot.Unit.of_cmt path cmt
     | None -> failwithf "load_directly failed: %s" path
 
   exception Old_cmt of string (* cmt *) * string (* source *)

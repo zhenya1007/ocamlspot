@@ -28,7 +28,6 @@ module SAbs = Spot.Abstraction
 module Dump = struct
   (* mainly debugging purpose *)
 
-  let file = Spot.File.dump
   let unit = Spot.Unit.dump
 
   let rannots unit = 
@@ -99,16 +98,6 @@ module Main = struct
     printf "@[<v2>Included_dirs:@ %a@]@."
       (Format.list "" pp_print_string)
       file.Unit.loadpath
-
-  let write_spot path =
-    let file = load (Cmt.of_path path) in
-    let spot = match Filename.split_extension path with
-      | body, (".cmi" | ".mli" | ".cmti") -> body ^ ".spit"
-      | body, _ -> body ^ ".spot"
-    in
-    Debug.format "Writing %s@." spot;
-    (* CR jfuruse: BUG in ocamlbuild _build setting, the output file is written into the source dir, not the dest dir *)
-    Spot.File.save spot (Spot.Unit.to_file file)
 
   let query_by_kind_path file kind path = 
     try Some (File.find_path_in_flat file (kind, path)) with Not_found -> None
@@ -377,12 +366,7 @@ module Main = struct
     | `CodeTest                    -> Test.test ()
     | `Dump path                   -> ignore (load path)
     | `Info path                   -> info path
-    | `Spot path                   -> write_spot path
     | `Query (path, spec)          -> query path spec
-(*
-    | `Typecheck args              -> typecheck args
-    | `Recheck args                -> recheck args
-*)
     | `Use ((path, spec), targets) -> use path spec targets
     | `Typecheck _ | `Recheck _ -> assert false
 end

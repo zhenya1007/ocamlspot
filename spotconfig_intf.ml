@@ -45,7 +45,6 @@ module type S = sig
   val mode : [ `CodeTest
              | `Dump      of string
              | `Info      of string
-             | `Spot      of string
              | `Query     of string * SearchSpec.t
              | `Use       of (string * SearchSpec.t) * string list
              | `Recheck   of string list

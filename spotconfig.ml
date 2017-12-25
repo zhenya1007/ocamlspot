@@ -188,7 +188,6 @@ let mode =
     match anonargs with
     | [ "query"; spec ]        -> `Query (SearchSpec.parse spec)
     | [ "info"; file ]         -> `Info file
-    | [ "spot"; file ]         -> `Spot file
     | "use" :: spec :: targets -> `Use (SearchSpec.parse spec, targets)
     | "typecheck" :: rest      -> `Typecheck rest
     | "recheck" :: rest        -> `Recheck rest
