@@ -1359,36 +1359,19 @@ module File = struct
     loadpath       : string list;
     args           : string array;
     path           : string; (** source path. If packed, the .cmo itself *)
+    virtual_path   : string;
     top            : Abstraction.structure;
     loc_annots     : (Location.t, Annot.t list) Hashtbl.t
  } 
 
   let dump file =
-    eprintf "@[<v2>{ module= %S;@ path= %S;@ builddir= %S;@ loadpath= [ @[%a@] ];@ argv= [| @[%a@] |];@ ... }@]@."
+    eprintf "@[<v2>{ module= %S;@ path= %S;@ virtual_path= %S;@ builddir= %S;@ loadpath= [ @[%a@] ];@ argv= [| @[%a@] |];@ ... }@]@."
       file.modname
       file.path
+      file.virtual_path
       file.builddir
       (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) file.loadpath
       (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) (Array.to_list file.args)
-
-  let save path t =
-    let oc = open_out_bin path in
-    output_string oc "spot";
-    output_string oc Checksum.char16;
-    output_value oc t;
-    close_out oc
-
-  let load path =
-    let ic = open_in path in
-    let buf = Bytes.create 4 in
-    really_input ic buf 0 4;
-    if Bytes.to_string buf <> "spot" then failwithf "file %s is not a spot file" path;
-    let buf = Bytes.create 16 in
-    really_input ic buf 0 16;
-    if Bytes.to_string buf <> Checksum.char16 then failwithf "file %s has an incompatible checksum" path;
-    let v = input_value ic in
-    close_in ic;
-    v
 
   open Cmt_format
 
@@ -1456,13 +1439,14 @@ Format.eprintf "Spot.Tree.of_cmt path=%s digest=%s@."
       loadpath = cmt.cmt_loadpath;
       args     = cmt.cmt_args;
       path;
+      virtual_path = path; (* XXX must be cleaned *)
       top;
       loc_annots;
     }
 end
 
 (* Spot info for each compilation unit *)
-module Unit = struct
+module SpotUnit = struct
 
   module F = File
 
@@ -1472,6 +1456,7 @@ module Unit = struct
     loadpath       : string list;
     args           : string array;
     path           : string; (** source path. If packed, the .cmo itself *)
+    virtual_path   : string;
     top            : Abstraction.structure;
     loc_annots     : (Location.t, Annot.t list) Hashtbl.t;
 
@@ -1483,19 +1468,21 @@ module Unit = struct
 
   (* same as F.dump, ignoring new additions in Unit *)
   let dump file =
-    eprintf "@[<v2>{ module= %S;@ path= %S;@ builddir= %S;@ loadpath= [ @[%a@] ];@ argv= [| @[%a@] |];@ ... }@]@."
+    eprintf "@[<v2>{ module= %S;@ path= %S;@ virtual_path= %S;@ builddir= %S;@ loadpath= [ @[%a@] ];@ argv= [| @[%a@] |];@ ... }@]@."
       file.modname
       file.path
+      file.virtual_path
       file.builddir
       (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) file.loadpath
       (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) (Array.to_list file.args)
 
-  let to_file { modname; builddir; loadpath; args; path; top ; loc_annots } =
+  let to_file { modname; builddir; loadpath; args; path; virtual_path; top ; loc_annots } =
     { F.modname;
       builddir;
       loadpath;
       args;
       path;
+      virtual_path;
       top;
       loc_annots;
     }
@@ -1533,6 +1520,7 @@ module Unit = struct
       loadpath   = f.F.loadpath;
       args       = f.F.args;
       path       = f.F.path;
+      virtual_path = f.F.virtual_path;
       top        = f.F.top;
       loc_annots = f.F.loc_annots;
 

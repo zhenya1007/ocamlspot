@@ -29,22 +29,22 @@ module Dump = struct
   (* mainly debugging purpose *)
 
   let file = Spot.File.dump
-  let unit = Spot.Unit.dump
+  let unit = Spot.SpotUnit.dump
 
   let rannots unit = 
     eprintf "@[<2>rannots =@ [ @[<v>%a@]@] ]@."
       (Format.list ";@ " (FileRegioned.format (Format.list ";@ " Annot.format)))
-      !!(unit.Unit.rannots)
+      !!(unit.SpotUnit.rannots)
   ;;
   
-  let tree unit = Tree.dump2 !!(unit.Unit.tree)
+  let tree unit = Tree.dump2 !!(unit.SpotUnit.tree)
   ;;
 
   let top file = 
     eprintf "@[<2>top =@ @[%a@]@]@." 
-      Abstraction.format_structure file.Unit.top;
+      Abstraction.format_structure file.SpotUnit.top;
     let str = 
-      Eval.structure (File.initial_env file) file.Unit.top
+      Eval.structure (File.initial_env file) file.SpotUnit.top
     in
     if C.eager_dump then begin
       let module Enforcer = Value.Enforcer(struct end) in
@@ -55,10 +55,10 @@ module Dump = struct
 
   let flat file = 
     eprintf "@[<2>flat =@ @[%a@]@]@." 
-      Abstraction.format_structure !!(file.Unit.flat);
+      Abstraction.format_structure !!(file.SpotUnit.flat);
     let str = 
       let env = File.invalid_env file in
-      let str = Eval.structure env !!(file.Unit.flat) in
+      let str = Eval.structure env !!(file.SpotUnit.flat) in
       Binding.set env.Env.binding str; (* dirty hack (dup code) *)
       str
     in
@@ -77,10 +77,11 @@ module Main = struct
     exit return
 
   let load path =
+    let cmt_path = Cmt.of_path path in
+    prerr_endline ("load " ^ cmt_path);
+    let file = File.load_directly_with_cache cmt_path in
+    let file = { file with Spot.SpotUnit.virtual_path = path } in
 
-    prerr_endline ("load " ^ path);
-    let file = File.load_directly_with_cache path in
-    
     if C.dump_file    then Dump.unit    file; (* CR jfuruse: to be fixed *)
     if C.dump_tree    then Dump.tree    file;
     if C.dump_top     then Dump.top     file;
@@ -91,24 +92,14 @@ module Main = struct
   ;;
 
   let info path =
-    let file = load (Cmt.of_path path) in
+    let file = load path in
     printf "Compile: %s@."
       (String.concat " " 
          (List.map Command.escape_for_shell 
-            (Array.to_list file.Unit.args)));
+            (Array.to_list file.SpotUnit.args)));
     printf "@[<v2>Included_dirs:@ %a@]@."
       (Format.list "" pp_print_string)
-      file.Unit.loadpath
-
-  let write_spot path =
-    let file = load (Cmt.of_path path) in
-    let spot = match Filename.split_extension path with
-      | body, (".cmi" | ".mli" | ".cmti") -> body ^ ".spit"
-      | body, _ -> body ^ ".spot"
-    in
-    Debug.format "Writing %s@." spot;
-    (* CR jfuruse: BUG in ocamlbuild _build setting, the output file is written into the source dir, not the dest dir *)
-    Spot.File.save spot (Spot.Unit.to_file file)
+      file.SpotUnit.loadpath
 
   let query_by_kind_path file kind path = 
     try Some (File.find_path_in_flat file (kind, path)) with Not_found -> None
@@ -150,7 +141,7 @@ module Main = struct
     let probe = Region.complete orig_path (Region.point pos) in
     Debug.format "probing by %s@." (Region.to_string probe);
     let treepath = 
-      List.map fst (Tree.find_path_contains probe !!(file.Unit.tree))
+      List.map fst (Tree.find_path_contains probe !!(file.SpotUnit.tree))
     in
     match treepath with
     | [] -> failwithf "nothing at %s" (Position.to_string pos)
@@ -176,7 +167,7 @@ module Main = struct
 	      | Annot.Use (_, path) -> 
 		  (* Find subpath *)
                   (* CR jfuruse: subpath does not work for now *)
-		  begin match Pathreparse.get file.Unit.path r pos path with    
+		  begin match Pathreparse.get file.SpotUnit.path r pos path with    
 		  | None -> None
 		  | Some (path', r) -> 
 		      if path = path' then None (* as original *)
@@ -194,11 +185,11 @@ module Main = struct
 	(* Tree is an older format. XTree is a newer which is the same as one for Spot *)
         printf "Tree: %s@." (Region.to_string r);
 
-        (* Beware, the search target and file.Unit.path may be different.
+        (* Beware, the search target and file.SpotUnit.path may be different.
            If _build dir is used, XTree points source file copied inside _build dir. 
            ocamlspot.el does not use XTree but Tree, so it is ok.
         *)
-        printf "XTree: <%s:%s>@." file.Unit.path (Region.to_string r);
+        printf "XTree: <%s:%s>@." file.SpotUnit.virtual_path (Region.to_string r);
 
 	(* Find the innermost module *)
         let find_module_path treepath = List.concat_map (fun { Regioned.value = annots } ->
@@ -233,20 +224,19 @@ module Main = struct
         if C.type_expand then begin
           List.iter (function
             | Annot.Type (typ, env, `Expr _) -> 
-                printf "Expand: @[%a@]@." Typeexpand.format_as_expr (Typeexpand.expand file.Unit.loadpath env typ)
+                printf "Expand: @[%a@]@." Typeexpand.format_as_expr (Typeexpand.expand file.SpotUnit.loadpath env typ)
             | Annot.Type (typ, env, `Pattern _) -> 
-                printf "Expand: @[%a@]@." Typeexpand.format_as_pattern (Typeexpand.expand file.Unit.loadpath env typ)
+                printf "Expand: @[%a@]@." Typeexpand.format_as_pattern (Typeexpand.expand file.SpotUnit.loadpath env typ)
             | _ -> ()) annots;
         end;
 
 	annots
   ;;
 
-  let query orig_path spec = 
+  let query path spec = 
     (* CR jfuruse: dup *)
-    Debug.format "ocamlspot %s%s@." orig_path (C.SearchSpec.to_string spec);
+    Debug.format "ocamlspot %s%s@." path (C.SearchSpec.to_string spec);
     Debug.format "cwd: %s@." (Sys.getcwd ());
-    let path = Cmt.of_path orig_path in
     let file = load path in
 
     let query_kind_path k path = print_query_result k (query_by_kind_path file k path) in
@@ -254,7 +244,7 @@ module Main = struct
     begin match spec with
     | C.SearchSpec.Kind (k,path) -> query_kind_path k path
     | C.SearchSpec.Pos pos -> 
-	let annots = query_by_pos file orig_path pos in
+	let annots = query_by_pos file path pos in
         if not C.no_definition_analysis then begin
           List.iter (function
             | Annot.Use (k, path) -> query_kind_path k path
@@ -281,7 +271,6 @@ module Main = struct
     (* CR jfuruse: dup *)
     Debug.format "ocamlspot %s%s@." path (C.SearchSpec.to_string spec);
     Debug.format "cwd: %s@." (Sys.getcwd ());
-    let path = Cmt.of_path path in
     let file = load path in
 
     let find_by_kind_path k path found =
@@ -302,19 +291,19 @@ module Main = struct
 	          begin match query_by_kind_path file k' path' with
 	          | Some found' when found = found' ->
 		      printf "<%s:%s:%s>: %s@." 
-		        file.Unit.path
+		        file.SpotUnit.path
                         rpath
 		        (Region.to_string region)
 		        (Path.name path)
 	          | None | Some _ -> ()
 	          end
-              | _ -> ()) annots) !!(file.Unit.rannots)
+              | _ -> ()) annots) !!(file.SpotUnit.rannots)
 	| _ -> ());
     in
 
     let by_kind_path file k path =
       Debug.format "Searching %s:%s:%s ...@." 
-	file.Unit.path 
+	file.SpotUnit.path 
 	(Kind.to_string k) 
 	(Path.name path); 
       let res = query_by_kind_path file k path in
@@ -326,13 +315,13 @@ module Main = struct
 
     let by_pos file pos = 
       eprintf "Searching %s:%s ...@." 
-	file.Unit.path 
+	file.SpotUnit.path 
 	(Position.to_string pos);
       match List.find_map_opt (function 
 	| Annot.Str_item str_item -> 
 	    Some (`Def (Abstraction.ident_of_structure_item str_item))
 	| Annot.Use (kind, path) -> Some (`Use (kind, path))
-	| _ -> None) (query_by_pos file file.Unit.path pos)
+	| _ -> None) (query_by_pos file file.SpotUnit.path pos)
       with
       | Some (`Def (k, id))   -> by_kind_path file k (Path.Pident id)
       | Some (`Use (k, path)) -> by_kind_path file k path
@@ -362,9 +351,9 @@ module Main = struct
       printf "Compile: %s@."
         (String.concat " " 
           (List.map Command.escape_for_shell 
-            (Array.to_list file.Unit.argv)));
+            (Array.to_list file.SpotUnit.argv)));
       let command = 
-	Sys.argv.(0) :: List.tl (Array.to_list file.Unit.argv) 
+	Sys.argv.(0) :: List.tl (Array.to_list file.SpotUnit.argv) 
       in
       Xmain.main (Array.of_list command)
     in
@@ -372,12 +361,10 @@ module Main = struct
   ;;
 *)
 
-  let main () = 
-    match C.mode with
+  let main () = match C.mode with
     | `CodeTest                    -> Test.test ()
     | `Dump path                   -> ignore (load path)
     | `Info path                   -> info path
-    | `Spot path                   -> write_spot path
     | `Query (path, spec)          -> query path spec
 (*
     | `Typecheck args              -> typecheck args
