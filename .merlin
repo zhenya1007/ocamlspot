@@ -1,0 +1,5 @@
+B _build/default
+FLG -w -40
+PKG compiler-libs
+PKG compiler-libs.common
+PKG unix
