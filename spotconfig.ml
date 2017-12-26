@@ -39,7 +39,6 @@ let strict_time_stamp      = ref false
 let print_interface        = ref false
 let type_expand            = ref false
 let rest_args_rev          = ref []
-let use_spot               = ref false
 let code_test              = ref false
 
 let _ = 
@@ -83,9 +82,6 @@ let _ =
       "--eager-dump", 
       Arg.Set eager_dump, " : eager evaluation at dump";
 
-      "--use-spot", 
-      Arg.Set use_spot, " : use spot files instead of cmt, if exists";
-
       "--code-test",
       Arg.Set code_test, " : test some library functions";
     ])
@@ -100,9 +96,6 @@ Synopsis:\n\
 \n\
 \tUse query:\n\
 \t\tocamlspot use <search> <targets>\n\
-\n\
-\tWrite spot/spit file:\n\
-\t\tocamlspot spot <file>\n\
 \n\
 \tType check and spot creation:\n\
 \t\tocamlspot typecheck <args>\n\
