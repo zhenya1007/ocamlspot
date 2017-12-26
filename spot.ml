@@ -1352,17 +1352,7 @@ end = struct
 end
 
 (* Minimum data for spotting, which are saved into spot files *)
-module SpotFile = struct
-  type t = {
-    modname        : string;
-    builddir       : string;
-    loadpath       : string list;
-    args           : string array;
-    path           : string; (** source path. If packed, the .cmo itself *)
-    top            : Abstraction.structure;
-    loc_annots     : (Location.t, Annot.t list) Hashtbl.t
- } 
-
+module Abs = struct
   open Cmt_format
 
   let abstraction cmt = match cmt.cmt_annots with
@@ -1410,34 +1400,10 @@ module SpotFile = struct
         Format.eprintf "Aiee %s@." (Printexc.to_string e);
         raise e)
 
-  let of_cmt path (* the cmt file path *) cmt =
-    let path = Option.default (Cmt.source_path cmt) (fun () ->
-      let ext = if Cmt.is_opt cmt then ".cmx" else ".cmo" in
-      Filename.chop_extension path ^ ext)
-    in
-(*
-Format.eprintf "Spot.Tree.of_cmt path=%s digest=%s@." 
-  path
-  (match cmt.Cmt_format.cmt_source_digest with
-  | None -> "None"
-  | Some s -> Digest.to_hex s)
-    ;
-*)
-    let top, loc_annots = abstraction cmt in
-    { modname  = cmt.cmt_modname;
-      builddir = cmt.cmt_builddir;
-      loadpath = cmt.cmt_loadpath;
-      args     = cmt.cmt_args;
-      path;
-      top;
-      loc_annots;
-    }
 end
 
 (* Spot info for each compilation unit *)
 module Unit = struct
-
-  module F = SpotFile
 
   type t = {
     modname        : string;
@@ -1463,7 +1429,21 @@ module Unit = struct
       (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) file.loadpath
       (Format.list ";@ " (fun ppf s -> fprintf ppf "%S" s)) (Array.to_list file.args)
 
-  let of_file ({ F.loc_annots; } as f) =
+  let of_cmt path (* the cmt file path *) cmt =
+    let path = Option.default (Cmt.source_path cmt) (fun () ->
+      let ext = if Cmt.is_opt cmt then ".cmx" else ".cmo" in
+      Filename.chop_extension path ^ ext)
+    in
+(*
+Format.eprintf "Spot.Tree.of_cmt path=%s digest=%s@." 
+  path
+  (match cmt.Cmt_format.cmt_source_digest with
+  | None -> "None"
+  | Some s -> Digest.to_hex s)
+    ;
+*)
+    let top, loc_annots = Abs.abstraction cmt in
+    
     let rannots = lazy begin
       Hashtbl.fold (fun loc annots st ->
         { FileRegioned.file_region = Region.of_parsing loc;  
@@ -1477,12 +1457,12 @@ module Unit = struct
           | Annot.Str_item sitem ->
               let _kind,id = Abstraction.ident_of_structure_item sitem in
               Hashtbl.add tbl id (let (file, r) = Region.of_parsing loc in
-                                  f.F.builddir ^/ file,r)
+                                  cmt.cmt_builddir ^/ file,r)
           | _ -> ()) annots) loc_annots;
       tbl)
     in
     let tree = lazy begin
-      Tree.of_loc_annots ~builddir: f.F.builddir ~path:f.F.path loc_annots
+      Tree.of_loc_annots ~builddir: cmt.cmt_builddir ~path:path loc_annots
     end in
 
     (* CR jfuruse: it is almost the same as id_def_regions_list *)
@@ -1491,16 +1471,14 @@ module Unit = struct
         | Annot.Str_item sitem -> Some sitem
         | _ -> None) annots @ st) loc_annots [])
     in
-    { modname    = f.F.modname;
-      builddir   = f.F.builddir;
-      loadpath   = f.F.loadpath;
-      args       = f.F.args;
-      path       = f.F.path;
-      top        = f.F.top;
-      loc_annots = f.F.loc_annots;
+    { modname    = cmt.cmt_modname;
+      builddir   = cmt.cmt_builddir;
+      loadpath   = cmt.cmt_loadpath;
+      args       = cmt.cmt_args;
+      path       = path;
+      top        = top;
+      loc_annots = loc_annots;
 
       flat; id_def_regions; rannots; tree;
     }
-
-  let of_cmt path cmt = of_file @@ SpotFile.of_cmt path cmt
 end
