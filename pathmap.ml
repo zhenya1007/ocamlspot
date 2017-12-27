@@ -9,6 +9,7 @@ let build_dir (postfix, dir, conf) =
       let build_dir' = Filepath.of_string Filepath.os build_dir in
       let dir = Filepath.of_string Filepath.os dir in
       (* path may be already in dir *)
+      Format.eprintf "is_prefix check %s %s@." build_dir postfix;
       match Filepath.is_prefix build_dir' postfix' with
       | Some _ -> (* already in build_dir *)
           None

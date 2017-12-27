@@ -32,7 +32,7 @@ let rec find ~dir:absdir ~name =
     match find ~dir:(Filename.dirname absdir) ~name with
     | None -> None
     | Some (n, postfix, absdir', path) -> 
-        Some (n+1, Filename.basename absdir ^/ postfix, absdir', path)
+        Some (n+1, postfix ^/ Filename.basename absdir , absdir', path)
 ;;
 
 type t = {

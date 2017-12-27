@@ -22,7 +22,7 @@ let source_path file =
    xxx.{mli,cmi,spit}    => xxx.cmti *)
 let of_path path =
   let loc = Pathmap.build_loc path in
-  Format.eprintf "Pathmap: %s => %s@." path loc;
+  Format.eprintf "Pathmap build: %s => %s@." path loc;
   let cands = match Filename.split_extension path with
     | _, (".cmi" | ".cmti") -> [ loc ^ ".cmti" ]
     | _, (".cmo" | ".cmx" | ".cmt") -> [ loc ^ ".cmt" ]
