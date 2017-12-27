@@ -111,7 +111,8 @@ module Main = struct
     | None -> printf "Spot: no spot@."
     | Some (pident, res) -> 
         let src_file path =
-          let path' = FP.wrap FP.os Compdir.src_file path in
+          let path' = Pathmap.src_loc path ^ Filename.extension path in
+          Format.eprintf "Pathmap: %s => %s@." path path';
           if path = path' then path 
           else
             if not (Sys.file_exists path') then begin

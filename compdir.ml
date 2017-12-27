@@ -17,24 +17,13 @@ open Utils
 
 module FP = Filepath
 
-let rec find_dot_ocamlspot fp = 
-  let open FP in
-  match
-    if Unix.is_dir FP.(to_string (fp ^/ "_build")) then Some (fp, "_build")
-    else
-      let dot_ocamlspot = fp ^/ ".ocamlspot" in
-      if Sys.file_exists (FP.to_string dot_ocamlspot) then
-        match (Dotfile.load (FP.to_string dot_ocamlspot)).Dotfile.build_dir with
-        | Some dir -> Some (fp, dir)
-        | None -> None
-      else None
-  with
-  | (Some _ as res) -> res
-  | None ->
-      if FP.is_root fp then None
-      else match FP.dirbase fp with
-      | dir, Some _ -> find_dot_ocamlspot dir
-      | _ -> None
+let find_dot_ocamlspot fp (* dir *) = 
+  match Dotfile.find_and_load (FP.to_string fp) with
+  | None -> None
+  | Some (_postfix, dir, t) -> 
+      match t.Dotfile.build_dir with
+      | None -> None
+      | Some d -> Some (FP.of_string FP.os dir, d)
 
 let comp_dir fp0 =
   if not  (FP.is_absolute fp0) then fp0

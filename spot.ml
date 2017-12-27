@@ -548,7 +548,7 @@ module EXTRACT = struct
 
   and constructor_arguments = function
     | Cstr_tuple ctys -> List.iter core_type ctys
-    | Cstr_record _lds -> assert false (* CR jfuruse: not yet *)
+    | Cstr_record _lds -> failwithf "record constructor argument is not supported yet"
 
   and type_extension { tyext_path = path;
                        tyext_txt = {loc};

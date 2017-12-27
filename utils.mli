@@ -100,6 +100,7 @@ module Unix : sig
   val gen_timed : (unit -> 't) -> ('t -> 't -> 't) -> ('a -> 'b) -> 'a -> 'b * 't
   val timed : ('a -> 'b) -> 'a -> 'b * float
   val dev_inode : string -> (int * int) option
+  val same_file : string -> string -> bool
   module Process_times : sig
     type t = process_times
     val (-) : t -> t -> t

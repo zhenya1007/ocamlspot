@@ -107,7 +107,7 @@ end = struct
 
   let load ~load_paths cmtname : Unit.t =
     let body, ext = Filename.split_extension cmtname in
-    let path = find_in_path load_paths body ext in
+    let path = find_in_path load_paths body ext in (* XXX cmtname is abspath. not required? *)
     load_directly_with_cache path
 
   (* ocamlbuild tweak *)
@@ -140,7 +140,7 @@ end = struct
     if Filename.is_relative cmtname then None
     else
       Option.bind (Dotfile.find_and_load (Filename.dirname cmtname)) 
-        (fun (found_dir, dotfile) ->
+        (fun (_postfix, found_dir, dotfile) ->
           Option.map dotfile.Dotfile.build_dir ~f:(fun build_dir ->
             let length_found_dir = String.length found_dir in
             let found_dir' = 
@@ -162,6 +162,7 @@ end = struct
           ))
 
   let load ~load_paths cmtname : Unit.t =
+    Format.eprintf "cmtname fix : %s@." cmtname;
     try load ~load_paths cmtname with
     | e -> 
         let load_alternative f =
