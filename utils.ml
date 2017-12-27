@@ -234,6 +234,14 @@ module Unix = struct
     }
     let timed f v = gen_timed Unix.times (-) f v
   end
+  
+  let same_file x y =
+    try
+      let x = stat x in
+      let y = stat y in
+      x.st_dev = y.st_dev && x.st_ino = y.st_ino
+    with
+    | _ -> false
 end
 
 module Find = struct

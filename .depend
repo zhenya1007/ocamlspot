@@ -1,7 +1,7 @@
 checksum.cmo :
 checksum.cmx :
-cmt.cmo : utils.cmi filepath.cmi compdir.cmi cmt.cmi
-cmt.cmx : utils.cmx filepath.cmx compdir.cmx cmt.cmi
+cmt.cmo : utils.cmi pathmap.cmi cmt.cmi
+cmt.cmx : utils.cmx pathmap.cmx cmt.cmi
 cmt.cmi :
 command.cmo : command.cmi
 command.cmx : command.cmi
@@ -34,6 +34,9 @@ ocamlspot.cmo : utils.cmi typeexpand.cmi test.cmo spotfile.cmi spoteval.cmi \
 ocamlspot.cmx : utils.cmx typeexpand.cmx test.cmx spotfile.cmx spoteval.cmx \
     spotconfig.cmx spot.cmx filepath.cmx ext.cmx compdir.cmx command.cmx \
     cmt.cmx
+pathmap.cmo : utils.cmi filepath.cmi dotfile.cmi pathmap.cmi
+pathmap.cmx : utils.cmx filepath.cmx dotfile.cmx pathmap.cmi
+pathmap.cmi : filepath.cmi dotfile.cmi
 pathreparse.cmo : utils.cmi spot.cmi locident.cmi ext.cmo pathreparse.cmi
 pathreparse.cmx : utils.cmx spot.cmx locident.cmx ext.cmx pathreparse.cmi
 pathreparse.cmi : spot.cmi

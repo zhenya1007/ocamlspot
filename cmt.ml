@@ -21,30 +21,26 @@ let source_path file =
 (* xxx.{ml,cmo,cmx,spot} => xxx.cmt
    xxx.{mli,cmi,spit}    => xxx.cmti *)
 let of_path path =
-  let module FP = Filepath in
-  (* CR jfuruse: we should create a function for this *)
-  let path = if Filename.is_relative path then Unix.getcwd () ^/ path else path in
-  let fp = FP.of_string FP.os path in
-  match FP.dirbase fp with
-  | _, None -> failwithf "Error: %s is not a normal file path" path
-  | dir, Some base ->
-      let rec find = function
-        | [] -> assert false
-        | [fp] -> FP.to_string fp
-        | fp::fps -> 
-            let path = FP.to_string fp in
-            if Sys.file_exists path then  path
-            else find fps
-      in
-      find (match Filename.split_extension base with
-        | body, (".cmi" | ".cmti" | ".spit") -> [ FP.(^/) dir (body ^ ".cmti") ]
-        | body, (".cmo" | ".cmx" | ".cmt" | ".spot") -> [ FP.(^/) dir (body ^ ".cmt") ]
-        | body, ".mli" -> 
-            [ FP.(^/) (Compdir.comp_dir dir ) (body ^ ".cmti");
-              FP.(^/) dir (body ^ ".cmti"); ]
-        | body, _ (* .ml, mll, mly, or eliom *) -> 
-            [ FP.(^/) (Compdir.comp_dir dir ) (body ^ ".cmt");
-              FP.(^/) dir (body ^ ".cmt") ])
+  let loc = Pathmap.build_loc path in
+  Format.eprintf "Pathmap: %s => %s@." path loc;
+  let cands = match Filename.split_extension path with
+    | _, (".cmi" | ".cmti") -> [ loc ^ ".cmti" ]
+    | _, (".cmo" | ".cmx" | ".cmt") -> [ loc ^ ".cmt" ]
+    | base, ".mli" -> [ loc ^ ".cmti"; base ^ ".cmti" ]
+    | base, _ -> [ loc ^ ".cmt"; base ^ ".cmt" ]
+  in
+  let rec find = function
+    | [] -> assert false
+    | [p] -> p
+    | p::ps -> 
+        Format.eprintf "trying %s@." p;
+        if Sys.file_exists p then  p
+        else find ps
+  in
+  let s = find cands in
+  Format.eprintf "=> %s@." s;
+  s
+
 
 (* CR jfuruse: this is a dirty workaround. It should be nice if we could know cmt is created by opt or byte *)          
 let is_opt cmt = 

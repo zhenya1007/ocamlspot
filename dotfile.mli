@@ -20,13 +20,30 @@
       is searched in $DIR/dirname/subdir/.
 *)
 
+val find : 
+  dir: string
+  -> name: string
+  -> ( int      (*+ how many dir levels up *)
+       * string (*+ the postfix *)
+       * string (*+ the directory which has the file *)
+       * string (*+ the path of the file found *)
+     ) option
+(** Find a dot file in parent directories. *)
+
+val load_raw : string -> (string, string option) Hashtbl.t
+(** Load the specified dot file *)
+   
 type t = {
+  dir_level : int;
   build_dir : string option;
+  module_prefix : string option;
 }
 
-val load : string -> t
+val load : int (*+ dir level *)
+    -> string 
+    -> t
 
-val find_and_load : string -> (string * t) option
+val find_and_load : string (* dir *) -> (string * string * t) option
   (** [find_and_load abspath] searches .ocamlspot file 
       and returns its location (directory) and its contents.
       The search starts from directory [abspath] and if not found
