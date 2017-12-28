@@ -1,0 +1,6 @@
+B _build/default
+FLG -w -40
+PKG camlon
+PKG compiler-libs
+PKG compiler-libs.common
+PKG unix
