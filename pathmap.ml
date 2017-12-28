@@ -9,9 +9,9 @@ let build_dir (postfix, dir, conf) =
       let build_dir' = Filepath.of_string Filepath.os build_dir in
       let dir = Filepath.of_string Filepath.os dir in
       (* path may be already in dir *)
-      Format.eprintf "is_prefix check %s %s@." build_dir postfix;
       match Filepath.is_prefix build_dir' postfix' with
       | Some _ -> (* already in build_dir *)
+          Format.eprintf "is_prefix check %s %s@." build_dir postfix;
           None
       | None ->
           Some ((dir ^/ build_dir) ^/ postfix)
@@ -34,12 +34,12 @@ let build_loc p =
   let base_body, _base_ext = Filename.split_extension base in
   match Dotfile.find_and_load dir with
   | None -> dir ^/ base_body
-  | Some (postfix, dir, conf) ->
+  | Some (postfix, dir', conf) ->
       let base_body = match conf.Dotfile.module_prefix with
         | None -> base_body
         | Some s -> s ^ "__" ^ String.capitalize_ascii base_body
       in
-      match build_dir (postfix, dir, conf) with
+      match build_dir (postfix, dir', conf) with
       | None -> dir ^/ base_body
       | Some fp -> Filepath.to_string fp ^/ base_body
 

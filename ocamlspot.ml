@@ -112,7 +112,7 @@ module Main = struct
     | Some (pident, res) -> 
         let src_file path =
           let path' = Pathmap.src_loc path ^ Filename.extension path in
-          Format.eprintf "Pathmap src: %s => %s@." path path';
+          Format.eprintf "Ocamlspot.print_query_result: Pathmap src: %s => %s@." path path';
           if path = path' then path 
           else
             if not (Sys.file_exists path') then begin
