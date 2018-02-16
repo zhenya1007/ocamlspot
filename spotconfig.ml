@@ -97,6 +97,9 @@ Synopsis:\n\
 \tUse query:\n\
 \t\tocamlspot use <search> <targets>\n\
 \n\
+\tDisplay entire signature:\n\
+\t\tocamlspot mli <file>\n\
+\n\
 \tType check and spot creation:\n\
 \t\tocamlspot typecheck <args>\n\
 \n\
