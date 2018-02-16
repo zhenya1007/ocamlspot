@@ -35,6 +35,7 @@ let build_loc p =
   match Dotfile.find_and_load dir with
   | None -> dir ^/ base_body
   | Some (postfix, dir', conf) ->
+      prerr_endline "aapp";
       let base_body = match conf.Dotfile.module_prefix with
         | None -> base_body
         | Some s -> s ^ "__" ^ String.capitalize_ascii base_body

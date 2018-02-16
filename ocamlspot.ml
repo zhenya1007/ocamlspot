@@ -99,6 +99,13 @@ module Main = struct
       (Format.list "" pp_print_string)
       file.Unit.loadpath
 
+  let interface path =
+    let file = load (Cmt.of_path path) in
+    let sg = file.Unit.top_signature in
+    match sg with
+    | Some sg -> printf "@[%a@]@." Printtyp.signature sg
+    | None -> eprintf "Error: the module is not properly compiled@."
+
   let query_by_kind_path file kind path = 
     try Some (File.find_path_in_flat file (kind, path)) with Not_found -> None
   ;;
@@ -370,8 +377,8 @@ module Main = struct
     | `Query (path, spec)          -> query path spec
     | `Use ((path, spec), targets) -> use path spec targets
     | `Typecheck _ | `Recheck _ -> assert false
+    | `Interface path              -> interface path
 end
 
 
 let () = Main.main ()
-
