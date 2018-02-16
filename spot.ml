@@ -1417,7 +1417,9 @@ module Unit = struct
     flat           : Abstraction.structure lazy_t;
     id_def_regions : (Ident.t, (string * Region.t)) Hashtbl.t lazy_t;
     rannots        : Annot.t list FileRegioned.t list lazy_t;
-    tree           : Tree.t lazy_t
+    tree           : Tree.t lazy_t;
+    
+    top_signature      : Types.signature option;
   }
 
   (* same as F.dump, ignoring new additions in Unit *)
@@ -1471,6 +1473,14 @@ Format.eprintf "Spot.Tree.of_cmt path=%s digest=%s@."
         | Annot.Str_item sitem -> Some sitem
         | _ -> None) annots @ st) loc_annots [])
     in
+    
+    let top_signature = match cmt.cmt_annots with
+      | Implementation str -> Some str.str_type
+      | Interface sg -> Some sg.sig_type
+      | Packed (sg, _files) -> Some sg
+      | Partial_implementation parts | Partial_interface parts -> None
+    in
+
     { modname    = cmt.cmt_modname;
       builddir   = cmt.cmt_builddir;
       loadpath   = cmt.cmt_loadpath;
@@ -1480,5 +1490,7 @@ Format.eprintf "Spot.Tree.of_cmt path=%s digest=%s@."
       loc_annots = loc_annots;
 
       flat; id_def_regions; rannots; tree;
+
+      top_signature
     }
 end

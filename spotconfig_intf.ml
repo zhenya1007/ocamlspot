@@ -48,6 +48,8 @@ module type S = sig
              | `Query     of string * SearchSpec.t
              | `Use       of (string * SearchSpec.t) * string list
              | `Recheck   of string list
-             | `Typecheck of string list ]
+             | `Typecheck of string list
+             | `Interface of string
+             ]
 end
 

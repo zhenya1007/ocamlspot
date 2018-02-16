@@ -185,6 +185,8 @@ module Unit : sig
     id_def_regions : (Ident.t, (string * Region.t)) Hashtbl.t lazy_t;
     rannots        : Annot.t list FileRegioned.t list lazy_t;
     tree           : Tree.t lazy_t;
+
+    top_signature      : Types.signature option;
   }
 
   val dump : t -> unit (** just same as SpotFile.dump. Ignores the added fields *)

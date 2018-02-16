@@ -102,5 +102,6 @@ let find_and_load absdir =
   match find ~dir:absdir ~name:".ocamlspot" with
   | None -> None
   | Some (n, postfix, dir, path) -> 
+      Format.eprintf ".ocamlspot loaded from %s@." path;
       Some (postfix, dir, load n path)
 ;;
