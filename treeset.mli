@@ -39,6 +39,6 @@ module Make (Ord : OrderedType) : sig
         The result is the elems which contains [elem].
         Deeper (smaller) elem comes first. *)
 
-  val iter_elem : (parent:elem option -> elem -> 'a) -> t -> unit
+  val iter_elem : (parent:elem option -> elem -> unit) -> t -> unit
 end
 

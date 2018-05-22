@@ -1478,7 +1478,7 @@ Format.eprintf "Spot.Tree.of_cmt path=%s digest=%s@."
       | Implementation str -> Some str.str_type
       | Interface sg -> Some sg.sig_type
       | Packed (sg, _files) -> Some sg
-      | Partial_implementation parts | Partial_interface parts -> None
+      | Partial_implementation _parts | Partial_interface _parts -> None
     in
 
     { modname    = cmt.cmt_modname;
