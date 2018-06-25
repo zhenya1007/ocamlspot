@@ -2,7 +2,7 @@
 
 (executable
  ((name ocamlspot)
-  (flags (-w -9))
+  (flags (:standard -w -9))
   (libraries (compiler-libs.common unix camlon))))
 
 (install
