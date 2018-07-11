@@ -19,17 +19,24 @@ open Ident
 let name id =
   let binding_time = binding_time id in
   Name.create (name id) binding_time
+
+let () = reinit ()
       
-let create_with_stamp ?(flags=0) name stamp =
-  { stamp = stamp; name = name; flags = flags }
+let create_with_stamp ?(global=false) name stamp =
+  let current_time = Ident.current_time () in
+  reinit ();
+  Ident.set_current_time stamp;
+  let stamp' = Ident.current_time () in
+  assert (stamp = stamp');
+  let id = (if global then Ident.create_persistent else Ident.create) name in
+  Ident.set_current_time current_time;
+  id
 
 let format ppf id = Format.pp_print_string ppf (name id)
 
 let parse s =
   let s, pos = Name.parse s in
-  let id = create_with_stamp s pos in
   (* CR jfuruse: actually 0 is global and should be printed as 'G'
      Current 'G' means -1 *)
-  if pos = 0 then make_global id;
-  id
+  create_with_stamp ~global:(pos=0) s pos
 

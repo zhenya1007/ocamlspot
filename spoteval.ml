@@ -333,10 +333,14 @@ module Eval = struct
                   | Constructor | Field -> assert false
                   | _ ->
                       (* CR jfuruse: is it really required? *)
-                      let gid = { id with stamp = -1 } in
+                      (* OCaml 4.07.0 cannot allow this *)
+(*
+                        let gid = { id with stamp = -1 } in
                       match Env.find env gid with
                       | Some (_, lazy v) -> v
                       | None -> error id
+*)
+                      error id
             end
         end
     | (Kind.Constructor | Field ), Path.Pdot (p, name, pos) ->

@@ -44,7 +44,7 @@ module EnvSummary = struct
     | Env_cltype (sum, id, _) -> 
         fprintf ppf "Class type %s@ " (Ident.name id);
         format ppf sum
-    | Env_open (sum, p) ->
+    | Env_open (sum, _, p) ->
         fprintf ppf "open %s@ " (Path.name p);
         format ppf sum
     | Env_functor_arg (sum, id) ->
