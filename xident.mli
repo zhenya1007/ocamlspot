@@ -15,5 +15,4 @@ open Ident
 
 val name : t -> Name.t
 val format : Format.formatter -> t -> unit
-val create_with_stamp : ?flags:int -> string -> int -> t
 val parse : Name.t -> t
