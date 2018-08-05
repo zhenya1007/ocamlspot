@@ -90,8 +90,7 @@ module Main = struct
   ;;
 
   let info path =
-    (* let file = load (Cmt.of_path path) in *)
-    let file = load & Dir.cmt_of path in
+    let file = load & Search_cmt.cmt_of path in
     printf "Compile: %s@."
       (String.concat " " 
          (List.map Command.escape_for_shell 
@@ -101,8 +100,7 @@ module Main = struct
       file.Unit.loadpath
 
   let interface path =
-    (* let file = load (Cmt.of_path path) in *)
-    let file = load & Dir.cmt_of path in
+    let file = load & Search_cmt.cmt_of path in
     let sg = file.Unit.top_signature in
     match sg with
     | Some sg -> printf "@[%a@]@." Printtyp.signature sg
@@ -245,8 +243,7 @@ module Main = struct
     (* CR jfuruse: dup *)
     Debug.format "ocamlspot %s%s@." orig_path (C.SearchSpec.to_string spec);
     Debug.format "cwd: %s@." (Sys.getcwd ());
-    (* let file = load & Cmt.of_path orig_path in *)
-    let file = load & Dir.cmt_of orig_path in
+    let file = load & Search_cmt.cmt_of orig_path in
 
     let query_kind_path k path = print_query_result k (query_by_kind_path file k path) in
 
@@ -280,8 +277,7 @@ module Main = struct
     (* CR jfuruse: dup *)
     Debug.format "ocamlspot %s%s@." path (C.SearchSpec.to_string spec);
     Debug.format "cwd: %s@." (Sys.getcwd ());
-    (* let file = load & Cmt.of_path path in *)
-    let file = load & Dir.cmt_of path in
+    let file = load & Search_cmt.cmt_of path in
 
     let find_by_kind_path k path found =
       Find.find targets ~f:(fun pathname ->
