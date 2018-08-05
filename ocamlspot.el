@@ -187,7 +187,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Messaging
 
-(setq ocamlspot-message-file-name nil) ;; only used for xtype
+(defvar ocamlspot-message-file-name nil) ;; only used for xtype
 
 ;; Clean the message buffer, and set the context file name
 (defun ocamlspot-message-init (context-file-name)
@@ -436,7 +436,7 @@
 
 ;; Experimental. Jump back to the latest query position.
 
-(setq ocamlspot-jump-stack nil)
+(defvar ocamlspot-jump-stack nil)
 
 (defun ocamlspot-pop-jump-stack ()
   (interactive)
