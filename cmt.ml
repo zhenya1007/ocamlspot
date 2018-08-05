@@ -43,7 +43,7 @@ let of_path path =
 
 
 (* CR jfuruse: this is a dirty workaround. It should be nice if we could know cmt is created by opt or byte *)          
-let is_opt cmt = 
+let is_by_ocamlopt cmt = 
   (* We cannot guess this simply by the compiler name "ocamlc" or "ocamlopt", 
      since someone can create a modified compiler like gcaml *)
   List.exists (fun x -> match Filename.split_extension x with 

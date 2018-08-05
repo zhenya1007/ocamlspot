@@ -24,7 +24,7 @@ val of_path : string -> string
     of_path "dir/x.ml"  = "dir/x.cmt"
 *)
 
-val is_opt : cmt_infos -> bool
+val is_by_ocamlopt : cmt_infos -> bool
 (** Guess the cmt is created by opt(native code) compilation *)
 
 val reset_env_cache : unit -> unit
