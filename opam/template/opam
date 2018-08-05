@@ -1,10 +1,5 @@
-build: [
-  [make "all" "opt" "BINDIR=%{bin}%" "PREFIX=%{prefix}%"]
+depends: [
+  "jbuilder" { build }
 ]
-install: [
-  [make "install" "install-elisp" "BINDIR=%{bin}%" "PREFIX=%{prefix}%" "EMACSDIR=%{share}%/emacs/site-lisp"]
-]
-remove: [
-  [make "uninstall" "BINDIR=%{bin}%" "PREFIX=%{prefix}%"]
-]
-available: [ ocaml-version >= "4.06.0" & ocaml-version < "4.07.0" ]
+available: [ ocaml-version = "4.07.0" ]
+homepage: "https://bitbucket.org/camlspotter/ocamlspot"

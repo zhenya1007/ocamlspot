@@ -17,7 +17,7 @@
 
       Work around for build systems which create object files to exotic places.
       If .ocamlspot is placed in a directory $DIR,
-      then .cmt* files of source files under $DIR ex. $DIR/subdir/subdir/source.ml
+      then .cmt* files of source files under $DIR ex. $DIR/subdir/source.ml
       is searched in $DIR/dirname/subdir/subdir/.
 *)
 
