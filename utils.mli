@@ -56,7 +56,7 @@ module Filename : sig
   include module type of struct include Filename end
   val split_extension : string -> string * string
 
-    val concats : string list -> string
+  val concats : string list -> string
 
   module Open : sig
     val (^/) : string -> string -> string
