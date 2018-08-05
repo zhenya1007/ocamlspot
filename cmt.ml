@@ -18,30 +18,6 @@ open Cmt_format
 let source_path file = 
   Option.map file.cmt_sourcefile ~f:(fun f -> file.cmt_builddir ^/ f)
 
-(* xxx.{ml,cmo,cmx,spot} => xxx.cmt
-   xxx.{mli,cmi,spit}    => xxx.cmti *)
-let of_path path =
-  let loc = Pathmap.build_loc path in
-  Format.eprintf "Cmt.of_path: Pathmap build: %s => %s@." path loc;
-  let cands = match Filename.split_extension path with
-    | _, (".cmi" | ".cmti") -> [ loc ^ ".cmti" ]
-    | _, (".cmo" | ".cmx" | ".cmt") -> [ loc ^ ".cmt" ]
-    | _base, ".mli" -> [ loc ^ ".cmti" ]
-    | _base, _ -> [ loc ^ ".cmt" ]
-  in
-  let rec find = function
-    | [] -> assert false
-    | [p] -> p
-    | p::ps -> 
-        Format.eprintf "trying %s@." p;
-        if Sys.file_exists p then  p
-        else find ps
-  in
-  let s = find cands in
-  Format.eprintf "=> %s@." s;
-  s
-
-
 (* CR jfuruse: this is a dirty workaround. It should be nice if we could know cmt is created by opt or byte *)          
 let is_by_ocamlopt cmt = 
   (* We cannot guess this simply by the compiler name "ocamlc" or "ocamlopt", 
