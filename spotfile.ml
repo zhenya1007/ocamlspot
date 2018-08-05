@@ -231,7 +231,7 @@ let find_path_in_flat file path : PIdent.t * result =
     | path ->
         (* CR jfuruse: loading twice... *)
         Debug.format "Finding %a@." PIdent.format pid;
-        let file = Load.load ~load_paths:[] (Cmt.of_path path) in
+        let file = Load.load ~load_paths:[] & Search_cmt.cmt_of path in
         match pid.PIdent.ident with
         | None -> File_itself (* the whole file *)
         | Some id -> 
@@ -272,7 +272,7 @@ let str_of_global_ident ~cwd ~load_paths id =
 let _ = Eval.str_of_global_ident := str_of_global_ident
 
 let eval_packed env file =
-  let f = Load.load ~load_paths:[""] (Cmt.of_path (env.Env.cwd ^/ file)) in
+  let f = Load.load ~load_paths:[""] & Search_cmt.cmt_of (env.Env.cwd ^/ file) in
   Value.Structure ({ PIdent.path = f.Unit.path; ident = None },
                   Eval.structure (initial_env f) f.Unit.top,
                   None (* packed has no .mli *))

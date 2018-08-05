@@ -1433,7 +1433,7 @@ module Unit = struct
 
   let of_cmt path (* the cmt file path *) cmt =
     let path = Option.default (Cmt.source_path cmt) (fun () ->
-      let ext = if Cmt.is_opt cmt then ".cmx" else ".cmo" in
+      let ext = if Cmt.is_by_ocamlopt cmt then ".cmx" else ".cmo" in
       Filename.chop_extension path ^ ext)
     in
 (*
