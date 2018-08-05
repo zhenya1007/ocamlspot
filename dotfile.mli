@@ -15,9 +15,10 @@
 
    build_dir=dirname
 
-      Work around for ocamlbuild. If .ocamlspot is placed in a directory $DIR,
-      then spot files of source files under $DIR ex. $DIR/subdir/source.ml
-      is searched in $DIR/dirname/subdir/.
+      Work around for build systems which create object files to exotic places.
+      If .ocamlspot is placed in a directory $DIR,
+      then .cmt* files of source files under $DIR ex. $DIR/subdir/source.ml
+      is searched in $DIR/dirname/subdir/subdir/.
 *)
 
 val find : 
