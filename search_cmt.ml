@@ -8,9 +8,9 @@ let cmt_of p =
   let base = basename p in
   let base_body, base_ext = split_extension base in
   let cm_ext = match base_ext with
-    | ".ml"  -> Some ".cmt"
     | ".mli" -> Some ".cmti"
-    | _      -> None
+    | ".ml" | ".mll" | ".mly" -> Some ".cmt"
+    | _      -> Some ".cmt"
   in
   let default () = 
     match cm_ext with
@@ -21,17 +21,8 @@ let cmt_of p =
   in
   match base_ext with
   | ".cmt" | ".cmti" -> Some p
-  | ".cmo" -> Some (dir ^/ base_body ^ ".cmt")
+  | ".cmo" | ".cmx"  -> Some (dir ^/ base_body ^ ".cmt")
   | ".cmi" -> Some (dir ^/ base_body ^ ".cmti")
-  | ".ml" ->
-      begin match Dot_merlin.load_path_of_dir dir with
-        | Some load_paths -> 
-            begin match Misc.find_in_path load_paths (base_body ^ ".cmt") with
-              | x -> Some x
-              | exception Not_found -> default ()
-            end
-        | None -> default ()
-        end
   | ".mli" ->
       begin match Dot_merlin.load_path_of_dir dir with
         | Some load_paths -> 
@@ -41,7 +32,15 @@ let cmt_of p =
             end
         | None -> default ()
       end
-  | _ -> None
+  | ".ml" | ".mll" | ".mly" | _ ->
+      begin match Dot_merlin.load_path_of_dir dir with
+        | Some load_paths -> 
+            begin match Misc.find_in_path load_paths (base_body ^ ".cmt") with
+              | x -> Some x
+              | exception Not_found -> default ()
+            end
+        | None -> default ()
+        end
 
 let cmt_of p = match cmt_of p with
   | None -> assert false
